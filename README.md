@@ -11,30 +11,54 @@ This synthetic retail bank demonstrates critical risk management and governance 
   - *Reports*:
     - `REPP_DT_ANOMALY_ANALYSIS`
     - `REPP_DT_HIGH_RISK_PATTERNS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
+    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
 - **Know Your Customer (KYC)**: Customer due diligence and identity verification processes
   - *Reports*:
-    - `CRMA_AGG_DT_CUSTOMER`
     - `REPP_DT_CUSTOMER_SUMMARY`
+    - `CRMA_AGG_DT_CUSTOMER` -- Comprehensive customer view with Exposed Person matching
     - `CRMA_AGG_DT_ADDRESSES_CURRENT`
 - **Politically Exposed Persons (PEP) Screening**: High-risk customer identification and monitoring
   - *Reports*:
-    - `CRMI_EXPOSED_PERSON`
-    - `CRMA_AGG_DT_CUSTOMER` (with fuzzy PEP matching)
-- **Regulatory Reporting**: GDPR, MiFID II, Basel III, and PSD2 compliance requirements
+    - `CRMA_AGG_DT_CUSTOMER` (with fuzzy matching against reference list in `CRMI_EXPOSED_PERSON`)
+- **Regulatory Reporting**: GDPR, MiFID II, Basel III/IV, and PSD2 compliance requirements
   - *Reports*:
     - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
     - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
     - `CRMA_AGG_DT_ADDRESSES_HISTORY`
+    - `REPP_DT_IRB_RWA_SUMMARY`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
 - **Sanctions Screening**: Transaction filtering against prohibited entities and jurisdictions
   - *Reports*:
     - `REPP_DT_HIGH_RISK_PATTERNS` (offshore/crypto filtering)
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
+    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` TODO
+
+### **Credit Risk Management & IRB Approach**
+- **Basel III/IV Capital Adequacy**: Internal Ratings Based approach for regulatory capital calculation
+  - *Reports*:
+    - `REPP_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_DT_IRB_RWA_SUMMARY`
+- **Credit Risk Parameters**: PD (Probability of Default), LGD (Loss Given Default), EAD (Exposure at Default)
+  - *Reports*:
+    - `REPP_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_DT_IRB_RISK_TRENDS`
+- **Risk Weighted Assets (RWA)**: Regulatory capital requirement calculation and monitoring
+  - *Reports*:
+    - `REPP_DT_IRB_RWA_SUMMARY`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+- **Credit Rating & Default Management**: Internal credit ratings and default identification
+  - *Reports*:
+    - `REPP_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_DT_IRB_RISK_TRENDS`
+- **Model Risk Management**: IRB model validation, backtesting, and performance monitoring
+  - *Reports*:
+    - `REPP_DT_IRB_RISK_TRENDS`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
 
 ### **Operational Risk Management**
 - **Transaction Monitoring**: Real-time fraud detection and behavioral analysis
   - *Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
+    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
     - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
     - `REPP_DT_HIGH_RISK_PATTERNS`
 - **Customer Risk Profiling**: Dynamic risk scoring and segmentation
@@ -62,7 +86,7 @@ This synthetic retail bank demonstrates critical risk management and governance 
 - **Suspicious Activity Detection**: Pattern recognition for potential money laundering
   - *Reports*:
     - `REPP_DT_ANOMALY_ANALYSIS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
+    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
     - `REPP_DT_HIGH_RISK_PATTERNS`
 - **Trade-Based Money Laundering**: Equity trading anomaly identification
   - *Reports*:
@@ -71,7 +95,7 @@ This synthetic retail bank demonstrates critical risk management and governance 
     - `REPP_DT_EQUITY_POSITIONS`
 - **Structuring Detection**: Transaction splitting and layering pattern analysis
   - *Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` (round amounts, rapid succession)
+    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
     - `REPP_DT_ANOMALY_ANALYSIS`
 - **High-Risk Geography Monitoring**: Enhanced due diligence for specific jurisdictions
   - *Reports*:
@@ -105,6 +129,14 @@ This synthetic retail bank demonstrates critical risk management and governance 
 - **Regulatory Reporting**: GDPR, MiFID II, Basel III, and PSD2 compliant data structures and processes
 - **Risk Appetite Monitoring**: Configurable thresholds and escalation procedures for risk limit breaches
 - **Management Information**: Executive dashboards and regulatory reporting with drill-down capabilities
+
+### **Credit Risk & Capital Management Framework**
+- **IRB Capital Adequacy**: Basel III/IV compliant Internal Ratings Based approach for regulatory capital
+- **Credit Risk Parameters**: PD, LGD, EAD modeling with exposure-weighted portfolio aggregation
+- **Risk Weighted Assets**: Automated RWA calculation and regulatory capital requirement monitoring
+- **Credit Rating Systems**: Internal rating scales (AAA-CCC) with default identification and watch list management
+- **Portfolio Risk Management**: Credit concentration analysis, vintage tracking, and collateral coverage monitoring
+- **Model Validation**: IRB model backtesting, performance monitoring, and stress testing capabilities
 
 ### **Operational Risk Framework**
 - **Settlement Risk Management**: Payment timing analysis and counterparty exposure monitoring
@@ -261,7 +293,7 @@ Contains daily foreign exchange rates with columns:
 **Filename Pattern**: `pay_transactions_YYYY-MM-DD.csv`
 
 Each file contains payment transactions for a single business day with columns:
-- `booking_date`: Transaction timestamp when recorded (ISO 8601 UTC format: YYYY-MM-DDTHH:MM:SS.fffffZ)
+- `booking_date`: Transaction timestamp when recorded (ISO 8601 UTC format: YYYY-MM-DD HH:MM:SS.fffffZ)
 - `value_date`: Date when funds are settled/available (YYYY-MM-DD)
 - `transaction_id`: Unique transaction identifier
 - `customer_id`: Reference to customer
@@ -408,6 +440,16 @@ generated_data/
     - `REPP_DT_CUSTOMER_SUMMARY`
     - `CRMA_AGG_DT_CUSTOMER`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
+- **Credit Risk Model Validation**: IRB model development, backtesting, and regulatory validation
+  - *Key Reports*:
+    - `REPP_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_DT_IRB_RISK_TRENDS`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+- **Capital Adequacy Assessment**: Basel III/IV capital requirement calculation and stress testing
+  - *Key Reports*:
+    - `REPP_DT_IRB_RWA_SUMMARY`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_DT_IRB_RISK_TRENDS`
 - **Regulatory Technology (RegTech) Evaluation**: Test vendor solutions against realistic banking scenarios
   - *Key Reports*:
     - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
@@ -435,6 +477,12 @@ generated_data/
     - `REPP_DT_ANOMALY_ANALYSIS`
     - `REPP_DT_SETTLEMENT_ANALYSIS`
     - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
+    - `REPP_DT_IRB_RWA_SUMMARY`
+- **Capital Adequacy Compliance**: Demonstrate Basel III/IV compliance and regulatory capital adequacy
+  - *Key Reports*:
+    - `REPP_DT_IRB_RWA_SUMMARY`
+    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_DT_IRB_RISK_TRENDS`
 - **Business Continuity Planning**: Test operational resilience and recovery procedures with realistic data volumes
   - *Key Reports*:
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`

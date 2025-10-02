@@ -67,10 +67,27 @@ USE SCHEMA CRM_AGG_001;
 -- Provides clean access to account data for downstream analytics without
 -- direct dependencies on raw layer tables.
 
-CREATE OR REPLACE DYNAMIC TABLE ACCA_AGG_DT_ACCOUNTS
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
-COMMENT = '1:1 aggregation of account master data from raw layer (CRM_RAW_001.ACCI_ACCOUNTS). Provides clean aggregation layer access for downstream analytics, balance calculations, and reporting. Maintains real-time refresh for data currency while serving as bridge between raw data and analytical data products.'
+CREATE OR REPLACE DYNAMIC TABLE ACCA_AGG_DT_ACCOUNTS(
+    ACCOUNT_ID COMMENT 'Unique account identifier for transaction allocation and balance tracking',
+    ACCOUNT_TYPE COMMENT 'Type of account (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
+    BASE_CURRENCY COMMENT 'Base currency of the account (EUR/GBP/USD/CHF/NOK/SEK/DKK)',
+    CUSTOMER_ID COMMENT 'Customer identifier for account ownership and relationship management',
+    STATUS COMMENT 'Current account status (ACTIVE/INACTIVE/CLOSED)',
+    IS_ACTIVE COMMENT 'Boolean flag indicating if account status is ACTIVE',
+    IS_CHECKING_ACCOUNT COMMENT 'Boolean flag for checking/transaction accounts',
+    IS_SAVINGS_ACCOUNT COMMENT 'Boolean flag for savings accounts',
+    IS_BUSINESS_ACCOUNT COMMENT 'Boolean flag for business/commercial accounts',
+    IS_INVESTMENT_ACCOUNT COMMENT 'Boolean flag for investment/securities accounts',
+    IS_USD_ACCOUNT COMMENT 'Boolean flag for USD-denominated accounts',
+    IS_EUR_ACCOUNT COMMENT 'Boolean flag for EUR-denominated accounts',
+    IS_OTHER_CURRENCY_ACCOUNT COMMENT 'Boolean flag for accounts in other currencies (GBP/CHF/NOK/SEK/DKK)',
+    ACCOUNT_TYPE_PRIORITY COMMENT 'Priority ranking for account type (1=CHECKING, 2=SAVINGS, 3=BUSINESS, 4=INVESTMENT)',
+    CURRENCY_GROUP COMMENT 'Currency grouping for reporting (MAJOR_EUROPEAN/USD_BASE/OTHER_EUROPEAN/OTHER)',
+    AGGREGATION_TIMESTAMP COMMENT 'Timestamp when aggregation processing was performed',
+    AGGREGATION_TYPE COMMENT 'Type of aggregation processing (1:1_COPY_FROM_RAW)',
+    SOURCE_TABLE COMMENT 'Source table reference for data lineage (CRM_RAW_001.ACCI_ACCOUNTS)'
+) COMMENT = '1:1 aggregation of account master data from raw layer (CRM_RAW_001.ACCI_ACCOUNTS). Provides clean aggregation layer access for downstream analytics, balance calculations, and reporting. Maintains real-time refresh for data currency while serving as bridge between raw data and analytical data products.'
+TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Account Master Data (1:1 copy from raw layer)

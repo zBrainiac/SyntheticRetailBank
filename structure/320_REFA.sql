@@ -59,10 +59,34 @@ USE SCHEMA REF_AGG_001;
 -- volatility metrics, and business intelligence for currency operations.
 -- Optimized for real-time lookups and risk management analytics.
 
-CREATE OR REPLACE DYNAMIC TABLE REFA_AGG_DT_FX_RATES_ENHANCED
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'Enhanced FX rates aggregation with analytics, volatility metrics, and business intelligence. Provides current rates, historical trends, bid/ask spreads, and currency pair analytics for real-time operations, risk management, and regulatory reporting.'
+CREATE OR REPLACE DYNAMIC TABLE REFA_AGG_DT_FX_RATES_ENHANCED(
+    DATE COMMENT 'Date of the FX rate observation for time series analysis',
+    FROM_CURRENCY COMMENT 'Source currency code (ISO 4217) for currency conversion',
+    TO_CURRENCY COMMENT 'Target currency code (ISO 4217) for currency conversion',
+    CURRENCY_PAIR COMMENT 'Currency pair identifier (FROM/TO format) for market analysis',
+    MID_RATE COMMENT 'Mid-market exchange rate (average of bid and ask)',
+    BID_RATE COMMENT 'Bid exchange rate (rate at which bank buys the base currency)',
+    ASK_RATE COMMENT 'Ask exchange rate (rate at which bank sells the base currency)',
+    SPREAD_ABSOLUTE COMMENT 'Absolute spread between bid and ask rates',
+    SPREAD_PERCENTAGE COMMENT 'Percentage spread relative to mid rate for cost analysis',
+    DAILY_CHANGE_ABSOLUTE COMMENT 'Absolute change in mid rate from previous day',
+    DAILY_CHANGE_PERCENTAGE COMMENT 'Percentage change in mid rate from previous day',
+    TREND_DIRECTION COMMENT 'Daily trend classification (APPRECIATING/DEPRECIATING/STABLE/NO_PREV_DATA)',
+    VOLATILITY_30D COMMENT '30-day rolling standard deviation of mid rates for risk assessment',
+    MOVING_AVG_7D COMMENT '7-day rolling average of mid rates for trend analysis',
+    MIN_RATE_30D COMMENT 'Minimum mid rate in last 30 days for range analysis',
+    MAX_RATE_30D COMMENT 'Maximum mid rate in last 30 days for range analysis',
+    RATE_POSITION_PERCENTAGE COMMENT 'Current rate position within 30-day range (0%=low, 100%=high)',
+    CURRENCY_PAIR_TYPE COMMENT 'Currency pair classification (CHF_BASE/CHF_TARGET/CROSS_CURRENCY)',
+    PAIR_CLASSIFICATION COMMENT 'Market classification (MAJOR_PAIR/MINOR_PAIR)',
+    SPREAD_RISK_LEVEL COMMENT 'Spread-based risk classification (LOW/MEDIUM/HIGH/UNKNOWN_SPREAD)',
+    VOLATILITY_RISK_LEVEL COMMENT 'Volatility-based risk classification (LOW/MEDIUM/HIGH/UNKNOWN_VOLATILITY)',
+    IS_CURRENT_RATE COMMENT 'Boolean flag indicating if this is the most current rate available',
+    CREATED_AT COMMENT 'Original timestamp when rate was created in source system',
+    AGGREGATION_TIMESTAMP COMMENT 'Timestamp when aggregation processing was performed',
+    AGGREGATION_TYPE COMMENT 'Type of aggregation processing applied (ENHANCED_FX_ANALYTICS)'
+) COMMENT = 'Enhanced FX rates aggregation with analytics, volatility metrics, and business intelligence. Provides current rates, historical trends, bid/ask spreads, and currency pair analytics for real-time operations, risk management, and regulatory reporting.'
+TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
 AS
 WITH fx_rates_base AS (
     -- Base FX rates with enhanced metadata

@@ -67,10 +67,51 @@ USE SCHEMA ICG_AGG_v001;
 -- Financial Institution to Financial Institution Customer Credit Transfer parsing
 -- with derived fields for operational monitoring, compliance screening, and treasury management.
 
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS008
-TARGET_LAG = '60 minutes'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'SWIFT PACS.008 Customer Credit Transfer messages parsed and structured for business analysis. Includes payment instructions, routing information, compliance data, and derived analytics for operational monitoring, risk management, and regulatory reporting.'
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS008(
+    SOURCE_FILENAME COMMENT 'Original XML file name for audit trail and message correlation',
+    SOURCE_LOAD_TIMESTAMP COMMENT 'System ingestion timestamp for data lineage and processing tracking',
+    MESSAGE_ID COMMENT 'Unique SWIFT message identifier for deduplication and correlation',
+    CREATION_DATETIME COMMENT 'Message creation timestamp for SLA monitoring and processing analysis',
+    NUMBER_OF_TRANSACTIONS COMMENT 'Number of transactions in message batch for volume analysis',
+    GROUP_SETTLEMENT_CURRENCY COMMENT 'Settlement currency for the entire message group',
+    GROUP_SETTLEMENT_AMOUNT COMMENT 'Total settlement amount for liquidity management',
+    SETTLEMENT_METHOD COMMENT 'Settlement method code for routing and clearing decisions',
+    CLEARING_SYSTEM_CODE COMMENT 'Clearing system identifier (TARGET2/SEPA/etc.) for operational routing',
+    INSTRUCTION_ID COMMENT 'Bank internal instruction identifier for operational tracking',
+    END_TO_END_ID COMMENT 'Customer end-to-end reference for reconciliation and customer service',
+    TRANSACTION_ID COMMENT 'SWIFT transaction identifier for inquiry and investigation',
+    INSTRUCTION_PRIORITY COMMENT 'Payment priority level for processing sequence and SLA',
+    SERVICE_LEVEL_CODE COMMENT 'Service level agreement code for processing rules',
+    LOCAL_INSTRUMENT_CODE COMMENT 'Local payment instrument code for domestic routing',
+    TRANSACTION_CURRENCY COMMENT 'Payment currency for FX and treasury management',
+    TRANSACTION_AMOUNT COMMENT 'Payment amount for limit monitoring and settlement',
+    INTERBANK_SETTLEMENT_DATE COMMENT 'Requested settlement date for liquidity planning',
+    CHARGES_BEARER COMMENT 'Charges allocation (OUR/BEN/SHA) for fee management',
+    INSTRUCTING_AGENT_BIC COMMENT 'BIC of instructing bank for routing and correspondence',
+    INSTRUCTED_AGENT_BIC COMMENT 'BIC of instructed bank for processing and settlement',
+    DEBTOR_AGENT_BIC COMMENT 'BIC of debtor bank for correspondent banking',
+    CREDITOR_AGENT_BIC COMMENT 'BIC of creditor bank for beneficiary settlement',
+    DEBTOR_NAME COMMENT 'Payer name for compliance screening and customer identification',
+    DEBTOR_STREET COMMENT 'Payer street address for compliance and verification',
+    DEBTOR_POSTAL_CODE COMMENT 'Payer postal code for geographic analysis',
+    DEBTOR_CITY COMMENT 'Payer city for compliance and risk assessment',
+    DEBTOR_COUNTRY COMMENT 'Payer country for sanctions screening and regulatory compliance',
+    DEBTOR_IBAN COMMENT 'Payer IBAN for account identification and validation',
+    CREDITOR_NAME COMMENT 'Beneficiary name for compliance screening and delivery confirmation',
+    CREDITOR_STREET COMMENT 'Beneficiary street address for compliance verification',
+    CREDITOR_POSTAL_CODE COMMENT 'Beneficiary postal code for geographic analysis',
+    CREDITOR_CITY COMMENT 'Beneficiary city for compliance and risk assessment',
+    CREDITOR_COUNTRY COMMENT 'Beneficiary country for sanctions screening and regulatory compliance',
+    CREDITOR_IBAN COMMENT 'Beneficiary IBAN for account identification and settlement',
+    REMITTANCE_INFORMATION COMMENT 'Payment purpose and reference information for compliance',
+    IS_HIGH_VALUE_PAYMENT COMMENT 'Boolean flag for payments >= 100k requiring enhanced monitoring',
+    IS_TARGET2_PAYMENT COMMENT 'Boolean flag for TARGET2 RTGS payments requiring special handling',
+    PAYMENT_CORRIDOR COMMENT 'Geographic payment flow (Country -> Country) for correspondent analysis',
+    PAYMENT_TYPE_CLASSIFICATION COMMENT 'Payment classification (DOMESTIC/CROSS_BORDER) for regulatory reporting',
+    PARSED_AT COMMENT 'Timestamp when XML parsing was completed for processing tracking',
+    XML_SIZE_BYTES COMMENT 'Size of original XML message for performance analysis'
+) COMMENT = 'SWIFT PACS.008 Customer Credit Transfer messages parsed and structured for business analysis. Includes payment instructions, routing information, compliance data, and derived analytics for operational monitoring, risk management, and regulatory reporting.'
+TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Source metadata - Technical tracking
@@ -172,10 +213,33 @@ WHERE RAW_XML IS NOT NULL
 -- Financial Institution to Financial Institution Payment Status Report parsing
 -- with derived fields for SLA monitoring, exception handling, and customer communication.
 
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS002
-TARGET_LAG = '60 minutes'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'SWIFT PACS.002 Payment Status Reports parsed and structured for operational monitoring. Includes status confirmations, rejection reasons, processing timestamps, and derived analytics for SLA tracking, exception handling, and customer communication workflows.'
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS002(
+    SOURCE_FILENAME COMMENT 'Original XML file name for audit trail and message correlation',
+    SOURCE_LOAD_TIMESTAMP COMMENT 'System ingestion timestamp for data lineage and processing tracking',
+    MESSAGE_ID COMMENT 'Unique status report message identifier for deduplication',
+    CREATION_DATETIME COMMENT 'Status report creation timestamp for SLA measurement and response time analysis',
+    INSTRUCTING_AGENT_BIC COMMENT 'BIC of bank sending status report for operational contact and routing',
+    INSTRUCTED_AGENT_BIC COMMENT 'BIC of bank receiving status report for message routing',
+    ORIGINAL_MESSAGE_ID COMMENT 'Reference to original PACS.008 message for correlation and reconciliation',
+    ORIGINAL_MESSAGE_NAME_ID COMMENT 'Confirmation of original message type being acknowledged',
+    ORIGINAL_CREATION_DATETIME COMMENT 'Original instruction timestamp for SLA tracking and processing time calculation',
+    GROUP_STATUS COMMENT 'Overall status of payment batch (ACCP/RJCT/PDNG) for bulk processing analysis',
+    ORIGINAL_END_TO_END_ID COMMENT 'Customer reference from original instruction for notification and reconciliation',
+    TRANSACTION_STATUS COMMENT 'Individual payment status code (ACCP/RJCT/PDNG/ACSC/ACSP) for operational decisions',
+    STATUS_REASON COMMENT 'Detailed reason code for rejection or delay for customer service and investigation',
+    ORIGINAL_INSTRUCTION_ID COMMENT 'Bank internal reference from original instruction for operational tracking',
+    ORIGINAL_TRANSACTION_ID COMMENT 'SWIFT tracking reference from original instruction for inquiry handling',
+    ACCEPTANCE_DATETIME COMMENT 'Timestamp when payment was actually processed for settlement timing analysis',
+    TRANSACTION_STATUS_DESCRIPTION COMMENT 'Human-readable transaction status for dashboards and customer notifications',
+    GROUP_STATUS_DESCRIPTION COMMENT 'Human-readable batch status for operational monitoring and reporting',
+    IS_POSITIVE_RESPONSE COMMENT 'Boolean flag for successful payment processing (SLA reporting and customer communication)',
+    IS_REJECTION COMMENT 'Boolean flag for failed payments requiring exception handling and customer service escalation',
+    IS_PACS008_RESPONSE COMMENT 'Boolean flag confirming this status relates to payment instruction (not other message types)',
+    ORIGINAL_MESSAGE_DATE COMMENT 'Business date extracted from original message for time-based analytics and archiving',
+    PARSED_AT COMMENT 'Timestamp when XML parsing was completed for processing tracking',
+    XML_SIZE_BYTES COMMENT 'Size of original XML message for performance analysis'
+) COMMENT = 'SWIFT PACS.002 Payment Status Reports parsed and structured for operational monitoring. Includes status confirmations, rejection reasons, processing timestamps, and derived analytics for SLA tracking, exception handling, and customer communication workflows.'
+TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Source metadata - Technical tracking
@@ -269,10 +333,34 @@ WHERE RAW_XML IS NOT NULL
 -- Joins pacs.008 credit transfers with their pacs.002 status reports
 -- Provides end-to-end view of payment processing lifecycle
 
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_JOIN_PACS008_PACS002
-TARGET_LAG = '60 minutes'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'Complete SWIFT payment lifecycle view joining PACS.008 instructions with PACS.002 status reports. Provides end-to-end payment tracking, SLA monitoring, settlement analysis, and comprehensive business intelligence for treasury management, compliance reporting, and operational excellence.'
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_JOIN_PACS008_PACS002(
+    PACS008_MESSAGE_ID COMMENT 'Original payment instruction message ID for tracking and correlation',
+    PACS002_ORIGINAL_MESSAGE_ID COMMENT 'Status report reference back to original instruction for reconciliation',
+    PACS008_END_TO_END_ID COMMENT 'Customer payment reference from original instruction for reconciliation',
+    PACS002_ORIGINAL_END_TO_END_ID COMMENT 'Customer reference confirmed in status report for validation',
+    TRANSACTION_STATUS COMMENT 'Final payment status code (ACCP/RJCT/PDNG/ACSC/ACSP) for operational decisions',
+    TRANSACTION_STATUS_DESCRIPTION COMMENT 'Human-readable payment status for customer communication and dashboards',
+    GROUP_STATUS COMMENT 'Batch-level payment outcome for bulk processing analysis',
+    GROUP_STATUS_DESCRIPTION COMMENT 'Human-readable batch status for operational dashboards and monitoring',
+    STATUS_REASON COMMENT 'Detailed reason code for investigation, customer service, and process improvement',
+    IS_REJECTION COMMENT 'Boolean flag for failed payments requiring exception handling workflows',
+    IS_POSITIVE_RESPONSE COMMENT 'Boolean flag for successful payments (SLA and performance reporting)',
+    TRANSACTION_CURRENCY COMMENT 'Payment currency for FX exposure analysis and treasury management',
+    TRANSACTION_AMOUNT COMMENT 'Payment value for limit monitoring, settlement planning, and risk assessment',
+    DEBTOR_NAME COMMENT 'Payer identification for compliance screening and customer service',
+    CREDITOR_NAME COMMENT 'Beneficiary identification for delivery confirmation and compliance',
+    PAYMENT_CORRIDOR COMMENT 'Geographic payment flow (Country -> Country) for correspondent banking analysis',
+    PAYMENT_TYPE_CLASSIFICATION COMMENT 'Payment classification (DOMESTIC/CROSS_BORDER) for regulatory reporting',
+    IS_HIGH_VALUE_PAYMENT COMMENT 'Boolean flag for large payments requiring enhanced monitoring and approval processes',
+    IS_TARGET2_PAYMENT COMMENT 'Boolean flag for RTGS payments requiring special liquidity and settlement planning',
+    PACS008_FILE COMMENT 'Original instruction file name for audit trail and data lineage',
+    PACS002_FILE COMMENT 'Status report file name for correlation verification and audit trail',
+    PACS008_LOAD_TIMESTAMP COMMENT 'Instruction ingestion timestamp for timing analysis and data quality',
+    PACS002_LOAD_TIMESTAMP COMMENT 'Status report ingestion timestamp for response time measurement',
+    ACK_TIME COMMENT 'Processing time in minutes from instruction to status for SLA monitoring and performance optimization',
+    JOINED_AT COMMENT 'Join processing timestamp for data quality tracking and refresh monitoring'
+) COMMENT = 'Complete SWIFT payment lifecycle view joining PACS.008 instructions with PACS.002 status reports. Provides end-to-end payment tracking, SLA monitoring, settlement analysis, and comprehensive business intelligence for treasury management, compliance reporting, and operational excellence.'
+TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     -- Join keys - Message correlation identifiers

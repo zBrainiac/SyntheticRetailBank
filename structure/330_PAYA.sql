@@ -71,10 +71,42 @@ USE SCHEMA PAY_AGG_001;
 -- against the customer's historical behavioral patterns across multiple dimensions
 -- including amount, frequency, timing, and counterparty analysis.
 
-CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_TRANSACTION_ANOMALIES
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'Advanced payment transaction anomaly detection system analyzing individual account behavioral patterns. Identifies abnormal transactions based on statistical deviations from account norms across amount, frequency, timing, and counterparty dimensions. Provides risk scoring for fraud detection, compliance monitoring, and operational alerting with comprehensive behavioral analytics.'
+CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_TRANSACTION_ANOMALIES(
+    TRANSACTION_ID COMMENT 'Unique identifier for each payment transaction',
+    ACCOUNT_ID COMMENT 'Account identifier for transaction allocation and behavioral analysis',
+    CUSTOMER_ID COMMENT 'Customer identifier for risk profiling and relationship management',
+    BOOKING_DATE COMMENT 'Date when transaction was booked in the system',
+    VALUE_DATE COMMENT 'Settlement date for the transaction',
+    AMOUNT COMMENT 'Transaction amount in original currency',
+    CURRENCY COMMENT 'Currency code (ISO 4217) of the transaction',
+    COUNTERPARTY_ACCOUNT COMMENT 'Counterparty account identifier for relationship analysis',
+    DESCRIPTION COMMENT 'Transaction description text for pattern analysis',
+    CUSTOMER_TOTAL_TRANSACTIONS COMMENT 'Total historical transactions for this customer (behavioral baseline)',
+    AVG_TRANSACTION_AMOUNT COMMENT 'Customer average transaction amount for anomaly scoring',
+    MEDIAN_TRANSACTION_AMOUNT COMMENT 'Customer median transaction amount for statistical analysis',
+    AVG_DAILY_TRANSACTION_COUNT COMMENT 'Customer average daily transaction frequency',
+    AMOUNT_ANOMALY_SCORE COMMENT 'Z-score indicating how many standard deviations amount deviates from customer norm',
+    TIMING_ANOMALY_SCORE COMMENT 'Z-score for transaction timing deviation from customer patterns',
+    AMOUNT_ANOMALY_LEVEL COMMENT 'Classification of amount anomaly (EXTREME/HIGH/MODERATE/NORMAL)',
+    TIMING_ANOMALY_LEVEL COMMENT 'Classification of timing anomaly (HIGH/MODERATE/NORMAL)',
+    VELOCITY_ANOMALY_LEVEL COMMENT 'Classification of transaction velocity anomaly (HIGH/MODERATE/NORMAL)',
+    IS_LARGE_TRANSACTION COMMENT 'Boolean flag for transactions above customer 95th percentile',
+    IS_UNUSUAL_WEEKEND_TRANSACTION COMMENT 'Boolean flag for weekend transactions from non-weekend customers',
+    IS_OFF_HOURS_TRANSACTION COMMENT 'Boolean flag for transactions outside 6 AM - 10 PM',
+    SETTLEMENT_DAYS COMMENT 'Number of days between booking and settlement dates',
+    IS_DELAYED_SETTLEMENT COMMENT 'Boolean flag for settlements delayed more than 5 days',
+    IS_BACKDATED_SETTLEMENT COMMENT 'Boolean flag for value dates before booking dates (critical risk)',
+    COMPOSITE_ANOMALY_SCORE COMMENT 'Weighted composite score combining all anomaly indicators',
+    OVERALL_ANOMALY_CLASSIFICATION COMMENT 'Overall risk classification (CRITICAL/HIGH/MODERATE/NORMAL)',
+    REQUIRES_IMMEDIATE_REVIEW COMMENT 'Boolean flag for transactions requiring immediate investigation',
+    REQUIRES_ENHANCED_MONITORING COMMENT 'Boolean flag for transactions requiring enhanced monitoring',
+    TRANSACTIONS_LAST_24H COMMENT 'Number of transactions in last 24 hours for velocity analysis',
+    TRANSACTIONS_LAST_7D COMMENT 'Number of transactions in last 7 days for pattern analysis',
+    TRANSACTION_HOUR COMMENT 'Hour of day when transaction occurred (0-23)',
+    TRANSACTION_DAYOFWEEK COMMENT 'Day of week when transaction occurred (1=Sunday, 7=Saturday)',
+    ANOMALY_ANALYSIS_TIMESTAMP COMMENT 'Timestamp when anomaly analysis was performed'
+) COMMENT = 'Advanced payment transaction anomaly detection system analyzing individual account behavioral patterns. Identifies abnormal transactions based on statistical deviations from account norms across amount, frequency, timing, and counterparty dimensions. Provides risk scoring for fraud detection, compliance monitoring, and operational alerting with comprehensive behavioral analytics.'
+TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
 AS
 WITH customer_behavioral_profile AS (
     -- Calculate each account's behavioral baseline over the last 450 days (extended for historical 2024 data)
@@ -314,10 +346,35 @@ ORDER BY composite_anomaly_score DESC, BOOKING_DATE DESC;
 -- currency conversion. Provides current balance, running balance tracking, and
 -- balance analytics per account with CHF base currency and real-time FX conversion.
 
-CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_ACCOUNT_BALANCES
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
-COMMENT = 'Real-time account balance calculation system with enhanced FX rate integration. Provides current balances for ALL customer accounts using enhanced exchange rates with analytics from REF_AGG_001.REFA_AGG_DT_FX_RATES_ENHANCED. Shows all accounts including those with zero balances. Uses direct account-to-transaction mapping (no allocation logic needed). Multi-currency conversion, balance tracking, and comprehensive financial reporting.'
+CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_ACCOUNT_BALANCES(
+    ACCOUNT_ID COMMENT 'Unique account identifier for balance tracking',
+    CUSTOMER_ID COMMENT 'Customer identifier for relationship management',
+    ACCOUNT_TYPE COMMENT 'Type of account (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
+    BASE_CURRENCY COMMENT 'Base currency of the account',
+    ACCOUNT_STATUS COMMENT 'Current status of the account (ACTIVE/INACTIVE/CLOSED)',
+    CURRENT_BALANCE_BASE COMMENT 'Current account balance in base currency (CHF)',
+    TOTAL_CREDITS_BASE COMMENT 'Total credit transactions in base currency',
+    TOTAL_DEBITS_BASE COMMENT 'Total debit transactions in base currency',
+    CURRENT_BALANCE_BASE_CURRENCY COMMENT 'Current balance converted to account base currency using FX rates',
+    TOTAL_TRANSACTIONS COMMENT 'Total number of transactions for this account',
+    CREDIT_TRANSACTIONS COMMENT 'Number of credit (incoming) transactions',
+    DEBIT_TRANSACTIONS COMMENT 'Number of debit (outgoing) transactions',
+    AVG_TRANSACTION_AMOUNT_BASE COMMENT 'Average transaction amount in base currency',
+    MIN_TRANSACTION_AMOUNT_BASE COMMENT 'Minimum transaction amount in base currency',
+    MAX_TRANSACTION_AMOUNT_BASE COMMENT 'Maximum transaction amount in base currency',
+    ACTIVITY_LEVEL COMMENT 'Account activity classification (INACTIVE/DORMANT/LOW/MODERATE/HIGH)',
+    BALANCE_CATEGORY COMMENT 'Balance classification (OVERDRAWN/ZERO/LOW/MODERATE/HIGH/VERY_HIGH)',
+    IS_OVERDRAWN COMMENT 'Boolean flag for accounts with negative balance below threshold',
+    IS_DORMANT COMMENT 'Boolean flag for accounts with no recent activity but historical transactions',
+    HAS_LARGE_RECENT_MOVEMENTS COMMENT 'Boolean flag for accounts with significant recent balance changes',
+    FIRST_TRANSACTION_DATE COMMENT 'Date of first transaction for account age calculation',
+    LAST_TRANSACTION_DATE COMMENT 'Date of most recent transaction',
+    LAST_VALUE_DATE COMMENT 'Most recent value date for settlement tracking',
+    RECENT_TRANSACTIONS_30D COMMENT 'Number of transactions in last 30 days',
+    RECENT_BALANCE_CHANGE_30D_BASE COMMENT 'Net balance change in last 30 days (base currency)',
+    BALANCE_CALCULATION_TIMESTAMP COMMENT 'Timestamp when balance calculation was performed'
+) COMMENT = 'Real-time account balance calculation system with enhanced FX rate integration. Provides current balances for ALL customer accounts using enhanced exchange rates with analytics from REF_AGG_001.REFA_AGG_DT_FX_RATES_ENHANCED. Shows all accounts including those with zero balances. Uses direct account-to-transaction mapping (no allocation logic needed). Multi-currency conversion, balance tracking, and comprehensive financial reporting.'
+TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
 AS
 WITH all_accounts AS (
     -- Get all active accounts first
