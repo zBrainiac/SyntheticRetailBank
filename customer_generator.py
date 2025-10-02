@@ -1,0 +1,301 @@
+"""
+Customer data generation module
+"""
+import csv
+import random
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from dataclasses import dataclass
+from faker import Faker
+
+from config import GeneratorConfig
+
+
+@dataclass
+class Customer:
+    """Customer master data structure for EMEA retail banking"""
+    customer_id: str
+    first_name: str
+    family_name: str
+    date_of_birth: str
+    onboarding_date: str
+    reporting_currency: str
+    has_anomaly: bool
+
+
+@dataclass
+class CustomerAddress:
+    """Customer address data structure with insert timestamp"""
+    customer_id: str
+    street_address: str
+    city: str
+    state: str
+    zipcode: str
+    country: str
+    insert_timestamp_utc: str  # UTC timestamp when record was inserted
+
+
+class CustomerGenerator:
+    """Generates realistic EMEA customer data with localized information"""
+    
+    def __init__(self, config: GeneratorConfig):
+        self.config = config
+        # EMEA locales for realistic customer data
+        self.emea_locales = [
+            'en_GB',  # United Kingdom
+            'de_DE',  # Germany
+            'fr_FR',  # France
+            'it_IT',  # Italy
+            'es_ES',  # Spain
+            'nl_NL',  # Netherlands
+            'pt_PT',  # Portugal
+            'pl_PL',  # Poland
+            'sv_SE',  # Sweden
+            'no_NO',  # Norway
+            'da_DK',  # Denmark
+            'fi_FI',  # Finland
+        ]
+        
+        # Country mappings for consistent data
+        self.locale_to_country = {
+            'en_GB': 'United Kingdom',
+            'de_DE': 'Germany', 
+            'fr_FR': 'France',
+            'it_IT': 'Italy',
+            'es_ES': 'Spain',
+            'nl_NL': 'Netherlands',
+            'pt_PT': 'Portugal',
+            'pl_PL': 'Poland',
+            'sv_SE': 'Sweden',
+            'no_NO': 'Norway',
+            'da_DK': 'Denmark',
+            'fi_FI': 'Finland',
+        }
+        
+        # Country to currency mappings for reporting currency
+        self.country_to_currency = {
+            'United Kingdom': 'GBP',
+            'Germany': 'EUR',
+            'France': 'EUR',
+            'Italy': 'EUR',
+            'Spain': 'EUR',
+            'Netherlands': 'EUR',
+            'Portugal': 'EUR',
+            'Poland': 'PLN',
+            'Sweden': 'SEK',
+            'Norway': 'NOK',
+            'Denmark': 'DKK',
+            'Finland': 'EUR',
+        }
+        
+        self.fake = Faker()
+        self.customers: List[Customer] = []
+        self.customer_addresses: List[CustomerAddress] = []
+    
+    def generate_customers(self) -> tuple[List[Customer], List[CustomerAddress]]:
+        """Generate customers and their addresses with SCD Type 2 support"""
+        customers = []
+        anomalous_customer_ids = self._select_anomalous_customers()
+        
+        for i in range(self.config.num_customers):
+            customer_id = f"CUST_{i+1:05d}"
+            has_anomaly = customer_id in anomalous_customer_ids
+            
+            # Select random EMEA locale for this customer
+            locale = random.choice(self.emea_locales)
+            country = self.locale_to_country[locale]
+            fake_local = Faker(locale)
+            
+            # Generate random onboarding date within the generation period
+            onboarding_date = self._generate_onboarding_date()
+            
+            # Generate split address components
+            address_data = self._generate_emea_address(fake_local, country)
+            
+            # Get reporting currency based on country
+            reporting_currency = self.country_to_currency[country]
+            
+            # Create customer record (without address)
+            customer = Customer(
+                customer_id=customer_id,
+                first_name=fake_local.first_name(),
+                family_name=fake_local.last_name(),
+                date_of_birth=fake_local.date_of_birth(minimum_age=18, maximum_age=80).strftime("%Y-%m-%d"),
+                onboarding_date=onboarding_date.strftime("%Y-%m-%d"),
+                reporting_currency=reporting_currency,
+                has_anomaly=has_anomaly
+            )
+            
+            # Generate address history for this customer (SCD Type 2)
+            customer_addresses = self._generate_address_history(customer_id, fake_local, country, onboarding_date, address_data)
+            self.customer_addresses.extend(customer_addresses)
+            customers.append(customer)
+        
+        self.customers = customers
+        return customers, self.customer_addresses
+    
+    def _select_anomalous_customers(self) -> set:
+        """Select which customers will have anomalous behavior"""
+        num_anomalous = self.config.num_anomalous_customers
+        customer_indices = random.sample(range(self.config.num_customers), num_anomalous)
+        return {f"CUST_{i+1:05d}" for i in customer_indices}
+    
+    def _generate_onboarding_date(self) -> datetime:
+        """Generate a random onboarding date within the generation period"""
+        # Most customers should be onboarded before the transaction period starts
+        # Some might be onboarded during the period
+        days_before_start = random.randint(30, 365 * 3)  # 1 month to 3 years before
+        if random.random() < 0.2:  # 20% chance of onboarding during the period
+            days_offset = random.randint(0, self.config.generation_period_months * 30)
+            return self.config.start_date + timedelta(days=days_offset)
+        else:
+            return self.config.start_date - timedelta(days=days_before_start)
+    
+    def _generate_emea_address(self, fake_local: Faker, country: str) -> Dict[str, str]:
+        """Generate EMEA-specific address components"""
+        try:
+            street_address = fake_local.street_address()
+            city = fake_local.city()
+            # Handle state/region differences across EMEA countries
+            if country in ['United Kingdom', 'Germany', 'Spain', 'Italy']:
+                state = fake_local.state() if hasattr(fake_local, 'state') and fake_local.state else ''
+            else:
+                state = fake_local.administrative_unit() if hasattr(fake_local, 'administrative_unit') else ''
+            
+            # Handle postal code variations
+            zipcode = fake_local.postcode()
+            
+        except AttributeError:
+            # Fallback for locales that don't support all address components
+            street_address = fake_local.street_address()
+            city = fake_local.city() 
+            state = ''
+            zipcode = fake_local.postcode() if hasattr(fake_local, 'postcode') else fake_local.zipcode()
+        
+        return {
+            'street_address': street_address,
+            'city': city, 
+            'state': state or '',
+            'zipcode': zipcode
+        }
+    
+    def _generate_address_history(self, customer_id: str, fake_local: Faker, country: str, onboarding_date: datetime, initial_address_data: dict) -> List[CustomerAddress]:
+        """Generate address history for a customer with insert timestamps"""
+        addresses = []
+        
+        # 20% chance of having address changes during the period
+        has_address_changes = random.random() < 0.2
+        
+        if has_address_changes:
+            # Generate 1-3 address changes over time
+            num_changes = random.randint(1, 3)
+            
+            # Calculate dates for address changes (spread over the generation period)
+            end_date = datetime.now()
+            period_days = (end_date - onboarding_date).days
+            
+            change_dates = [onboarding_date]  # Start with onboarding date
+            for i in range(num_changes):
+                # Spread changes over the period, but not too close to previous change
+                min_days = max(30, period_days // (num_changes + 1) * (i + 1) - 60)
+                max_days = min(period_days - 30, period_days // (num_changes + 1) * (i + 2))
+                if min_days < max_days:
+                    change_date = onboarding_date + timedelta(days=random.randint(min_days, max_days))
+                    change_dates.append(change_date)
+            
+            change_dates.sort()
+            
+            # Create address records with insert timestamps
+            for i, insert_date in enumerate(change_dates):
+                if i == 0:
+                    # First address (from onboarding)
+                    address_data = initial_address_data
+                else:
+                    # Subsequent addresses (address changes)
+                    address_data = self._generate_emea_address(fake_local, country)
+                
+                address = CustomerAddress(
+                    customer_id=customer_id,
+                    street_address=address_data['street_address'],
+                    city=address_data['city'],
+                    state=address_data['state'],
+                    zipcode=address_data['zipcode'],
+                    country=country,
+                    insert_timestamp_utc=insert_date.strftime("%Y-%m-%d %H:%M:%S")
+                )
+                addresses.append(address)
+        else:
+            # Single address from onboarding
+            address = CustomerAddress(
+                customer_id=customer_id,
+                street_address=initial_address_data['street_address'],
+                city=initial_address_data['city'],
+                state=initial_address_data['state'],
+                zipcode=initial_address_data['zipcode'],
+                country=country,
+                insert_timestamp_utc=onboarding_date.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            addresses.append(address)
+        
+        return addresses
+    
+    def save_customers_to_csv(self, filename: str) -> None:
+        """Save customer master data to CSV file"""
+        if not self.customers:
+            raise ValueError("No customers generated. Call generate_customers() first.")
+        
+        fieldnames = ["customer_id", "first_name", "family_name", "date_of_birth", "onboarding_date", "reporting_currency", "has_anomaly"]
+        
+        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for customer in self.customers:
+                writer.writerow({
+                    "customer_id": customer.customer_id,
+                    "first_name": customer.first_name,
+                    "family_name": customer.family_name,
+                    "date_of_birth": customer.date_of_birth,
+                    "onboarding_date": customer.onboarding_date,
+                    "reporting_currency": customer.reporting_currency,
+                    "has_anomaly": customer.has_anomaly
+                })
+    
+    def save_addresses_to_csv(self, filename: str) -> None:
+        """Save customer address data to CSV file with insert timestamps"""
+        if not self.customer_addresses:
+            raise ValueError("No customer addresses generated. Call generate_customers() first.")
+        
+        fieldnames = ["customer_id", "street_address", "city", "state", "zipcode", "country", "insert_timestamp_utc"]
+        
+        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for address in self.customer_addresses:
+                writer.writerow({
+                    "customer_id": address.customer_id,
+                    "street_address": address.street_address,
+                    "city": address.city,
+                    "state": address.state,
+                    "zipcode": address.zipcode,
+                    "country": address.country,
+                    "insert_timestamp_utc": address.insert_timestamp_utc
+                })
+    
+    def save_to_csv(self, filename: str) -> None:
+        """Legacy method - saves customers only for backward compatibility"""
+        self.save_customers_to_csv(filename)
+    
+    def get_customer_by_id(self, customer_id: str) -> Customer:
+        """Get customer by ID"""
+        for customer in self.customers:
+            if customer.customer_id == customer_id:
+                return customer
+        raise ValueError(f"Customer {customer_id} not found")
+    
+    def get_anomalous_customers(self) -> List[Customer]:
+        """Get list of customers marked for anomalous behavior"""
+        return [customer for customer in self.customers if customer.has_anomaly]
+
+

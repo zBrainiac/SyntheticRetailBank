@@ -1,0 +1,19 @@
+# Synthetic banking Data Generator Dependencies
+
+# Core data generation
+faker>=19.0.0              # Generate realistic fake data for customers
+numpy>=1.21.0              # Numerical operations for transaction amounts
+
+# SWIFT message generation
+click>=8.0.0               # Command line interface for SWIFT message generator
+
+# Standard library modules used (no installation required):
+# - csv: CSV file operations
+# - datetime: Date and time handling
+# - random: Random number generation
+# - uuid: Unique identifier generation
+# - argparse: Command line argument parsing
+# - pathlib: Path operations
+# - dataclasses: Data structure definitions
+# - enum: Enumeration definitions
+# - typing: Type hints
