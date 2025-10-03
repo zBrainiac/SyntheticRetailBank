@@ -2,110 +2,16 @@
 
 A showcase demonstrating risk management and governance challenges faced by modern retail banks in the Europe (EMEA) region. This synthetic bank environment illustrates real-world scenarios including anti-money laundering compliance, transaction monitoring, customer due diligence, and regulatory reporting requirements that financial institutions must navigate daily.
 
-## Risk & Governance Showcase
+## Business-Relevant Overview
 
-This synthetic retail bank demonstrates critical risk management and governance scenarios that financial institutions encounter:
+| Original Section                      | Simplified & Business-Centric Description                                                                                                                                                                                                                                                                                                              |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Compliance & Regulatory Risk          | **Financial Crime Prevention & Oversight**: Focuses on meeting mandatory legal obligations for Anti-Money Laundering (AML), identifying Politically Exposed Persons (PEP), and ensuring accurate regulatory reporting (e.g., GDPR, MiFID II). The core purpose is to prevent financial crime and avoid regulatory fines.                               |
+| Credit Risk Management & IRB Approach | **Capital Adequacy & Lending Risk**: Simulates the advanced approach (IRB) for calculating the bank's regulatory capital reserves (Risk Weighted Assets - RWA) based on the likelihood of customer defaults (PD, LGD, EAD). The core purpose is to ensure financial stability and solvency.                                                            |
+| Operational Risk Management           | **Day-to-Day Business Resilience**: Covers risks arising from execution failure, system failure, or external events. Focuses on real-time transaction monitoring, managing settlement/counterparty risk, and ensuring robust data governance (e.g., customer audit trails). The core purpose is to maintain service quality and operational stability. |
+| Financial Crime Prevention            | **Anomaly Detection & Fraud Control**: A practical layer of defense against money laundering and fraud, using behavioral baselines to detect high-risk patterns like structuring, large-value trades, and suspicious cross-border activity. The core purpose is to protect the bank's assets and reputation.                                           |
+| Key Capabilities                      | **Data Utility for GRC (Governance, Risk, Compliance)**: The generated data is engineered for specific validation tasks, including testing vendor RegTech systems, calibrating internal risk scoring models, and providing an auditable, end-to-end data lineage for regulatory examiners.                                                             |
 
-### **Compliance & Regulatory Risk**
-- **Anti-Money Laundering (AML)**: Suspicious transaction pattern detection and reporting
-  - *Reports*:
-    - `REPP_DT_ANOMALY_ANALYSIS`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
-- **Know Your Customer (KYC)**: Customer due diligence and identity verification processes
-  - *Reports*:
-    - `REPP_DT_CUSTOMER_SUMMARY`
-    - `CRMA_AGG_DT_CUSTOMER` -- Comprehensive customer view with Exposed Person matching
-    - `CRMA_AGG_DT_ADDRESSES_CURRENT`
-- **Politically Exposed Persons (PEP) Screening**: High-risk customer identification and monitoring
-  - *Reports*:
-    - `CRMA_AGG_DT_CUSTOMER` (with fuzzy matching against reference list in `CRMI_EXPOSED_PERSON`)
-- **Regulatory Reporting**: GDPR, MiFID II, Basel III/IV, and PSD2 compliance requirements
-  - *Reports*:
-    - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
-    - `CRMA_AGG_DT_ADDRESSES_HISTORY`
-    - `REPP_DT_IRB_RWA_SUMMARY`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-- **Sanctions Screening**: Transaction filtering against prohibited entities and jurisdictions
-  - *Reports*:
-    - `REPP_DT_HIGH_RISK_PATTERNS` (offshore/crypto filtering)
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` TODO
-
-### **Credit Risk Management & IRB Approach**
-- **Basel III/IV Capital Adequacy**: Internal Ratings Based approach for regulatory capital calculation
-  - *Reports*:
-    - `REPP_DT_IRB_CUSTOMER_RATINGS`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-    - `REPP_DT_IRB_RWA_SUMMARY`
-- **Credit Risk Parameters**: PD (Probability of Default), LGD (Loss Given Default), EAD (Exposure at Default)
-  - *Reports*:
-    - `REPP_DT_IRB_CUSTOMER_RATINGS`
-    - `REPP_DT_IRB_RISK_TRENDS`
-- **Risk Weighted Assets (RWA)**: Regulatory capital requirement calculation and monitoring
-  - *Reports*:
-    - `REPP_DT_IRB_RWA_SUMMARY`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-- **Credit Rating & Default Management**: Internal credit ratings and default identification
-  - *Reports*:
-    - `REPP_DT_IRB_CUSTOMER_RATINGS`
-    - `REPP_DT_IRB_RISK_TRENDS`
-- **Model Risk Management**: IRB model validation, backtesting, and performance monitoring
-  - *Reports*:
-    - `REPP_DT_IRB_RISK_TRENDS`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-
-### **Operational Risk Management**
-- **Transaction Monitoring**: Real-time fraud detection and behavioral analysis
-  - *Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
-    - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
-- **Customer Risk Profiling**: Dynamic risk scoring and segmentation
-  - *Reports*:
-    - `REPP_DT_CUSTOMER_SUMMARY`
-    - `CRMA_AGG_DT_CUSTOMER`
-    - `REPP_DT_ANOMALY_ANALYSIS`
-- **Cross-Border Payment Risk**: Multi-currency transaction compliance and monitoring
-  - *Reports*:
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
-    - `REPP_DT_CURRENCY_EXPOSURE_HISTORY`
-    - `REFA_AGG_DT_FX_RATES_ENHANCED`
-- **Settlement Risk**: Payment timing and counterparty risk assessment
-  - *Reports*:
-    - `REPP_DT_SETTLEMENT_ANALYSIS`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
-    - `REPP_DT_CURRENCY_SETTLEMENT_EXPOSURE`
-- **Data Governance**: Customer data privacy, retention, and audit trail management
-  - *Reports*:
-    - `CRMA_AGG_DT_ADDRESSES_HISTORY`
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_DT_CUSTOMER_SUMMARY`
-
-### **Financial Crime Prevention**
-- **Suspicious Activity Detection**: Pattern recognition for potential money laundering
-  - *Reports*:
-    - `REPP_DT_ANOMALY_ANALYSIS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
-    - `REPP_DT_HIGH_RISK_PATTERNS`
-- **Trade-Based Money Laundering**: Equity trading anomaly identification
-  - *Reports*:
-    - `REPP_DT_EQUITY_SUMMARY`
-    - `REPP_DT_HIGH_VALUE_EQUITY_TRADES`
-    - `REPP_DT_EQUITY_POSITIONS`
-- **Structuring Detection**: Transaction splitting and layering pattern analysis
-  - *Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES` -- Calculate each account's behavioral baseline over the last 450 days
-    - `REPP_DT_ANOMALY_ANALYSIS`
-- **High-Risk Geography Monitoring**: Enhanced due diligence for specific jurisdictions
-  - *Reports*:
-    - `REPP_DT_HIGH_RISK_PATTERNS` (offshore accounts)
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
-- **Beneficial Ownership Transparency**: Ultimate beneficial owner identification and tracking
-  - *Reports*:
-    - `CRMA_AGG_DT_CUSTOMER`
-    - `CRMI_EXPOSED_PERSON`
-    - `REPP_DT_CUSTOMER_SUMMARY`
 
 ## Key Capabilities
 
@@ -144,6 +50,32 @@ This synthetic retail bank demonstrates critical risk management and governance 
 - **Model Risk Management**: Statistical model validation and performance monitoring for anomaly detection
 - **Business Continuity**: Scenario analysis and stress testing capabilities for operational resilience
 - **Third-Party Risk**: Counterparty due diligence and ongoing monitoring of external relationships
+
+## What
+
+This repository delivers a complete data generation and ingestion framework, organized into two core components: 
+- Data Generators (the synthetic data source)
+- Domain-Oriented DDL (the target schema and transformation structure).
+
+### Data Generators
+
+| Generator                          | Description                                                                                  |
+|------------------------------------|----------------------------------------------------------------------------------------------|
+| **`customer_generator.py`**        | EMEA customer master data with localized names, addresses, and onboarding dates              |
+| **`pay_transaction_generator.py`** | Multi-currency payment transactions with realistic settlement patterns and anomaly injection |
+| **`equity_generator.py`**          | FIX protocol-compliant equity trades with market data and commission calculations            |
+| **`fx_generator.py`**              | Daily foreign exchange rates with bid/ask spreads for multi-currency support                 |
+| **`swift_generator.py`**           | ISO20022 SWIFT message generation (pacs.008, pacs.002) for cross-border payments             |
+| **`mortgage_email_generator.py`**  | Realistic mortgage application email threads (customer, internal, loan officer)              |
+| **`pep_generator.py`**             | Politically Exposed Persons reference data with fuzzy matching capabilities                  |
+| **`address_update_generator.py`**  | SCD Type 2 address change files for data governance and audit trails                         |
+| **`anomaly_patterns.py`**          | Suspicious transaction pattern injection for AML testing and training                        |
+
+### Domain-Oriented DDL (`structure/` directory)
+- **Raw Data Layer (0xx)**: Customer master (`CRMI`), accounts (`ACCI`), FX rates (`REFI`), payments (`PAYI`), equity trades (`EQTI`), SWIFT messages (`ICGI`)
+- **Aggregation Layer (3xx)**: Customer 360° views (`CRMA`), account balances (`ACCA`), payment anomalies (`PAYA`), SWIFT processing (`ICGA`)
+- **Reporting Layer (5xx)**: Risk analytics, compliance reporting, and management dashboards (`REPP`)
+- **Architecture**: Snowflake-optimized DDL with business domain separation and data maturity layers
 
 ## Installation
 
@@ -204,49 +136,49 @@ python main.py --verbose --customers 20 --anomaly-rate 3.0
 
 ### Command Line Options
 
-#### Core Generation Options
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--customers` | `-c` | Number of customers to generate | 10 |
-| `--anomaly-rate` | `-a` | Percentage of customers with anomalies | 2.0 |
-| `--period` | `-p` | Generation period in months | 24 |
-| `--transactions-per-month` | `-t` | Average transactions per customer per month | 3.5 |
-| `--output-dir` | `-o` | Output directory for generated files | generated_data |
-| `--start-date` | `-s` | Start date (YYYY-MM-DD format) | Auto-calculated |
-| `--clean` | | Clean output directory before generation | False |
-| `--verbose` | `-v` | Enable verbose output | False |
-| `--min-amount` | | Minimum transaction amount | 10.0 |
-| `--max-amount` | | Maximum transaction amount | 50000.0 |
+#### Core Data Generation Options
+| Option                     | Short | Description                                 | Default         |
+|----------------------------|-------|---------------------------------------------|-----------------|
+| `--customers`              | `-c`  | Number of customers to generate             | 10              |
+| `--anomaly-rate`           | `-a`  | Percentage of customers with anomalies      | 2.0             |
+| `--period`                 | `-p`  | Generation period in months                 | 24              |
+| `--transactions-per-month` | `-t`  | Average transactions per customer per month | 3.5             |
+| `--output-dir`             | `-o`  | Output directory for generated files        | generated_data  |
+| `--start-date`             | `-s`  | Start date (YYYY-MM-DD format)              | Auto-calculated |
+| `--clean`                  |       | Clean output directory before generation    | False           |
+| `--verbose`                | `-v`  | Enable verbose output                       | False           |
+| `--min-amount`             |       | Minimum transaction amount                  | 10.0            |
+| `--max-amount`             |       | Maximum transaction amount                  | 50000.0         |
 
 #### SWIFT Message Generation Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--generate-swift` | Generate SWIFT ISO20022 messages for customers | False |
-| `--swift-percentage` | Percentage of customers to generate SWIFT messages for | 30.0 |
-| `--swift-avg-messages` | Average SWIFT messages per selected customer | 1.2 |
-| `--swift-workers` | Number of parallel workers for SWIFT generation | 4 |
-| `--swift-generator-script` | Path to SWIFT message generator script | swift_message_generator.py |
-| `--swift-generator-dir` | Directory containing SWIFT generator script | . |
-| `--swift-output-dir` | Output directory for SWIFT XML files | {output_dir}/swift_messages |
+| Option                     | Description                                            | Default                     |
+|----------------------------|--------------------------------------------------------|-----------------------------|
+| `--generate-swift`         | Generate SWIFT ISO20022 messages for customers         | False                       |
+| `--swift-percentage`       | Percentage of customers to generate SWIFT messages for | 30.0                        |
+| `--swift-avg-messages`     | Average SWIFT messages per selected customer           | 1.2                         |
+| `--swift-workers`          | Number of parallel workers for SWIFT generation        | 4                           |
+| `--swift-generator-script` | Path to SWIFT message generator script                 | swift_message_generator.py  |
+| `--swift-generator-dir`    | Directory containing SWIFT generator script            | .                           |
+| `--swift-output-dir`       | Output directory for SWIFT XML files                   | {output_dir}/swift_messages |
 
 #### PEP (Politically Exposed Persons) Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--generate-pep` | Generate PEP (Politically Exposed Persons) data | False |
-| `--pep-records` | Number of PEP records to generate | 50 |
+| Option           | Description                                     | Default |
+|------------------|-------------------------------------------------|---------|
+| `--generate-pep` | Generate PEP (Politically Exposed Persons) data | False   |
+| `--pep-records`  | Number of PEP records to generate               | 50      |
 
 #### Mortgage Email Generation Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--generate-mortgage-emails` | Generate mortgage request emails | False |
-| `--mortgage-customers` | Number of customers to generate mortgage emails for | 3 |
+| Option                       | Description                                         | Default |
+|------------------------------|-----------------------------------------------------|---------|
+| `--generate-mortgage-emails` | Generate mortgage request emails                    | False   |
+| `--mortgage-customers`       | Number of customers to generate mortgage emails for | 3       |
 
 #### Address Update Generation Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--generate-address-updates` | Generate address update files for SCD Type 2 processing | False |
-| `--address-update-files` | Number of address update files to generate | 6 |
-| `--updates-per-file` | Number of address updates per file | 5-15% of customers |
+| Option                       | Description                                             | Default            |
+|------------------------------|---------------------------------------------------------|--------------------|
+| `--generate-address-updates` | Generate address update files for SCD Type 2 processing | False              |
+| `--address-update-files`     | Number of address update files to generate              | 6                  |
+| `--updates-per-file`         | Number of address updates per file                      | 5-15% of customers |
 
 ## Output Files
 
