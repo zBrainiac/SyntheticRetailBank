@@ -138,8 +138,8 @@ CREATE OR REPLACE STREAM ACCI_STREAM_ACCOUNT_FILES
 
 -- Account master data loading task
 CREATE OR REPLACE TASK ACCI_TASK_LOAD_ACCOUNTS
-    WAREHOUSE = MD_TEST_WH
-    SCHEDULE = '1 HOUR'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('ACCI_STREAM_ACCOUNT_FILES')
  --   COMMENT = 'Automated loading of account master data with multi-currency support. Handles checking, savings, business, and investment accounts'
 AS

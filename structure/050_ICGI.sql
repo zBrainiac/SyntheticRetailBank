@@ -147,13 +147,13 @@ COMMENT = 'Change data capture stream for automated detection of new SWIFT ISO20
 
 -- Task to automatically load new SWIFT XML files
 CREATE OR REPLACE TASK ICGI_TASK_LOAD_SWIFT_MESSAGES
-    WAREHOUSE = MD_TEST_WH
-    SCHEDULE = '1 HOUR'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('ICGI_STREAM_SWIFT_FILES')
     -- Automated SWIFT ISO20022 XML message ingestion task with stream-based triggering
-    -- for efficient processing of PACS.008 and PACS.002 messages. Executes hourly
-    -- schedule with conditional execution based on file arrival detection for optimal
-    -- resource utilization and operational cost management.
+    -- for efficient processing of PACS.008 and PACS.002 messages. Executes every 60 minutes
+    -- with serverless compute and conditional execution based on file arrival detection for
+    -- optimal resource utilization and operational cost management.
 AS
 BEGIN
     -- Load new SWIFT XML files into the raw table with comprehensive error handling

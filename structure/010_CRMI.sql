@@ -236,8 +236,8 @@ CREATE OR REPLACE STREAM CRMI_STREAM_EXPOSED_PERSON_FILES
 
 -- Customer master data loading task
 CREATE OR REPLACE TASK CRMI_TASK_LOAD_CUSTOMERS
-    WAREHOUSE = MD_TEST_WH
-    SCHEDULE = '1 HOUR'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('CRMI_STREAM_CUSTOMER_FILES')
    -- COMMENT = 'Automated loading of customer master data from CSV files. Triggered by CRMI_STREAM_CUSTOMER_FILES when new files arrive'
 AS
@@ -249,8 +249,8 @@ AS
 
 -- Customer address loading task (SCD Type 2)
 CREATE OR REPLACE TASK CRMI_TASK_LOAD_ADDRESSES
-    WAREHOUSE = MD_TEST_WH
-    SCHEDULE = '1 HOUR'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('CRMI_STREAM_ADDRESS_FILES')
  --   COMMENT = 'Automated loading of customer address data with SCD Type 2 support. Uses explicit column mapping and handles empty state values'
 AS
@@ -272,8 +272,8 @@ AS
 
 -- Exposed Person compliance data loading task
 CREATE OR REPLACE TASK CRMI_TASK_LOAD_EXPOSED_PERSON
-    WAREHOUSE = MD_TEST_WH
-    SCHEDULE = '1 HOUR'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('CRMI_STREAM_EXPOSED_PERSON_FILES')
  --   COMMENT = 'Automated task to load PEP (Politically Exposed Persons) CSV files from stage'
 AS
