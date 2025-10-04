@@ -86,7 +86,7 @@ CREATE OR REPLACE DYNAMIC TABLE REFA_AGG_DT_FX_RATES_ENHANCED(
     AGGREGATION_TIMESTAMP COMMENT 'Timestamp when aggregation processing was performed',
     AGGREGATION_TYPE COMMENT 'Type of aggregation processing applied (ENHANCED_FX_ANALYTICS)'
 ) COMMENT = 'Enhanced FX rates aggregation with analytics, volatility metrics, and business intelligence. Provides current rates, historical trends, bid/ask spreads, and currency pair analytics for real-time operations, risk management, and regulatory reporting.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 WITH fx_rates_base AS (
     -- Base FX rates with enhanced metadata

@@ -342,83 +342,83 @@ generated_data/
 ### **Risk Management Training & Education**
 - **AML Analyst Training**: Hands-on experience identifying suspicious transaction patterns and money laundering typologies
   - *Key Reports*:
-    - `REPP_DT_ANOMALY_ANALYSIS`
+    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
+    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
 - **Compliance Officer Development**: Practical scenarios for regulatory reporting, customer due diligence, and risk assessment
   - *Key Reports*:
     - `CRMA_AGG_DT_CUSTOMER`
-    - `REPP_DT_CUSTOMER_SUMMARY`
-    - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
+    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
+    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
 - **Executive Risk Awareness**: Board-level demonstrations of operational risk, compliance failures, and regulatory consequences
   - *Key Reports*:
-    - `REPP_DT_ANOMALY_ANALYSIS`
-    - `REPP_DT_SETTLEMENT_ANALYSIS`
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
+    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
+    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
+    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
 - **Audit & Control Testing**: Internal audit teams can validate control effectiveness and identify process gaps
   - *Key Reports*:
     - `CRMA_AGG_DT_ADDRESSES_HISTORY`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
+    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
 
 ### **Technology & System Validation**
 - **Transaction Monitoring System Testing**: Validate AML systems with known suspicious patterns and false positive scenarios
   - *Key Reports*:
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_DT_HIGH_RISK_PATTERNS`
-    - `REPP_DT_ANOMALY_ANALYSIS`
+    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
+    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
 - **Risk Model Development**: Build and calibrate customer risk scoring models with controlled datasets
   - *Key Reports*:
-    - `REPP_DT_CUSTOMER_SUMMARY`
+    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
     - `CRMA_AGG_DT_CUSTOMER`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
 - **Credit Risk Model Validation**: IRB model development, backtesting, and regulatory validation
   - *Key Reports*:
-    - `REPP_DT_IRB_CUSTOMER_RATINGS`
-    - `REPP_DT_IRB_RISK_TRENDS`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_AGG_DT_IRB_RISK_TRENDS`
+    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
 - **Capital Adequacy Assessment**: Basel III/IV capital requirement calculation and stress testing
   - *Key Reports*:
-    - `REPP_DT_IRB_RWA_SUMMARY`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-    - `REPP_DT_IRB_RISK_TRENDS`
+    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
+    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_AGG_DT_IRB_RISK_TRENDS`
 - **Regulatory Technology (RegTech) Evaluation**: Test vendor solutions against realistic banking scenarios
   - *Key Reports*:
-    - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
+    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
+    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
     - `REFA_AGG_DT_FX_RATES_ENHANCED`
 - **Data Analytics & AI Training**: Develop machine learning models for fraud detection and behavioral analysis
   - *Key Reports*:
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_DT_EQUITY_SUMMARY`
-    - `REPP_DT_SETTLEMENT_ANALYSIS`
+    - `REPP_AGG_DT_EQUITY_SUMMARY`
+    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
 
 ### **Governance & Compliance Assurance**
 - **Regulatory Examination Preparation**: Demonstrate compliance capabilities to regulators with comprehensive audit trails
   - *Key Reports*:
     - `CRMA_AGG_DT_ADDRESSES_HISTORY`
-    - `REPP_DT_DAILY_TRANSACTION_SUMMARY`
+    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
     - `CRMI_EXPOSED_PERSON`
 - **Policy & Procedure Validation**: Test internal policies against realistic customer and transaction scenarios
   - *Key Reports*:
-    - `REPP_DT_HIGH_RISK_PATTERNS`
+    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_DT_CUSTOMER_SUMMARY`
+    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
 - **Risk Appetite Calibration**: Validate risk thresholds and escalation procedures with controlled stress scenarios
   - *Key Reports*:
-    - `REPP_DT_ANOMALY_ANALYSIS`
-    - `REPP_DT_SETTLEMENT_ANALYSIS`
-    - `REPP_DT_CURRENCY_EXPOSURE_CURRENT`
-    - `REPP_DT_IRB_RWA_SUMMARY`
+    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
+    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
+    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
+    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
 - **Capital Adequacy Compliance**: Demonstrate Basel III/IV compliance and regulatory capital adequacy
   - *Key Reports*:
-    - `REPP_DT_IRB_RWA_SUMMARY`
-    - `REPP_DT_IRB_PORTFOLIO_METRICS`
-    - `REPP_DT_IRB_RISK_TRENDS`
+    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
+    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
+    - `REPP_AGG_DT_IRB_RISK_TRENDS`
 - **Business Continuity Planning**: Test operational resilience and recovery procedures with realistic data volumes
   - *Key Reports*:
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_DT_EQUITY_SUMMARY`
+    - `REPP_AGG_DT_EQUITY_SUMMARY`
     - `REFA_AGG_DT_FX_RATES_ENHANCED`
 
 ## Technical Details

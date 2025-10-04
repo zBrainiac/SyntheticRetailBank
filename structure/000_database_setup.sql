@@ -1,20 +1,29 @@
 -- ============================================================
--- Synthetic Banking  - Database Setup
+-- Synthetic Banking - Database Setup
 -- Generated on: 2025-09-22 15:50:17
+-- Updated: 2025-10-04 (Schema consolidation and serverless tasks)
 -- ============================================================
 --
 -- This script creates the database and schemas for the
 -- synthetic EMEA retail bank data generator.
 --
--- Execution Order:
--- 1. Run this file first: 00_database_setup.sql
--- 2. Then run schema files in order:
---    - 01_CRM.sql (Customer/CRM data)
---    - 02_REF.sql (Reference data - FX rates)  
---    - 03_PAY.sql (Payment transactions)
---    - 04_EQT.sql (Equity trades)
---    - 05_ICG.sql (SWIFT ISO20022 Message Processing)
- --   - 05_REP.sql (Reporting/Aggregation)
+-- SCHEMAS CREATED:
+-- RAW Layer (Data Ingestion):
+--   • CRM_RAW_001 - Customer master data, addresses, accounts, PEP data
+--   • REF_RAW_001 - Reference data (FX rates, lookup tables)
+--   • PAY_RAW_001 - Payment transactions + SWIFT ISO20022 messages
+--   • EQT_RAW_001 - Equity trading data (FIX protocol)
+--   • LOA_RAW_v001 - Loan information and mortgage data
+--
+-- AGGREGATION Layer (Business Logic):
+--   • CRM_AGG_001 - Customer 360° views, SCD Type 2 addresses
+--   • REF_AGG_001 - Enhanced FX rates with spreads
+--   • PAY_AGG_001 - Transaction anomalies, account balances, SWIFT message processing
+--   • LOA_AGG_v001 - Loan analytics and reporting
+--
+-- REPORTING Layer (Analytics):
+--   • REP_AGG_001 - Cross-domain reporting and analytics
+
 -- ============================================================
 
 -- Create database
@@ -37,10 +46,10 @@ CREATE SCHEMA IF NOT EXISTS REF_AGG_001
     COMMENT = 'Reference data aggregation schema for enhanced FX rates and analytics';
 
 CREATE SCHEMA IF NOT EXISTS PAY_RAW_001
-    COMMENT = 'Payment raw data schema for transaction information';
+    COMMENT = 'Payment raw data schema for transaction information and SWIFT ISO20022 message storage';
 
 CREATE SCHEMA IF NOT EXISTS PAY_AGG_001
-    COMMENT = 'Payment aggregation schema for transaction analytics and anomaly detection';
+    COMMENT = 'Payment aggregation schema for transaction analytics, anomaly detection, and SWIFT message processing';
 
 CREATE SCHEMA IF NOT EXISTS EQT_RAW_001
     COMMENT = 'Equity trading raw data schema for FIX protocol trades';
@@ -48,14 +57,11 @@ CREATE SCHEMA IF NOT EXISTS EQT_RAW_001
 CREATE SCHEMA IF NOT EXISTS REP_AGG_001
     COMMENT = 'Reporting aggregation schema for dynamic tables and analytics';
 
-CREATE SCHEMA IF NOT EXISTS ICG_RAW_v001
-    COMMENT = 'ICG raw data schema for SWIFT ISO20022 message storage';
+CREATE SCHEMA IF NOT EXISTS LOA_RAW_v001
+    COMMENT = 'Loan raw data schema for loan information';
 
-CREATE SCHEMA IF NOT EXISTS ICG_AGG_v001
-    COMMENT = 'ICG aggregation schema for processed SWIFT messages';
-
-CREATE SCHEMA IF NOT EXISTS ICG_DAP_v001
-    COMMENT = 'ICG data products schema for SWIFT analytics and reporting';
+CREATE SCHEMA IF NOT EXISTS LOA_AGG_v001
+    COMMENT = 'Loan aggregation schema for loan analytics and reporting';
 
 -- ============================================================
 -- Database and schemas created successfully!

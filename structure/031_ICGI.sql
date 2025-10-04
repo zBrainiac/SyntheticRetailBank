@@ -1,5 +1,5 @@
 -- ============================================================
--- ICG_RAW_v001 Schema - SWIFT ISO20022 Message Processing (Raw Data Layer)
+-- PAY_RAW_001 Schema - SWIFT ISO20022 Message Processing (Raw Data Layer)
 -- Generated on: 2025-09-28 (Updated with comprehensive documentation)
 -- ============================================================
 --
@@ -22,10 +22,8 @@
 -- - Future extensibility for additional ISO20022 message types (PACS.004, PACS.007, etc.)
 --
 -- OBJECTS CREATED:
--- ┌─ STAGES (3):
--- │  ├─ ICGI_RAW_SWIFT_INBOUND     - XML message landing area with directory listing
--- │  ├─ ICGI_RAW_EMAIL_INBOUND     - Email files for DocAI processing
--- │  └─ ICGI_RAW_PDF_INBOUND       - PDF documents for DocAI processing
+-- ┌─ STAGES (1):
+-- │  └─ ICGI_RAW_SWIFT_INBOUND     - XML message landing area with directory listing
 -- │
 -- ├─ FILE FORMATS (1):
 -- │  └─ ICGI_XML_FILE_FORMAT       - ISO20022 XML parsing configuration
@@ -37,22 +35,17 @@
 -- │  └─ ICGI_STREAM_SWIFT_FILES    - File arrival detection for automation
 -- │
 -- └─ TASKS (1):
---    └─ ICGI_TASK_LOAD_SWIFT_MESSAGES - Automated XML ingestion (1-hour schedule)
+--    └─ ICGI_TASK_LOAD_SWIFT_MESSAGES - Automated XML ingestion (60-minute schedule)
 --
 -- DATA ARCHITECTURE:
 -- Raw XML files → ICGI_RAW_SWIFT_INBOUND → Stream Detection → Automated Task → Raw Table → Downstream Processing
--- Email files → ICGI_RAW_EMAIL_INBOUND → DocAI Processing → Content Extraction → Analytics
--- PDF documents → ICGI_RAW_PDF_INBOUND → DocAI Processing → Document Analysis → Intelligence
 --
 -- PROCESSING PATTERNS:
 -- - SWIFT XML: *pacs008*.xml, *pacs002*.xml for message type identification
--- - Email Files: *.eml, *.msg, *.mbox for DocAI content extraction
--- - PDF Documents: *.pdf for DocAI intelligent document analysis
 -- - Automatic XML parsing with PARSE_XML() for VARIANT storage
 -- - Metadata capture (filename, load timestamp) for data lineage and audit
 -- - Error handling with ON_ERROR = CONTINUE for resilient processing
 -- - Stream-based triggering for near real-time processing efficiency
--- - DocAI integration for automated document intelligence and content extraction
 --
 -- SUPPORTED COUNTRIES & CURRENCIES:
 -- - All EMEA countries with SWIFT connectivity
@@ -60,8 +53,8 @@
 -- - TARGET2 and correspondent banking network compatibility
 --
 -- RELATED SCHEMAS:
--- - ICG_AGG_v001: Message parsing and business logic transformation
--- - ICG_DAP_v001: Analytics and reporting data products
+-- - PAY_AGG_001: Message parsing and business logic transformation
+-- - REP_AGG_001: Analytics and reporting data products
 -- - CRM_RAW_001: Customer data for payment participant identification
 -- - PAY_RAW_001: Domestic payment correlation and reconciliation
 -- ============================================================
@@ -69,10 +62,10 @@
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 
 -- ============================================================
--- ICG_RAW_v001 SCHEMA - Raw SWIFT Messages
+-- PAY_RAW_001 SCHEMA - Raw SWIFT Messages
 -- ============================================================
 
-USE SCHEMA ICG_RAW_v001;
+USE SCHEMA PAY_RAW_001;
 
 -- ============================================================
 -- FILE FORMATS - XML Processing Configuration
@@ -87,27 +80,16 @@ CREATE OR REPLACE FILE FORMAT ICGI_XML_FILE_FORMAT
     COMMENT = 'Optimized XML file format for SWIFT ISO20022 message processing. Strips outer XML envelope for efficient VARIANT parsing of PACS.008 credit transfers and PACS.002 status reports. Supports multi-message files and preserves all ISO20022 schema elements for compliance and downstream analytics.';
 
 -- ============================================================
--- INTERNAL STAGES - Message & Document Landing Areas
+-- INTERNAL STAGES - Message Landing Area
 -- ============================================================
--- Secure internal stages for SWIFT ISO20022 XML message ingestion and
--- document processing with directory listing enabled for automated file
--- discovery, processing workflows, and DocAI integration.
+-- Secure internal stage for SWIFT ISO20022 XML message ingestion with
+-- directory listing enabled for automated file discovery and processing workflows.
 
 -- Stage for inbound SWIFT messages (production)
 CREATE OR REPLACE STAGE ICGI_RAW_SWIFT_INBOUND
     FILE_FORMAT = ICGI_XML_FILE_FORMAT
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Production staging area for inbound SWIFT ISO20022 XML messages. Handles PACS.008 customer credit transfers, PACS.002 payment status reports, and future message types. Directory listing enabled for automated file discovery and stream-based processing triggers. Supports high-volume interbank clearing operations with secure file handling.';
-
--- Stage for inbound email files (DocAI processing)
-CREATE OR REPLACE STAGE ICGI_RAW_EMAIL_INBOUND
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Staging area for email files awaiting DocAI processing and analysis. Supports various email formats (.eml, .msg, .mbox) for document intelligence extraction, content analysis, and automated processing workflows. Directory listing enabled for batch processing and monitoring of email document ingestion.';
-
--- Stage for inbound PDF documents (DocAI processing)
-CREATE OR REPLACE STAGE ICGI_RAW_PDF_INBOUND
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Staging area for PDF documents awaiting DocAI processing and intelligent document analysis. Handles financial documents, contracts, statements, and regulatory filings for automated content extraction, classification, and data mining. Directory listing enabled for batch processing and document workflow management.';
 
 -- ============================================================
 -- TABLES - Raw Message Storage
@@ -204,36 +186,27 @@ LIMIT 10;
 -- ============================================================
 -- SCHEMA COMPLETION STATUS
 -- ============================================================
--- ✅ ICG_RAW_v001 Schema Deployment Complete
+-- ✅ PAY_RAW_001 Schema Deployment Complete
 --
 -- OBJECTS CREATED:
--- • 3 Stages: ICGI_RAW_SWIFT_INBOUND (XML messages), ICGI_RAW_EMAIL_INBOUND (emails), ICGI_RAW_PDF_INBOUND (PDFs)
+-- • 1 Stage: ICGI_RAW_SWIFT_INBOUND (XML messages)
 -- • 1 File Format: ICGI_XML_FILE_FORMAT (optimized ISO20022 XML parsing)
 -- • 1 Table: ICGI_RAW_SWIFT_MESSAGES (raw message repository with metadata)
 -- • 1 Stream: ICGI_STREAM_SWIFT_FILES (file arrival detection for automation)
 -- • 1 Task: ICGI_TASK_LOAD_SWIFT_MESSAGES (automated ingestion - ACTIVE)
 --
 -- NEXT STEPS:
--- 1. ✅ ICG_RAW_v001 schema deployed successfully
+-- 1. ✅ PAY_RAW_001 schema deployed successfully
 -- 2. Upload SWIFT ISO20022 XML files to stage: PUT file://*.xml @ICGI_RAW_SWIFT_INBOUND;
--- 3. Monitor task execution: SHOW TASKS IN SCHEMA ICG_RAW_v001;
+-- 3. Monitor task execution: SHOW TASKS IN SCHEMA PAY_RAW_001;
 -- 4. Verify message loading: SELECT COUNT(*) FROM ICGI_RAW_SWIFT_MESSAGES;
 -- 5. Check processing errors in task history and stream status
--- 6. Deploy ICG_AGG_v001 schema for message parsing and business logic
--- 7. Deploy ICG_DAP_v001 schema for analytics and reporting data products
+-- 6. Deploy PAY_AGG_001 schema for message parsing and business logic
 --
 -- USAGE EXAMPLES:
 -- -- Upload SWIFT XML files
 -- PUT file://pacs008_20250928_001.xml @ICGI_RAW_SWIFT_INBOUND;
 -- PUT file://pacs002_20250928_001.xml @ICGI_RAW_SWIFT_INBOUND;
---
--- -- Upload email files for DocAI processing
--- PUT file://customer_inquiry_20250928.eml @ICGI_RAW_EMAIL_INBOUND;
--- PUT file://compliance_report_20250928.msg @ICGI_RAW_EMAIL_INBOUND;
---
--- -- Upload PDF documents for DocAI processing
--- PUT file://financial_statement_Q3_2025.pdf @ICGI_RAW_PDF_INBOUND;
--- PUT file://contract_amendment_20250928.pdf @ICGI_RAW_PDF_INBOUND;
 --
 -- -- Monitor ingestion
 -- SELECT FILE_NAME, LOAD_TS, LENGTH(RAW_XML::STRING) AS xml_size 
@@ -254,9 +227,8 @@ LIMIT 10;
 --
 -- MONITORING:
 -- - Task status: SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY()) WHERE NAME = 'ICGI_TASK_LOAD_SWIFT_MESSAGES';
--- - Stream status: SHOW STREAMS IN SCHEMA ICG_RAW_v001;
--- - Stage contents: LIST @ICGI_RAW_SWIFT_INBOUND; LIST @ICGI_RAW_EMAIL_INBOUND; LIST @ICGI_RAW_PDF_INBOUND;
--- - DocAI processing status: Monitor file counts and processing workflows for email and PDF stages
+-- - Stream status: SHOW STREAMS IN SCHEMA PAY_RAW_001;
+-- - Stage contents: LIST @ICGI_RAW_SWIFT_INBOUND;
 --
 -- PERFORMANCE OPTIMIZATION:
 -- - Monitor warehouse usage during peak message processing periods

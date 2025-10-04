@@ -87,7 +87,7 @@ CREATE OR REPLACE DYNAMIC TABLE ACCA_AGG_DT_ACCOUNTS(
     AGGREGATION_TYPE COMMENT 'Type of aggregation processing (1:1_COPY_FROM_RAW)',
     SOURCE_TABLE COMMENT 'Source table reference for data lineage (CRM_RAW_001.ACCI_ACCOUNTS)'
 ) COMMENT = '1:1 aggregation of account master data from raw layer (CRM_RAW_001.ACCI_ACCOUNTS). Provides clean aggregation layer access for downstream analytics, balance calculations, and reporting. Maintains real-time refresh for data currency while serving as bridge between raw data and analytical data products.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Account Master Data (1:1 copy from raw layer)

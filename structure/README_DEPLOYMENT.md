@@ -14,12 +14,13 @@ structure/
 ├── 011_ACCI.sql               # CRM Raw: Account Master Data
 ├── 020_REFI.sql               # REF Raw: FX Rates Reference Data
 ├── 030_PAYI.sql               # PAY Raw: Payment Transactions
+├── 031_ICGI.sql               # PAY Raw: SWIFT ISO20022 Message Processing
 ├── 040_EQTI.sql               # EQT Raw: Equity Trading
-├── 050_ICGI.sql               # ICG Raw: SWIFT ISO20022 Message Processing
+├── 060_LOAI.sql               # LOA Raw: Loan & Document Processing
 ├── 310_CRMA.sql               # CRM Agg: Customer Address Aggregation (SCD Type 2)
 ├── 311_ACCA.sql               # CRM Agg: Account Aggregation Layer
 ├── 330_PAYA.sql               # PAY Agg: Payment Anomaly Detection & Account Balances
-├── 350_ICGA.sql               # ICG Agg: SWIFT Message Aggregation
+├── 331_ICGA.sql               # PAY Agg: SWIFT Message Aggregation
 ├── 500_REPP.sql               # REP Agg: Reporting & Analytics
 └── README_DEPLOYMENT.md       # This deployment guide
 ```
@@ -30,9 +31,9 @@ structure/
 
 | **Layer**                           | **Schemas**                                                                  | **Schema Object - Prefixes** <br/> (Tables / View / ...)         |
 |-------------------------------------|------------------------------------------------------------------------------|------------------------------------------------------------------|
-| **🟢 DAP** <br/> Data Products      | ICG_DAP_v001                                                                 | ICGD_                                                            |
-| **🟡 AGG** <br/> Aggregation Layer  | CRM_AGG_001<br/>PAY_AGG_001<br/>ICG_AGG_v001<br/>REP_AGG_001                 | CRMA_<br/>ACCA_<br/>PAYA_<br/>ICG_<br/>REPP_                     |
-| **🔴 RAW** <br/> RAW / Landing zone | CRM_RAW_001<br/>REF_RAW_001<br/>PAY_RAW_001<br/>EQT_RAW_001<br/>ICG_RAW_v001 | CRMI_<br/>ACCI_<br/>REFI_<br/>PAYI_<br/>EQTI_<br/>ICG_<br/>ICGI_ |
+| **🟢 DAP** <br/> Data Products      |                                                                |                                                             |
+| **🟡 AGG** <br/> Aggregation Layer  | CRM_AGG_001<br/>PAY_AGG_001<br/>REP_AGG_001                 | CRMA_<br/>ACCA_<br/>PAYA_<br/>ICGA_<br/>REPP_                     |
+| **🔴 RAW** <br/> RAW / Landing zone | CRM_RAW_001<br/>REF_RAW_001<br/>PAY_RAW_001<br/>EQT_RAW_001 | CRMI_<br/>ACCI_<br/>REFI_<br/>PAYI_<br/>EQTI_<br/>ICGI_ |
 
 
 
@@ -182,13 +183,13 @@ structure/
 **Business Domain**: `ICG` 
 
 ```sql
--- Execute seventh: SWIFT message processing
-@050_ICGI.sql
+-- Execute fifth: SWIFT message processing (raw layer)
+@031_ICGI.sql
 ```
 
 **Objects Created:**
-- **Schema**: `ICG_RAW_v001`
-- **Stages**: `ICGI_RAW_SWIFT_INBOUND`, `ICGI_RAW_EMAIL_INBOUND`, `ICGI_RAW_PDF_INBOUND`
+- **Schema**: `PAY_RAW_001`
+- **Stages**: `ICGI_RAW_SWIFT_INBOUND`
 - **File Formats**: `ICGI_XML_FILE_FORMAT`
 - **Tables**: `ICGI_RAW_SWIFT_MESSAGES`
 - **Streams**: `ICGI_STREAM_SWIFT_FILES`
@@ -196,8 +197,8 @@ structure/
 
 **Key Features:**
 - **SWIFT Message Processing**: PACS.008 and PACS.002 message types
-- **DocAI Integration**: Email and PDF staging for document AI processing
-- **XML Processing**: Structured SWIFT message parsing
+- **XML Processing**: Structured SWIFT message parsing with PARSE_XML()
+- **Stream-Based Automation**: Automatic file detection and processing
 
 ##  AGGREGATION LAYER
 
@@ -257,16 +258,16 @@ Execute after all raw layer schemas are deployed:
 
 ### 11. SWIFT Message Aggregation
 ```sql
--- Execute eleventh: SWIFT message processing
-@350_ICGA.sql
+-- Execute sixth: SWIFT message aggregation (PAY_AGG_001)
+@331_ICGA.sql
 ```
 
 **Objects Created:**
-- **Schema**: `ICG_AGG_v001`
+- **Schema**: `PAY_AGG_001`
 - **Dynamic Tables**: 
-  - `ICGA_AGG_SWIFT_PACS008` - Parsed SWIFT PACS.008 customer credit transfer instructions
-  - `ICGA_AGG_SWIFT_PACS002` - Parsed SWIFT PACS.002 payment status reports and acknowledgments
-  - `ICGA_AGG_SWIFT_JOIN_PACS008_PACS002` - Complete payment lifecycle view joining instructions with status reports
+  - `ICGA_AGG_DT_SWIFT_PACS008` - Parsed SWIFT PACS.008 customer credit transfer instructions
+  - `ICGA_AGG_DT_SWIFT_PACS002` - Parsed SWIFT PACS.002 payment status reports and acknowledgments
+  - `ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE` - Complete payment lifecycle view joining instructions with status reports
 
 ### 12. Reporting & Analytics
 ```sql
@@ -277,14 +278,14 @@ Execute after all raw layer schemas are deployed:
 **Objects Created:**
 - **Schema**: `REP_AGG_001`
 - **Dynamic Tables**: 
-  - `REPP_DT_CUSTOMER_SUMMARY` - Comprehensive customer profiling with transaction statistics
-  - `REPP_DT_DAILY_TRANSACTION_SUMMARY` - Daily transaction volume and pattern analysis
-  - `REPP_DT_CURRENCY_EXPOSURE_CURRENT` - Current foreign exchange exposure monitoring
-  - `REPP_AGGDT_HIGH_RISK_PATTERNS` - High-risk transaction pattern detection for compliance
-  - `REPP_DT_IRB_CUSTOMER_RATINGS` - IRB customer-level credit ratings and risk parameters
-  - `REPP_DT_IRB_PORTFOLIO_METRICS` - IRB portfolio-level risk metrics aggregated by segment
-  - `REPP_DT_IRB_RWA_SUMMARY` - IRB Risk Weighted Assets summary for regulatory reporting
-  - `REPP_DT_IRB_RISK_TRENDS` - IRB risk parameter trends and model validation metrics
+  - `REPP_AGG_DT_CUSTOMER_SUMMARY` - Comprehensive customer profiling with transaction statistics
+  - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY` - Daily transaction volume and pattern analysis
+  - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT` - Current foreign exchange exposure monitoring
+  - `REPP_AGG_DT_HIGH_RISK_PATTERNS` - High-risk transaction pattern detection for compliance
+  - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS` - IRB customer-level credit ratings and risk parameters
+  - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS` - IRB portfolio-level risk metrics aggregated by segment
+  - `REPP_AGG_DT_IRB_RWA_SUMMARY` - IRB Risk Weighted Assets summary for regulatory reporting
+  - `REPP_AGG_DT_IRB_RISK_TRENDS` - IRB risk parameter trends and model validation metrics
 
 ## Schema Architecture
 
@@ -295,7 +296,7 @@ Execute after all raw layer schemas are deployed:
 | `REF_RAW_001`  | Reference Data                   | REFI_FX_RATES                                                  | Stream-triggered tasks |
 | `PAY_RAW_001`  | Payment Transactions             | PAYI_TRANSACTIONS                                              | Stream-triggered tasks |
 | `EQT_RAW_001`  | Equity Trading                   | EQTI_TRADES                                                    | Stream-triggered tasks |
-| `ICG_RAW_v001` | SWIFT Messages                   | ICGI_RAW_SWIFT_MESSAGES                                        | Stream-triggered tasks |
+| `PAY_RAW_001` | SWIFT Messages                   | ICGI_RAW_SWIFT_MESSAGES                                        | Stream-triggered tasks |
 
 ### AGGREGATION LAYER (Business Logic)
 | Schema         | Purpose            | Key Objects                                            | Refresh Strategy      |
@@ -303,7 +304,7 @@ Execute after all raw layer schemas are deployed:
 | `CRM_AGG_001`  | Customer Analytics | Address SCD Type 2, Customer 360°, Account aggregation | 1-hour dynamic tables |
 | `REF_AGG_001`  | Reference Analytics | FX rates with analytics and volatility metrics        | 1-hour dynamic tables |
 | `PAY_AGG_001`  | Payment Analytics  | Anomaly detection, Account balances with FX            | 1-hour dynamic tables |
-| `ICG_AGG_v001` | SWIFT Processing   | Parsed SWIFT messages and payment lifecycle analytics  | 1-hour dynamic tables |
+| `PAY_AGG_001` | SWIFT Processing   | Parsed SWIFT messages and payment lifecycle analytics (ICGA_ prefix objects)  | 1-hour dynamic tables |
 | `REP_AGG_001`  | Reporting          | Customer summaries, transaction analytics, IRB metrics | 1-hour dynamic tables |
 
 ##  Advanced Features
@@ -354,7 +355,7 @@ Execute after all raw layer schemas are deployed:
 
 ### Consistent Naming Convention
 - **Raw Tables**: `{DOMAIN}I_{OBJECT}` (e.g., `CRMI_PARTY`, `PAYI_TRANSACTIONS`)
-- **Aggregation Tables**: `{DOMAIN}A_AGG_{OBJECT}` (e.g., `ICGA_AGG_SWIFT_PACS008`)
+- **Aggregation Tables**: `{DOMAIN}A_AGG_DT_{OBJECT}` (e.g., `ICGA_AGG_DT_SWIFT_PACS008`)
 - **Dynamic Tables**: `{SCHEMA}_DT_{PURPOSE}` (e.g., `CRMA_AGG_DT_ADDRESSES_CURRENT`)
 - **Stages**: `{DOMAIN}I_{OBJECT}` (e.g., `CRMI_CUSTOMERS`)
 - **File Formats**: `{DOMAIN}I_FF_{OBJECT}_CSV` (e.g., `CRMI_FF_CUSTOMER_CSV`)

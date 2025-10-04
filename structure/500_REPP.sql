@@ -25,10 +25,10 @@ USE SCHEMA REP_AGG_001;
 -- REPORTING DYNAMIC TABLES
 -- ============================================================
 -- Pre-built dynamic tables for common CDD analysis patterns
--- Refreshed automatically every 1 hour with TARGET_LAG = '1 hour'
+-- Refreshed automatically every 1 hour with TARGET_LAG = '60 MINUTE'
 
 -- Customer summary with transaction statistics
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CUSTOMER_SUMMARY(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY(
     CUSTOMER_ID COMMENT 'Unique customer identifier for relationship management (CUST_XXXXX format)',
     FULL_NAME COMMENT 'Customer full name (First + Last) for reporting and compliance',
     HAS_ANOMALY COMMENT 'Flag indicating if customer has anomalous behavior patterns',
@@ -42,7 +42,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CUSTOMER_SUMMARY(
     MAX_TRANSACTION_AMOUNT COMMENT 'Largest single transaction for risk assessment',
     ANOMALOUS_TRANSACTIONS COMMENT 'Count of transactions with suspicious patterns'
 ) COMMENT = 'Comprehensive customer profiling with transaction statistics for relationship management, risk assessment, and business intelligence'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     c.CUSTOMER_ID,
@@ -63,7 +63,7 @@ LEFT JOIN AAA_DEV_SYNTHETIC_BANK.PAY_AGG_001.PAYA_AGG_DT_TRANSACTION_ANOMALIES t
 GROUP BY c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.HAS_ANOMALY, c.ONBOARDING_DATE;
 
 -- Daily transaction summary
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_DAILY_TRANSACTION_SUMMARY(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY(
     TRANSACTION_DATE COMMENT 'Business date for daily reporting and trend analysis',
     TRANSACTION_COUNT COMMENT 'Total daily transaction volume for operational metrics',
     UNIQUE_CUSTOMERS COMMENT 'Number of active customers per day',
@@ -74,7 +74,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_DAILY_TRANSACTION_SUMMARY(
     ANOMALOUS_COUNT COMMENT 'Daily suspicious transaction count',
     CURRENCY_COUNT COMMENT 'Number of different currencies traded daily'
 ) COMMENT = 'Daily transaction volume and pattern analysis for operational metrics, trend monitoring, and business intelligence reporting'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     DATE(BOOKING_DATE) AS TRANSACTION_DATE,
@@ -91,7 +91,7 @@ GROUP BY DATE(BOOKING_DATE)
 ORDER BY TRANSACTION_DATE;
 
 -- Currency exposure summary (non-CHF currencies)
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CURRENCY_EXPOSURE_CURRENT(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT(
     CURRENCY COMMENT 'Foreign currency code (ISO 4217) for exposure analysis',
     TRANSACTION_COUNT COMMENT 'Number of transactions in this currency',
     TOTAL_ORIGINAL_AMOUNT COMMENT 'Total exposure in original currency',
@@ -101,7 +101,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CURRENCY_EXPOSURE_CURRENT(
     MAX_FX_RATE COMMENT 'Maximum exchange rate observed (placeholder)',
     UNIQUE_CUSTOMERS COMMENT 'Number of customers with exposure to this currency'
 ) COMMENT = 'Current foreign exchange exposure monitoring for risk management and regulatory reporting of non-CHF currency positions'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     CURRENCY,
@@ -118,16 +118,31 @@ GROUP BY CURRENCY
 ORDER BY TOTAL_CHF_AMOUNT DESC;
 
 -- =====================================================
--- REPP_DT_CURRENCY_EXPOSURE_HISTORY - FX Exposure Time Series
+-- REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY - FX Exposure Time Series
 -- =====================================================
 -- BUSINESS PURPOSE: Historical foreign exchange exposure analysis with rolling trends
 -- for market risk management and business intelligence.
 -- =====================================================
 
 -- Currency exposure over time (daily trends)
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CURRENCY_EXPOSURE_HISTORY
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY(
+    EXPOSURE_DATE COMMENT 'Business date for time series analysis',
+    CURRENCY COMMENT 'Foreign currency for exposure tracking',
+    DAILY_TRANSACTION_COUNT COMMENT 'Daily transaction volume per currency',
+    DAILY_TOTAL_AMOUNT COMMENT 'Daily total exposure amount',
+    DAILY_AVG_AMOUNT COMMENT 'Daily average transaction size',
+    DAILY_MIN_AMOUNT COMMENT 'Smallest transaction of the day',
+    DAILY_MAX_AMOUNT COMMENT 'Largest transaction of the day',
+    DAILY_UNIQUE_CUSTOMERS COMMENT 'Number of customers active in this currency',
+    ROLLING_7D_TRANSACTION_COUNT COMMENT '7-day rolling transaction volume',
+    ROLLING_7D_TOTAL_AMOUNT COMMENT '7-day rolling exposure amount',
+    ROLLING_7D_AVG_DAILY_AMOUNT COMMENT '7-day average daily exposure',
+    AMOUNT_30_DAYS_AGO COMMENT 'Exposure amount 30 days prior for comparison',
+    GROWTH_RATE_30D_PERCENT COMMENT '30-day growth rate percentage for trend monitoring',
+    DAILY_VOLUME_CATEGORY COMMENT 'Daily transaction volume risk classification',
+    DAILY_EXPOSURE_CATEGORY COMMENT 'Daily exposure amount risk classification'
+) COMMENT = 'Historical foreign exchange exposure analysis with rolling trends for market risk management and business intelligence'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     DATE(BOOKING_DATE) AS EXPOSURE_DATE,                         -- Business date for time series analysis
@@ -193,16 +208,28 @@ GROUP BY DATE(BOOKING_DATE), CURRENCY
 ORDER BY EXPOSURE_DATE DESC, DAILY_TOTAL_AMOUNT DESC;
 
 -- =====================================================
--- REPP_DT_CURRENCY_SETTLEMENT_EXPOSURE - Settlement Risk Analysis
+-- REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE - Settlement Risk Analysis
 -- =====================================================
 -- BUSINESS PURPOSE: Settlement timing and liquidity risk analysis for treasury
 -- management and operational risk monitoring.
 -- =====================================================
 
 -- Settlement timing exposure analysis
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_CURRENCY_SETTLEMENT_EXPOSURE
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE(
+    SETTLEMENT_DATE COMMENT 'Settlement date for liquidity planning',
+    CURRENCY COMMENT 'Currency for settlement risk analysis',
+    SETTLEMENT_TRANSACTION_COUNT COMMENT 'Number of transactions settling on this date',
+    SETTLEMENT_TOTAL_AMOUNT COMMENT 'Total amount settling in this currency',
+    AVG_SETTLEMENT_DAYS COMMENT 'Average settlement period for operational planning',
+    SAME_DAY_SETTLEMENTS COMMENT 'Immediate settlement transactions',
+    T_PLUS_1_SETTLEMENTS COMMENT 'Next business day settlements',
+    T_PLUS_2_3_SETTLEMENTS COMMENT 'Standard settlement period transactions',
+    DELAYED_SETTLEMENTS COMMENT 'Delayed settlements requiring attention',
+    BACKDATED_SETTLEMENTS COMMENT 'Backdated settlements (compliance risk)',
+    SETTLEMENT_RISK_LEVEL COMMENT 'Overall settlement risk classification',
+    SETTLEMENT_TIMING_TYPE COMMENT 'Settlement timing pattern for operational planning'
+) COMMENT = 'Settlement timing and liquidity risk analysis for treasury management and operational risk monitoring'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     DATE(VALUE_DATE) AS SETTLEMENT_DATE,                         -- Settlement date for liquidity planning
@@ -240,16 +267,24 @@ GROUP BY DATE(VALUE_DATE), CURRENCY
 ORDER BY SETTLEMENT_DATE DESC, SETTLEMENT_TOTAL_AMOUNT DESC;
 
 -- =====================================================
--- REPP_DT_ANOMALY_ANALYSIS - Suspicious Activity Detection
+-- REPP_AGG_DT_ANOMALY_ANALYSIS - Suspicious Activity Detection
 -- =====================================================
 -- BUSINESS PURPOSE: Customer-level anomaly analysis for compliance monitoring,
 -- AML investigation, and suspicious activity reporting.
 -- =====================================================
 
 -- Anomaly detection summary
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_ANOMALY_ANALYSIS
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_ANOMALY_ANALYSIS(
+    CUSTOMER_ID COMMENT 'Customer identifier for compliance tracking',
+    FULL_NAME COMMENT 'Customer name for investigation reports',
+    IS_ANOMALOUS_CUSTOMER COMMENT 'Customer-level anomaly flag from profiling',
+    TOTAL_TRANSACTIONS COMMENT 'Total transaction count for baseline comparison',
+    ANOMALOUS_TRANSACTIONS COMMENT 'Count of flagged transactions',
+    ANOMALY_PERCENTAGE COMMENT 'Percentage of anomalous activity',
+    ANOMALOUS_AMOUNT COMMENT 'Total value of suspicious transactions',
+    ANOMALY_TYPES COMMENT 'Types of anomalies detected for investigation'
+) COMMENT = 'Customer-level anomaly analysis for compliance monitoring, AML investigation, and suspicious activity reporting'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     c.CUSTOMER_ID,                                               -- Customer identifier for compliance tracking
@@ -270,7 +305,7 @@ HAVING COUNT(t.TRANSACTION_ID) > 0
 ORDER BY ANOMALY_PERCENTAGE DESC, ANOMALOUS_AMOUNT DESC;
 
 -- High-risk transaction patterns
-CREATE OR REPLACE DYNAMIC TABLE REPP_AGGDT_HIGH_RISK_PATTERNS(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_RISK_PATTERNS(
     TRANSACTION_ID COMMENT 'Unique identifier for each transaction',
     CUSTOMER_ID COMMENT 'Customer identifier for risk profiling',
     BOOKING_DATE COMMENT 'Date when transaction was booked in system',
@@ -281,7 +316,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGGDT_HIGH_RISK_PATTERNS(
     DESCRIPTION COMMENT 'Transaction description text for analysis',
     RISK_CATEGORY COMMENT 'Primary risk classification for compliance review (HIGH_AMOUNT/ANOMALOUS/OFFSHORE/CRYPTO/etc.)',
     SETTLEMENT_DAYS COMMENT 'Number of days between booking and settlement'
-) TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+) TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     TRANSACTION_ID,
@@ -317,9 +352,21 @@ WHERE
 ORDER BY AMOUNT DESC, BOOKING_DATE DESC;
 
 -- Settlement risk analysis
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_SETTLEMENT_ANALYSIS
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_SETTLEMENT_ANALYSIS(
+    BOOKING_DATE COMMENT 'Transaction booking date for settlement tracking',
+    VALUE_DATE COMMENT 'Actual settlement date for liquidity planning',
+    SETTLEMENT_DAYS COMMENT 'Settlement period for operational analysis',
+    TRANSACTION_COUNT COMMENT 'Number of transactions with this settlement pattern',
+    UNIQUE_CUSTOMERS COMMENT 'Number of customers affected by settlement timing',
+    TOTAL_AMOUNT COMMENT 'Total value settling with this timing',
+    AVG_AMOUNT COMMENT 'Average transaction size for this settlement pattern',
+    BACKDATED_COUNT COMMENT 'Backdated settlements (compliance concern)',
+    DELAYED_COUNT COMMENT 'Delayed settlements (operational risk)',
+    SAME_DAY_COUNT COMMENT 'Same-day settlements',
+    NEXT_DAY_COUNT COMMENT 'Next business day settlements',
+    T_PLUS_2_3_COUNT COMMENT 'Standard settlement period transactions'
+) COMMENT = 'Settlement timing and operational risk analysis for treasury management and liquidity planning'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     DATE(BOOKING_DATE) AS BOOKING_DATE,                          -- Transaction booking date for settlement tracking
@@ -343,9 +390,22 @@ ORDER BY BOOKING_DATE DESC, SETTLEMENT_DAYS DESC;
 -- ============================================================
 
 -- Equity trading summary by customer
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_EQUITY_SUMMARY
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_SUMMARY(
+    CUSTOMER_ID COMMENT 'Customer identifier for portfolio analysis',
+    ACCOUNT_ID COMMENT 'Account identifier for position tracking',
+    BASE_CURRENCY COMMENT 'Account base currency for reporting',
+    TOTAL_TRADES COMMENT 'Total number of equity transactions',
+    BUY_TRADES COMMENT 'Number of buy transactions',
+    SELL_TRADES COMMENT 'Number of sell transactions',
+    UNIQUE_SYMBOLS COMMENT 'Number of different securities traded',
+    TOTAL_CHF_VOLUME COMMENT 'Total trading volume in CHF',
+    NET_CHF_POSITION COMMENT 'Net position (positive = net buyer, negative = net seller)',
+    TOTAL_COMMISSION_CHF COMMENT 'Total commission fees paid',
+    AVG_TRADE_SIZE_CHF COMMENT 'Average trade size for customer profiling',
+    FIRST_TRADE_DATE COMMENT 'First trading activity date',
+    LAST_TRADE_DATE COMMENT 'Most recent trading activity date'
+) COMMENT = 'Equity trading summary by customer for portfolio analysis and risk management'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     t.CUSTOMER_ID,                                               -- Customer identifier for portfolio analysis
@@ -366,9 +426,21 @@ LEFT JOIN AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.ACCA_AGG_DT_ACCOUNTS a ON t.ACCOUNT
 GROUP BY t.CUSTOMER_ID, t.ACCOUNT_ID, a.BASE_CURRENCY;
 
 -- Equity position summary by symbol
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_EQUITY_POSITIONS
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_POSITIONS(
+    SYMBOL COMMENT 'Security symbol for position tracking',
+    ISIN COMMENT 'International Securities Identification Number',
+    UNIQUE_CUSTOMERS COMMENT 'Number of customers holding this security',
+    NET_POSITION COMMENT 'Net position across all customers (positive = long, negative = short)',
+    TOTAL_BOUGHT COMMENT 'Total quantity purchased',
+    TOTAL_SOLD COMMENT 'Total quantity sold',
+    TOTAL_TRADES COMMENT 'Total number of trades in this security',
+    TOTAL_CHF_VOLUME COMMENT 'Total trading volume in CHF',
+    AVG_PRICE COMMENT 'Average trading price',
+    MIN_PRICE COMMENT 'Lowest trading price observed',
+    MAX_PRICE COMMENT 'Highest trading price observed',
+    LAST_TRADE_DATE COMMENT 'Most recent trading date for this security'
+) COMMENT = 'Equity position summary by security for market risk analysis and concentration monitoring'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     SYMBOL,                                                      -- Security symbol for position tracking
@@ -387,9 +459,18 @@ FROM AAA_DEV_SYNTHETIC_BANK.EQT_RAW_001.EQTI_TRADES
 GROUP BY SYMBOL, ISIN;
 
 -- Equity currency exposure (similar to FX exposure for trades)
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_EQUITY_CURRENCY_EXPOSURE
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE(
+    CURRENCY COMMENT 'Trading currency for FX exposure analysis',
+    TRADE_COUNT COMMENT 'Number of equity trades in this currency',
+    TOTAL_ORIGINAL_VOLUME COMMENT 'Total trading volume in original currency',
+    TOTAL_CHF_VOLUME COMMENT 'Total trading volume converted to CHF',
+    AVG_FX_RATE COMMENT 'Average FX rate used for currency conversion',
+    MIN_FX_RATE COMMENT 'Minimum FX rate observed',
+    MAX_FX_RATE COMMENT 'Maximum FX rate observed',
+    UNIQUE_CUSTOMERS COMMENT 'Number of customers trading in this currency',
+    UNIQUE_SYMBOLS COMMENT 'Number of different securities traded in this currency'
+) COMMENT = 'Equity trading currency exposure analysis for FX risk management and portfolio diversification monitoring'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     CURRENCY,                                                    -- Trading currency for FX exposure analysis
@@ -406,9 +487,20 @@ WHERE CURRENCY != 'CHF'
 GROUP BY CURRENCY;
 
 -- High-value equity trades (potential compliance monitoring)
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_HIGH_VALUE_EQUITY_TRADES
-TARGET_LAG = '1 hour'
-WAREHOUSE = MD_TEST_WH
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES(
+    TRADE_DATE COMMENT 'Trade execution date for compliance tracking',
+    CUSTOMER_ID COMMENT 'Customer identifier for large trade monitoring',
+    ACCOUNT_ID COMMENT 'Account identifier for position tracking',
+    TRADE_ID COMMENT 'Unique trade identifier for audit trail',
+    SYMBOL COMMENT 'Security symbol for concentration risk analysis',
+    SIDE COMMENT 'Trade direction (1=Buy, 2=Sell)',
+    QUANTITY COMMENT 'Number of shares/units traded',
+    PRICE COMMENT 'Execution price per unit',
+    CHF_VALUE COMMENT 'Trade value in CHF for threshold monitoring',
+    MARKET COMMENT 'Market/exchange where trade was executed',
+    VENUE COMMENT 'Trading venue for best execution analysis'
+) COMMENT = 'High-value equity trades (>100k CHF) for compliance monitoring and large exposure tracking'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     TRADE_DATE,                                                  -- Trade execution date for compliance tracking
@@ -433,7 +525,7 @@ ORDER BY ABS(BASE_GROSS_AMOUNT) DESC;
 -- and regulatory capital calculation
 
 -- IRB Customer Credit Ratings and Risk Parameters
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_CUSTOMER_RATINGS(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_CUSTOMER_RATINGS(
     CUSTOMER_ID COMMENT 'Customer identifier for credit risk assessment',
     FULL_NAME COMMENT 'Customer name for credit reporting',
     ONBOARDING_DATE COMMENT 'Customer relationship start date for vintage analysis',
@@ -453,7 +545,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_CUSTOMER_RATINGS(
     SECURED_EXPOSURE_CHF COMMENT 'Secured portion of exposure with collateral',
     UNSECURED_EXPOSURE_CHF COMMENT 'Unsecured exposure without collateral'
 ) COMMENT = 'IRB customer-level credit ratings and risk parameters for Basel III/IV regulatory capital calculation and credit risk management'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     c.CUSTOMER_ID,
@@ -527,11 +619,11 @@ SELECT
     COALESCE(b.CURRENT_BALANCE_CHF * 0.6, 0) AS SECURED_EXPOSURE_CHF,  -- Assume 60% secured
     COALESCE(b.CURRENT_BALANCE_CHF * 0.4, 0) AS UNSECURED_EXPOSURE_CHF -- Assume 40% unsecured
 FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_CUSTOMER c
-LEFT JOIN AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_DT_ANOMALY_ANALYSIS t ON c.CUSTOMER_ID = t.CUSTOMER_ID
+LEFT JOIN AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_ANOMALY_ANALYSIS t ON c.CUSTOMER_ID = t.CUSTOMER_ID
 LEFT JOIN AAA_DEV_SYNTHETIC_BANK.PAY_AGG_001.PAYA_AGG_DT_ACCOUNT_BALANCES b ON c.CUSTOMER_ID = b.CUSTOMER_ID;
 
 -- IRB Portfolio Risk Metrics and RWA Calculation
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_PORTFOLIO_METRICS(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_PORTFOLIO_METRICS(
     PORTFOLIO_SEGMENT COMMENT 'Portfolio segment for risk aggregation (RETAIL/CORPORATE/SME)',
     CREDIT_RATING COMMENT 'Credit rating bucket for portfolio analysis',
     CUSTOMER_COUNT COMMENT 'Number of customers in this rating/segment combination',
@@ -552,7 +644,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_PORTFOLIO_METRICS(
     VINTAGE_MONTHS COMMENT 'Average customer vintage in months for maturity analysis',
     CONCENTRATION_RISK_SCORE COMMENT 'Portfolio concentration risk score (1-10 scale)'
 ) COMMENT = 'IRB portfolio-level risk metrics aggregated by segment and rating for regulatory capital calculation and risk management'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     r.PORTFOLIO_SEGMENT,
@@ -585,12 +677,12 @@ SELECT
         WHEN MAX(r.TOTAL_EXPOSURE_CHF) > SUM(r.TOTAL_EXPOSURE_CHF) * 0.05 THEN 3 -- Low-medium
         ELSE 1  -- Low concentration
     END AS CONCENTRATION_RISK_SCORE
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_DT_IRB_CUSTOMER_RATINGS r
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_IRB_CUSTOMER_RATINGS r
 GROUP BY r.PORTFOLIO_SEGMENT, r.CREDIT_RATING
 ORDER BY r.PORTFOLIO_SEGMENT, r.CREDIT_RATING;
 
 -- IRB Risk Weighted Assets Summary
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_RWA_SUMMARY(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_RWA_SUMMARY(
     CALCULATION_DATE COMMENT 'Date of RWA calculation for regulatory reporting',
     TOTAL_EXPOSURE_CHF COMMENT 'Total credit exposure across all portfolios in CHF',
     TOTAL_RWA_CHF COMMENT 'Total Risk Weighted Assets under IRB approach in CHF',
@@ -610,7 +702,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_RWA_SUMMARY(
     CORPORATE_RWA_CHF COMMENT 'Corporate portfolio Risk Weighted Assets in CHF',
     SME_RWA_CHF COMMENT 'SME portfolio Risk Weighted Assets in CHF'
 ) COMMENT = 'IRB Risk Weighted Assets summary for regulatory capital reporting and Basel III/IV compliance monitoring'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     CURRENT_DATE AS CALCULATION_DATE,
@@ -632,10 +724,10 @@ SELECT
     SUM(CASE WHEN PORTFOLIO_SEGMENT = 'RETAIL' THEN RISK_WEIGHTED_ASSETS_CHF ELSE 0 END) AS RETAIL_RWA_CHF,
     SUM(CASE WHEN PORTFOLIO_SEGMENT = 'CORPORATE' THEN RISK_WEIGHTED_ASSETS_CHF ELSE 0 END) AS CORPORATE_RWA_CHF,
     SUM(CASE WHEN PORTFOLIO_SEGMENT = 'SME' THEN RISK_WEIGHTED_ASSETS_CHF ELSE 0 END) AS SME_RWA_CHF
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_DT_IRB_PORTFOLIO_METRICS;
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_IRB_PORTFOLIO_METRICS;
 
 -- IRB Risk Parameter Trends and Validation
-CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_RISK_TRENDS(
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_RISK_TRENDS(
     TREND_DATE COMMENT 'Date for time series analysis of risk parameters',
     PORTFOLIO_SEGMENT COMMENT 'Portfolio segment for trend analysis',
     AVG_PD_1_YEAR COMMENT 'Average 1-year PD across portfolio on this date (%)',
@@ -655,7 +747,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_DT_IRB_RISK_TRENDS(
     BACKTESTING_ACCURACY COMMENT 'Model backtesting accuracy (%) against actual defaults',
     STRESS_TEST_MULTIPLIER COMMENT 'Stress testing multiplier applied to base PD'
 ) COMMENT = 'IRB risk parameter trends and model validation metrics for ongoing model performance monitoring and regulatory compliance'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     CURRENT_DATE AS TREND_DATE,
@@ -687,7 +779,7 @@ SELECT
         ELSE 78.5
     END AS BACKTESTING_ACCURACY,
     1.0 AS STRESS_TEST_MULTIPLIER  -- Base case, would be higher under stress
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_DT_IRB_CUSTOMER_RATINGS r
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_IRB_CUSTOMER_RATINGS r
 GROUP BY r.PORTFOLIO_SEGMENT;
 
 -- ============================================================
@@ -699,30 +791,30 @@ GROUP BY r.PORTFOLIO_SEGMENT;
 -- Examples:
 --
 -- Customer and Transaction Analytics:
--- SELECT * FROM REPP_DT_CUSTOMER_SUMMARY WHERE HAS_ANOMALY = TRUE;
--- SELECT * FROM REPP_AGGDT_HIGH_RISK_PATTERNS LIMIT 100;
--- SELECT * FROM REPP_DT_DAILY_TRANSACTION_SUMMARY ORDER BY TRANSACTION_DATE DESC LIMIT 30;
+-- SELECT * FROM REPP_AGG_DT_CUSTOMER_SUMMARY WHERE HAS_ANOMALY = TRUE;
+-- SELECT * FROM REPP_AGG_DT_HIGH_RISK_PATTERNS LIMIT 100;
+-- SELECT * FROM REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY ORDER BY TRANSACTION_DATE DESC LIMIT 30;
 --
 -- Currency and FX Risk:
--- SELECT * FROM REPP_DT_CURRENCY_EXPOSURE_CURRENT ORDER BY TOTAL_CHF_AMOUNT DESC;
--- SELECT * FROM REPP_DT_CURRENCY_EXPOSURE_HISTORY WHERE CURRENCY = 'EUR' ORDER BY EXPOSURE_DATE DESC LIMIT 30;
+-- SELECT * FROM REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT ORDER BY TOTAL_CHF_AMOUNT DESC;
+-- SELECT * FROM REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY WHERE CURRENCY = 'EUR' ORDER BY EXPOSURE_DATE DESC LIMIT 30;
 --
 -- Equity Trading Analytics:
--- SELECT * FROM REPP_DT_EQUITY_SUMMARY LIMIT 10;
--- SELECT * FROM REPP_DT_EQUITY_POSITIONS WHERE NET_POSITION != 0 LIMIT 10;
--- SELECT * FROM REPP_DT_HIGH_VALUE_EQUITY_TRADES LIMIT 20;
+-- SELECT * FROM REPP_AGG_DT_EQUITY_SUMMARY LIMIT 10;
+-- SELECT * FROM REPP_AGG_DT_EQUITY_POSITIONS WHERE NET_POSITION != 0 LIMIT 10;
+-- SELECT * FROM REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES LIMIT 20;
 --
 -- IRB Credit Risk Analytics:
--- SELECT * FROM REPP_DT_IRB_CUSTOMER_RATINGS WHERE DEFAULT_FLAG = TRUE;
--- SELECT * FROM REPP_DT_IRB_PORTFOLIO_METRICS ORDER BY TOTAL_EXPOSURE_CHF DESC;
--- SELECT * FROM REPP_DT_IRB_RWA_SUMMARY;
--- SELECT * FROM REPP_DT_IRB_RISK_TRENDS ORDER BY TREND_DATE DESC;
+-- SELECT * FROM REPP_AGG_DT_IRB_CUSTOMER_RATINGS WHERE DEFAULT_FLAG = TRUE;
+-- SELECT * FROM REPP_AGG_DT_IRB_PORTFOLIO_METRICS ORDER BY TOTAL_EXPOSURE_CHF DESC;
+-- SELECT * FROM REPP_AGG_DT_IRB_RWA_SUMMARY;
+-- SELECT * FROM REPP_AGG_DT_IRB_RISK_TRENDS ORDER BY TREND_DATE DESC;
 --
 -- To check dynamic table refresh status:
 -- SHOW DYNAMIC TABLES IN SCHEMA AAA_DEV_SYNTHETIC_BANK.REPP_AGG_001;
 --
 -- To manually refresh a dynamic table:
--- ALTER DYNAMIC TABLE REPP_DT_CUSTOMER_SUMMARY REFRESH;
+-- ALTER DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY REFRESH;
 --
 -- ============================================================
 -- REPP_AGG_001 Schema setup completed!

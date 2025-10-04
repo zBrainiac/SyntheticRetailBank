@@ -106,7 +106,7 @@ CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_TRANSACTION_ANOMALIES(
     TRANSACTION_DAYOFWEEK COMMENT 'Day of week when transaction occurred (1=Sunday, 7=Saturday)',
     ANOMALY_ANALYSIS_TIMESTAMP COMMENT 'Timestamp when anomaly analysis was performed'
 ) COMMENT = 'Advanced payment transaction anomaly detection system analyzing individual account behavioral patterns. Identifies abnormal transactions based on statistical deviations from account norms across amount, frequency, timing, and counterparty dimensions. Provides risk scoring for fraud detection, compliance monitoring, and operational alerting with comprehensive behavioral analytics.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 WITH customer_behavioral_profile AS (
     -- Calculate each account's behavioral baseline over the last 450 days (extended for historical 2024 data)
@@ -374,7 +374,7 @@ CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_ACCOUNT_BALANCES(
     RECENT_BALANCE_CHANGE_30D_BASE COMMENT 'Net balance change in last 30 days (base currency)',
     BALANCE_CALCULATION_TIMESTAMP COMMENT 'Timestamp when balance calculation was performed'
 ) COMMENT = 'Real-time account balance calculation system with enhanced FX rate integration. Provides current balances for ALL customer accounts using enhanced exchange rates with analytics from REF_AGG_001.REFA_AGG_DT_FX_RATES_ENHANCED. Shows all accounts including those with zero balances. Uses direct account-to-transaction mapping (no allocation logic needed). Multi-currency conversion, balance tracking, and comprehensive financial reporting.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 WITH all_accounts AS (
     -- Get all active accounts first
@@ -546,14 +546,251 @@ LEFT JOIN fx_rates_current fx ON fx.TO_CURRENCY = abc.BASE_CURRENCY
 ORDER BY abc.current_balance_base DESC, abc.ACCOUNT_ID;
 
 -- ============================================================
+-- PAYA_AGG_DT_TIME_WEIGHTED_RETURN - Time Weighted Return (TWR) Performance Analysis
+-- ============================================================
+-- Investment performance measurement using Time Weighted Return methodology per account.
+-- TWR eliminates the impact of external cash flows (deposits/withdrawals) to provide
+-- an accurate measure of investment management performance. Calculates daily returns,
+-- geometric linking, and annualized performance metrics for comprehensive portfolio analytics.
+
+CREATE OR REPLACE DYNAMIC TABLE PAYA_AGG_DT_TIME_WEIGHTED_RETURN(
+    ACCOUNT_ID COMMENT 'Unique account identifier for performance tracking',
+    CUSTOMER_ID COMMENT 'Customer identifier for relationship management',
+    ACCOUNT_TYPE COMMENT 'Type of account (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
+    BASE_CURRENCY COMMENT 'Base currency of the account',
+    MEASUREMENT_PERIOD_START COMMENT 'Start date of performance measurement period',
+    MEASUREMENT_PERIOD_END COMMENT 'End date of performance measurement period',
+    DAYS_IN_PERIOD COMMENT 'Number of days in measurement period',
+    STARTING_BALANCE COMMENT 'Account balance at start of measurement period',
+    ENDING_BALANCE COMMENT 'Account balance at end of measurement period',
+    TOTAL_DEPOSITS COMMENT 'Total deposits during measurement period',
+    TOTAL_WITHDRAWALS COMMENT 'Total withdrawals during measurement period',
+    NET_CASH_FLOW COMMENT 'Net cash flow (deposits - withdrawals) during period',
+    TWR_RETURN_DECIMAL COMMENT 'Time Weighted Return as decimal (e.g., 0.0523 = 5.23%)',
+    TWR_RETURN_PERCENTAGE COMMENT 'Time Weighted Return as percentage for reporting',
+    ANNUALIZED_TWR_PERCENTAGE COMMENT 'Annualized Time Weighted Return percentage',
+    DAILY_AVG_RETURN_PERCENTAGE COMMENT 'Average daily return percentage',
+    CUMULATIVE_RETURN_PERCENTAGE COMMENT 'Cumulative return over measurement period',
+    VOLATILITY_STDDEV COMMENT 'Standard deviation of daily returns (volatility measure)',
+    SHARPE_RATIO COMMENT 'Risk-adjusted return metric (assuming 0% risk-free rate)',
+    MAX_DRAWDOWN_PERCENTAGE COMMENT 'Maximum peak-to-trough decline during period',
+    TOTAL_TRANSACTIONS COMMENT 'Total number of transactions during period',
+    TRANSACTION_FREQUENCY COMMENT 'Average transactions per month',
+    PERFORMANCE_CATEGORY COMMENT 'Performance classification (EXCELLENT/GOOD/NEUTRAL/POOR/NEGATIVE)',
+    RISK_CATEGORY COMMENT 'Risk classification based on volatility (LOW/MODERATE/HIGH/VERY_HIGH)',
+    RETURN_VS_BENCHMARK COMMENT 'Comparison to benchmark (placeholder for future enhancement)',
+    CALCULATION_TIMESTAMP COMMENT 'Timestamp when TWR calculation was performed'
+) COMMENT = 'Time Weighted Return (TWR) performance analysis per account. Measures investment performance using industry-standard TWR methodology that eliminates cash flow timing effects. Provides annualized returns, risk metrics (volatility, Sharpe ratio, max drawdown), and performance categorization for portfolio analytics and client reporting.'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
+AS
+WITH daily_balances AS (
+    -- Calculate daily balance changes from transaction history
+    SELECT 
+        t.ACCOUNT_ID,
+        DATE(t.BOOKING_DATE) as balance_date,
+        SUM(t.BASE_AMOUNT) as daily_net_change,
+        SUM(CASE WHEN t.BASE_AMOUNT > 0 THEN t.BASE_AMOUNT ELSE 0 END) as daily_deposits,
+        SUM(CASE WHEN t.BASE_AMOUNT < 0 THEN ABS(t.BASE_AMOUNT) ELSE 0 END) as daily_withdrawals,
+        COUNT(*) as daily_transaction_count
+    FROM PAY_RAW_001.PAYI_TRANSACTIONS t
+    WHERE t.BOOKING_DATE >= CURRENT_DATE - INTERVAL '450 days'
+    GROUP BY t.ACCOUNT_ID, DATE(t.BOOKING_DATE)
+),
+
+running_balances AS (
+    -- Calculate running balance for each day with cash flow tracking
+    SELECT 
+        db.ACCOUNT_ID,
+        db.balance_date,
+        db.daily_net_change,
+        db.daily_deposits,
+        db.daily_withdrawals,
+        db.daily_transaction_count,
+        SUM(db.daily_net_change) OVER (
+            PARTITION BY db.ACCOUNT_ID 
+            ORDER BY db.balance_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) as running_balance,
+        LAG(SUM(db.daily_net_change) OVER (
+            PARTITION BY db.ACCOUNT_ID 
+            ORDER BY db.balance_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ), 1, 0) OVER (PARTITION BY db.ACCOUNT_ID ORDER BY db.balance_date) as previous_day_balance
+    FROM daily_balances db
+),
+
+daily_returns AS (
+    -- Calculate daily returns adjusted for cash flows (TWR methodology)
+    SELECT 
+        rb.ACCOUNT_ID,
+        rb.balance_date,
+        rb.running_balance,
+        rb.previous_day_balance,
+        rb.daily_deposits,
+        rb.daily_withdrawals,
+        rb.daily_net_change,
+        rb.daily_transaction_count,
+        -- TWR daily return calculation: (Ending Balance - Cash Flows) / (Beginning Balance) - 1
+        CASE 
+            WHEN rb.previous_day_balance > 0 THEN
+                ((rb.running_balance - rb.daily_net_change) / rb.previous_day_balance) - 1
+            ELSE 0
+        END as daily_return,
+        -- Track peak balance for drawdown calculation
+        MAX(rb.running_balance) OVER (
+            PARTITION BY rb.ACCOUNT_ID 
+            ORDER BY rb.balance_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) as peak_balance
+    FROM running_balances rb
+    WHERE rb.previous_day_balance > 0  -- Only calculate returns when there's a previous balance
+),
+
+account_performance AS (
+    -- Aggregate performance metrics per account
+    SELECT 
+        dr.ACCOUNT_ID,
+        MIN(dr.balance_date) as period_start,
+        MAX(dr.balance_date) as period_end,
+        DATEDIFF(DAY, MIN(dr.balance_date), MAX(dr.balance_date)) as days_in_period,
+        
+        -- Balance information
+        MIN(dr.previous_day_balance) as starting_balance,
+        MAX(dr.running_balance) as ending_balance,
+        SUM(dr.daily_deposits) as total_deposits,
+        SUM(dr.daily_withdrawals) as total_withdrawals,
+        SUM(dr.daily_net_change) as net_cash_flow,
+        
+        -- TWR calculation: Geometric linking of daily returns
+        -- TWR = [(1 + R1) × (1 + R2) × ... × (1 + Rn)] - 1
+        EXP(SUM(LN(1 + dr.daily_return))) - 1 as twr_return,
+        
+        -- Daily return statistics
+        AVG(dr.daily_return) as avg_daily_return,
+        STDDEV(dr.daily_return) as stddev_daily_return,
+        
+        -- Drawdown calculation
+        MAX(CASE 
+            WHEN dr.peak_balance > 0 THEN 
+                ((dr.running_balance - dr.peak_balance) / dr.peak_balance) * 100
+            ELSE 0
+        END) as max_drawdown_pct,
+        
+        -- Transaction activity
+        COUNT(*) as trading_days,
+        SUM(dr.daily_transaction_count) as total_transactions
+        
+    FROM daily_returns dr
+    GROUP BY dr.ACCOUNT_ID
+    HAVING days_in_period > 0  -- Ensure valid measurement period
+)
+
+SELECT 
+    -- Account Identification
+    ap.ACCOUNT_ID,
+    acc.CUSTOMER_ID,
+    acc.ACCOUNT_TYPE,
+    acc.BASE_CURRENCY,
+    
+    -- Measurement Period
+    ap.period_start as MEASUREMENT_PERIOD_START,
+    ap.period_end as MEASUREMENT_PERIOD_END,
+    ap.days_in_period as DAYS_IN_PERIOD,
+    
+    -- Balance Information
+    ROUND(ap.starting_balance, 2) as STARTING_BALANCE,
+    ROUND(ap.ending_balance, 2) as ENDING_BALANCE,
+    ROUND(ap.total_deposits, 2) as TOTAL_DEPOSITS,
+    ROUND(ap.total_withdrawals, 2) as TOTAL_WITHDRAWALS,
+    ROUND(ap.net_cash_flow, 2) as NET_CASH_FLOW,
+    
+    -- Time Weighted Return
+    ROUND(ap.twr_return, 6) as TWR_RETURN_DECIMAL,
+    ROUND(ap.twr_return * 100, 4) as TWR_RETURN_PERCENTAGE,
+    
+    -- Annualized TWR (assume 365 days per year)
+    ROUND(
+        CASE 
+            WHEN ap.days_in_period > 0 THEN
+                (POWER(1 + ap.twr_return, 365.0 / ap.days_in_period) - 1) * 100
+            ELSE 0
+        END, 4
+    ) as ANNUALIZED_TWR_PERCENTAGE,
+    
+    -- Daily Average Return
+    ROUND(ap.avg_daily_return * 100, 4) as DAILY_AVG_RETURN_PERCENTAGE,
+    
+    -- Cumulative Return (simple calculation for comparison)
+    ROUND(
+        CASE 
+            WHEN ap.starting_balance > 0 THEN
+                ((ap.ending_balance - ap.starting_balance - ap.net_cash_flow) / ap.starting_balance) * 100
+            ELSE 0
+        END, 4
+    ) as CUMULATIVE_RETURN_PERCENTAGE,
+    
+    -- Risk Metrics
+    ROUND(COALESCE(ap.stddev_daily_return, 0) * 100, 4) as VOLATILITY_STDDEV,
+    
+    -- Sharpe Ratio (assuming 0% risk-free rate for simplicity)
+    ROUND(
+        CASE 
+            WHEN COALESCE(ap.stddev_daily_return, 0) > 0 THEN
+                (ap.avg_daily_return / ap.stddev_daily_return) * SQRT(252)  -- Annualized Sharpe Ratio (252 trading days)
+            ELSE 0
+        END, 4
+    ) as SHARPE_RATIO,
+    
+    ROUND(COALESCE(ap.max_drawdown_pct, 0), 4) as MAX_DRAWDOWN_PERCENTAGE,
+    
+    -- Transaction Activity
+    ap.total_transactions as TOTAL_TRANSACTIONS,
+    ROUND(
+        CASE 
+            WHEN ap.days_in_period > 0 THEN
+                (ap.total_transactions * 30.0) / ap.days_in_period
+            ELSE 0
+        END, 2
+    ) as TRANSACTION_FREQUENCY,
+    
+    -- Performance Classification
+    CASE 
+        WHEN ap.twr_return * 100 >= 15 THEN 'EXCELLENT_PERFORMANCE'
+        WHEN ap.twr_return * 100 >= 8 THEN 'GOOD_PERFORMANCE'
+        WHEN ap.twr_return * 100 >= 2 THEN 'NEUTRAL_PERFORMANCE'
+        WHEN ap.twr_return * 100 >= 0 THEN 'POOR_PERFORMANCE'
+        ELSE 'NEGATIVE_PERFORMANCE'
+    END as PERFORMANCE_CATEGORY,
+    
+    -- Risk Classification
+    CASE 
+        WHEN COALESCE(ap.stddev_daily_return, 0) * 100 >= 3.0 THEN 'VERY_HIGH_RISK'
+        WHEN COALESCE(ap.stddev_daily_return, 0) * 100 >= 2.0 THEN 'HIGH_RISK'
+        WHEN COALESCE(ap.stddev_daily_return, 0) * 100 >= 1.0 THEN 'MODERATE_RISK'
+        ELSE 'LOW_RISK'
+    END as RISK_CATEGORY,
+    
+    -- Benchmark Comparison (placeholder - could be enhanced with actual benchmark data)
+    'N/A' as RETURN_VS_BENCHMARK,
+    
+    -- Processing Metadata
+    CURRENT_TIMESTAMP() as CALCULATION_TIMESTAMP
+
+FROM account_performance ap
+LEFT JOIN CRM_AGG_001.ACCA_AGG_DT_ACCOUNTS acc ON ap.ACCOUNT_ID = acc.ACCOUNT_ID
+WHERE ap.starting_balance > 0  -- Only calculate TWR for accounts with positive starting balance
+ORDER BY ap.twr_return DESC;
+
+-- ============================================================
 -- SCHEMA COMPLETION STATUS
 -- ============================================================
 -- ✅ PAY_AGG_001 Schema Deployment Complete
 --
 -- OBJECTS CREATED:
--- • 2 Dynamic Tables: 
+-- • 3 Dynamic Tables: 
 --   - PAYA_AGG_DT_TRANSACTION_ANOMALIES (behavioral anomaly detection)
 --   - PAYA_AGG_DT_ACCOUNT_BALANCES (real-time account balance calculation)
+--   - PAYA_AGG_DT_TIME_WEIGHTED_RETURN (investment performance measurement with TWR methodology)
 -- • Advanced anomaly detection: Multi-dimensional behavioral analysis
 -- • Account balance management: Real-time balance tracking with multi-currency support
 -- • Risk scoring: Composite anomaly scores with operational thresholds
@@ -572,6 +809,61 @@ ORDER BY abc.current_balance_base DESC, abc.ACCOUNT_ID;
 -- 9. Set up alerting for overdrawn accounts and dormant account detection
 --
 -- USAGE EXAMPLES:
+--
+-- ============================================================
+-- TIME WEIGHTED RETURN QUERIES
+-- ============================================================
+-- -- Query best performing accounts
+-- SELECT ACCOUNT_ID, CUSTOMER_ID, ACCOUNT_TYPE, TWR_RETURN_PERCENTAGE,
+--        ANNUALIZED_TWR_PERCENTAGE, SHARPE_RATIO, PERFORMANCE_CATEGORY
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- WHERE PERFORMANCE_CATEGORY IN ('EXCELLENT_PERFORMANCE', 'GOOD_PERFORMANCE')
+-- ORDER BY TWR_RETURN_PERCENTAGE DESC
+-- LIMIT 20;
+--
+-- -- Risk-adjusted performance analysis (Sharpe Ratio)
+-- SELECT ACCOUNT_ID, CUSTOMER_ID, TWR_RETURN_PERCENTAGE, VOLATILITY_STDDEV,
+--        SHARPE_RATIO, RISK_CATEGORY, MAX_DRAWDOWN_PERCENTAGE
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- WHERE SHARPE_RATIO > 0
+-- ORDER BY SHARPE_RATIO DESC;
+--
+-- -- Customer portfolio performance summary
+-- SELECT CUSTOMER_ID,
+--        COUNT(*) as total_accounts,
+--        AVG(TWR_RETURN_PERCENTAGE) as avg_twr_return,
+--        AVG(ANNUALIZED_TWR_PERCENTAGE) as avg_annualized_return,
+--        AVG(SHARPE_RATIO) as avg_sharpe_ratio,
+--        SUM(ENDING_BALANCE) as total_portfolio_value
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- GROUP BY CUSTOMER_ID
+-- ORDER BY avg_twr_return DESC;
+--
+-- -- Performance vs. risk analysis
+-- SELECT PERFORMANCE_CATEGORY, RISK_CATEGORY,
+--        COUNT(*) as account_count,
+--        AVG(TWR_RETURN_PERCENTAGE) as avg_return,
+--        AVG(VOLATILITY_STDDEV) as avg_volatility,
+--        AVG(MAX_DRAWDOWN_PERCENTAGE) as avg_max_drawdown
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- GROUP BY PERFORMANCE_CATEGORY, RISK_CATEGORY
+-- ORDER BY avg_return DESC;
+--
+-- -- Accounts with high returns but low risk
+-- SELECT ACCOUNT_ID, CUSTOMER_ID, ACCOUNT_TYPE,
+--        TWR_RETURN_PERCENTAGE, ANNUALIZED_TWR_PERCENTAGE,
+--        VOLATILITY_STDDEV, RISK_CATEGORY
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- WHERE PERFORMANCE_CATEGORY IN ('EXCELLENT_PERFORMANCE', 'GOOD_PERFORMANCE')
+--   AND RISK_CATEGORY IN ('LOW_RISK', 'MODERATE_RISK')
+-- ORDER BY TWR_RETURN_PERCENTAGE DESC;
+--
+-- -- Maximum drawdown analysis
+-- SELECT ACCOUNT_ID, CUSTOMER_ID, TWR_RETURN_PERCENTAGE,
+--        MAX_DRAWDOWN_PERCENTAGE, VOLATILITY_STDDEV
+-- FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN 
+-- WHERE ABS(MAX_DRAWDOWN_PERCENTAGE) > 10  -- Significant drawdowns
+-- ORDER BY MAX_DRAWDOWN_PERCENTAGE ASC;
 --
 -- ============================================================
 -- ANOMALY DETECTION QUERIES
@@ -676,6 +968,7 @@ ORDER BY abc.current_balance_base DESC, abc.ACCOUNT_ID;
 -- MANUAL REFRESH COMMANDS:
 -- ALTER DYNAMIC TABLE PAYA_AGG_DT_TRANSACTION_ANOMALIES REFRESH;
 -- ALTER DYNAMIC TABLE PAYA_AGG_DT_ACCOUNT_BALANCES REFRESH;
+-- ALTER DYNAMIC TABLE PAYA_AGG_DT_TIME_WEIGHTED_RETURN REFRESH;
 --
 -- DATA REQUIREMENTS:
 -- TRANSACTION ANOMALY DETECTION:
@@ -739,6 +1032,12 @@ ORDER BY abc.current_balance_base DESC, abc.ACCOUNT_ID;
 -- - Account balance distribution: SELECT BALANCE_CATEGORY, COUNT(*) FROM PAYA_AGG_DT_ACCOUNT_BALANCES GROUP BY BALANCE_CATEGORY;
 -- - Account activity summary: SELECT ACTIVITY_LEVEL, COUNT(*) FROM PAYA_AGG_DT_ACCOUNT_BALANCES GROUP BY ACTIVITY_LEVEL;
 -- - Overdrawn accounts: SELECT COUNT(*) as overdrawn_count, SUM(CURRENT_BALANCE_BASE) as total_overdraft FROM PAYA_AGG_DT_ACCOUNT_BALANCES WHERE IS_OVERDRAWN = TRUE;
+--
+-- TIME WEIGHTED RETURN MONITORING:
+-- - TWR table refresh status: SELECT * FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY()) WHERE NAME = 'PAYA_AGG_DT_TIME_WEIGHTED_RETURN';
+-- - Performance distribution: SELECT PERFORMANCE_CATEGORY, COUNT(*) FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN GROUP BY PERFORMANCE_CATEGORY;
+-- - Risk distribution: SELECT RISK_CATEGORY, COUNT(*) FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN GROUP BY RISK_CATEGORY;
+-- - Average portfolio returns: SELECT AVG(TWR_RETURN_PERCENTAGE) as avg_twr, AVG(ANNUALIZED_TWR_PERCENTAGE) as avg_annualized FROM PAYA_AGG_DT_TIME_WEIGHTED_RETURN;
 --
 -- PERFORMANCE OPTIMIZATION:
 -- - Monitor warehouse usage during refresh periods

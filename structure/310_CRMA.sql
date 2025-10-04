@@ -77,7 +77,7 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_ADDRESSES_CURRENT(
     CURRENT_FROM COMMENT 'Date when this address became current/effective',
     IS_CURRENT COMMENT 'Boolean flag indicating this is the current address (always TRUE)'
 ) COMMENT = 'Current/latest address for each customer. Operational view with one record per customer showing the most recent address based on INSERT_TIMESTAMP_UTC. Used for real-time customer lookups and front-end applications.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     CUSTOMER_ID,
@@ -121,7 +121,7 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_ADDRESSES_HISTORY(
     IS_CURRENT COMMENT 'Boolean flag indicating if this is the current address',
     INSERT_TIMESTAMP_UTC COMMENT 'Original timestamp when address was recorded in system'
 ) COMMENT = 'SCD Type 2 address history with VALID_FROM/VALID_TO effective date ranges. Converts append-only base table into proper slowly changing dimension for compliance reporting, historical analysis, and point-in-time customer address queries.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     CUSTOMER_ID,
@@ -192,7 +192,7 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     HIGH_RISK_CUSTOMER COMMENT 'Boolean flag for customers with both anomalies and PEP matches',
     LAST_UPDATED COMMENT 'Timestamp when customer record was last updated'
 ) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, account summary, and Exposed Person fuzzy matching with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting.'
-TARGET_LAG = '1 hour' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Customer Master Data

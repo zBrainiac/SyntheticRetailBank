@@ -1,6 +1,7 @@
 -- ============================================================
--- ICG_AGG_v001 Schema - SWIFT ISO20022 Message Aggregation & Business Logic
+-- PAY_AGG_001 Schema - SWIFT ISO20022 Message Aggregation & Business Logic
 -- Generated on: 2025-09-28 (Updated with comprehensive documentation)
+-- Updated: 2025-10-04 (Schema consolidation)
 -- ============================================================
 --
 -- OVERVIEW:
@@ -17,17 +18,18 @@
 -- - Support regulatory compliance and audit trail requirements
 --
 -- DATA TRANSFORMATION:
--- Raw XML (ICG_RAW_v001) → Parsed Business Data → Analytics & Reporting (ICG_DAP_v001)
+-- Raw XML (PAY_RAW_001) → Parsed Business Data → Analytics & Reporting (REP_AGG_001)
 --
 -- OBJECTS CREATED:
--- ┌─ DYNAMIC TABLES (2):
--- │  ├─ ICG_AGG_SWIFT_PACS008      - Parsed customer credit transfer instructions
--- │  └─ ICG_AGG_SWIFT_PACS002      - Parsed payment status reports and acknowledgments
+-- ┌─ DYNAMIC TABLES (3):
+-- │  ├─ ICGA_AGG_DT_SWIFT_PACS008      - Parsed customer credit transfer instructions
+-- │  ├─ ICGA_AGG_DT_SWIFT_PACS002      - Parsed payment status reports and acknowledgments
+-- │  └─ ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE - Complete payment lifecycle (PACS008 + PACS002 joined)
 -- │
 -- └─ REFRESH STRATEGY:
 --    ├─ TARGET_LAG: 60 minutes (aligned with operational SLA requirements)
 --    ├─ WAREHOUSE: MD_TEST_WH
---    └─ AUTO-REFRESH: Based on source table changes from ICG_RAW_v001
+--    └─ AUTO-REFRESH: Based on source table changes from PAY_RAW_001
 --
 -- SUPPORTED MESSAGE TYPES:
 -- - PACS.008.001.08: FIToFICstmrCdtTrf (Customer Credit Transfer)
@@ -43,14 +45,14 @@
 -- - Derived analytics fields for business intelligence
 --
 -- RELATED SCHEMAS:
--- - ICG_RAW_v001: Source raw XML messages
--- - ICG_DAP_v001: Analytics and reporting data products
+-- - PAY_RAW_001: Source raw XML messages
+-- - REP_AGG_001: Analytics and reporting data products
 -- - CRM_RAW_001: Customer master data for party identification
 -- - PAY_RAW_001: Domestic payment correlation and reconciliation
 -- ============================================================
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
-USE SCHEMA ICG_AGG_v001;
+USE SCHEMA PAY_AGG_001;
 
 -- ============================================================
 -- DYNAMIC TABLES - SWIFT MESSAGE PARSING & BUSINESS LOGIC
@@ -60,14 +62,14 @@ USE SCHEMA ICG_AGG_v001;
 -- derived analytics for operational monitoring and compliance reporting.
 
 -- ============================================================
--- ICG_AGG_SWIFT_PACS008 - Customer Credit Transfer Instructions (pacs.008)
+-- ICGA_AGG_DT_SWIFT_PACS008 - Customer Credit Transfer Instructions (pacs.008)
 -- ============================================================
 -- Processes SWIFT pacs.008 (FIToFICstmrCdtTrf) messages for customer credit
 -- transfer instructions with comprehensive business data extraction and analytics.
 -- Financial Institution to Financial Institution Customer Credit Transfer parsing
 -- with derived fields for operational monitoring, compliance screening, and treasury management.
 
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS008(
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS008(
     SOURCE_FILENAME COMMENT 'Original XML file name for audit trail and message correlation',
     SOURCE_LOAD_TIMESTAMP COMMENT 'System ingestion timestamp for data lineage and processing tracking',
     MESSAGE_ID COMMENT 'Unique SWIFT message identifier for deduplication and correlation',
@@ -111,7 +113,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS008(
     PARSED_AT COMMENT 'Timestamp when XML parsing was completed for processing tracking',
     XML_SIZE_BYTES COMMENT 'Size of original XML message for performance analysis'
 ) COMMENT = 'SWIFT PACS.008 Customer Credit Transfer messages parsed and structured for business analysis. Includes payment instructions, routing information, compliance data, and derived analytics for operational monitoring, risk management, and regulatory reporting.'
-TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Source metadata - Technical tracking
@@ -201,19 +203,19 @@ SELECT
     CURRENT_TIMESTAMP() AS parsed_at,
     LENGTH(RAW_XML::STRING) AS xml_size_bytes
 
-FROM ICG_RAW_v001.ICGI_RAW_SWIFT_MESSAGES
+FROM PAY_RAW_001.ICGI_RAW_SWIFT_MESSAGES
 WHERE RAW_XML IS NOT NULL
   AND (FILE_NAME ILIKE '%pacs008%' OR RAW_XML::STRING ILIKE '%FIToFICstmrCdtTrf%');
 
 -- ============================================================
--- ICG_AGG_SWIFT_PACS002 - Payment Status Reports & Acknowledgments (pacs.002)
+-- ICGA_AGG_DT_SWIFT_PACS002 - Payment Status Reports & Acknowledgments (pacs.002)
 -- ============================================================
 -- Processes SWIFT pacs.002 (FIToFIPmtStsRpt) messages for payment status reports
 -- and acknowledgments with comprehensive status tracking and operational analytics.
 -- Financial Institution to Financial Institution Payment Status Report parsing
 -- with derived fields for SLA monitoring, exception handling, and customer communication.
 
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS002(
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS002(
     SOURCE_FILENAME COMMENT 'Original XML file name for audit trail and message correlation',
     SOURCE_LOAD_TIMESTAMP COMMENT 'System ingestion timestamp for data lineage and processing tracking',
     MESSAGE_ID COMMENT 'Unique status report message identifier for deduplication',
@@ -239,7 +241,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_PACS002(
     PARSED_AT COMMENT 'Timestamp when XML parsing was completed for processing tracking',
     XML_SIZE_BYTES COMMENT 'Size of original XML message for performance analysis'
 ) COMMENT = 'SWIFT PACS.002 Payment Status Reports parsed and structured for operational monitoring. Includes status confirmations, rejection reasons, processing timestamps, and derived analytics for SLA tracking, exception handling, and customer communication workflows.'
-TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
     -- Source metadata - Technical tracking
@@ -317,23 +319,19 @@ SELECT
     CURRENT_TIMESTAMP() AS parsed_at,                                       -- Processing timestamp for data quality monitoring
     LENGTH(RAW_XML::STRING) AS xml_size_bytes                              -- Message complexity indicator for performance analysis
 
-FROM ICG_RAW_v001.ICGI_RAW_SWIFT_MESSAGES
+FROM PAY_RAW_001.ICGI_RAW_SWIFT_MESSAGES
 WHERE RAW_XML IS NOT NULL
   AND (FILE_NAME ILIKE '%pacs002%' OR RAW_XML::STRING ILIKE '%FIToFIPmtStsRpt%');
 
 -- ============================================================
--- ICG_DAP_v001 SCHEMA - Data Products for SWIFT Processing
+-- FUTURE ENHANCEMENTS - SWIFT Payment Flow Analysis
 -- ============================================================
+-- Additional analytics can be built in REP_AGG_001 for:
+-- - Joined pacs.008 credit transfers with pacs.002 status reports
+-- - End-to-end view of payment processing lifecycle
+-- - Payment success/failure analysis
 
-
-
--- ============================================================
--- ICG_DAP_SWIFT_JOIN_PACS008_002 - Joined Payment Flow
--- ============================================================
--- Joins pacs.008 credit transfers with their pacs.002 status reports
--- Provides end-to-end view of payment processing lifecycle
-
-CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_JOIN_PACS008_PACS002(
+CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE(
     PACS008_MESSAGE_ID COMMENT 'Original payment instruction message ID for tracking and correlation',
     PACS002_ORIGINAL_MESSAGE_ID COMMENT 'Status report reference back to original instruction for reconciliation',
     PACS008_END_TO_END_ID COMMENT 'Customer payment reference from original instruction for reconciliation',
@@ -360,7 +358,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_SWIFT_JOIN_PACS008_PACS002(
     ACK_TIME COMMENT 'Processing time in minutes from instruction to status for SLA monitoring and performance optimization',
     JOINED_AT COMMENT 'Join processing timestamp for data quality tracking and refresh monitoring'
 ) COMMENT = 'Complete SWIFT payment lifecycle view joining PACS.008 instructions with PACS.002 status reports. Provides end-to-end payment tracking, SLA monitoring, settlement analysis, and comprehensive business intelligence for treasury management, compliance reporting, and operational excellence.'
-TARGET_LAG = '60 minutes' WAREHOUSE = MD_TEST_WH
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
     -- Join keys - Message correlation identifiers
@@ -398,8 +396,8 @@ SELECT
     DATEDIFF('minutes', p002.ORIGINAL_CREATION_DATETIME, p002.CREATION_DATETIME) AS ack_time, -- Processing time for SLA monitoring and performance optimization
     CURRENT_TIMESTAMP() AS joined_at                                  -- Join processing timestamp for data quality tracking
     
-FROM ICGA_AGG_SWIFT_PACS008 p008
-LEFT JOIN ICGA_AGG_SWIFT_PACS002 p002
+FROM ICGA_AGG_DT_SWIFT_PACS008 p008
+LEFT JOIN ICGA_AGG_DT_SWIFT_PACS002 p002
     ON p002.original_message_id = p008.message_id
    AND (
         p002.original_end_to_end_id = p008.end_to_end_id
@@ -410,47 +408,49 @@ LEFT JOIN ICGA_AGG_SWIFT_PACS002 p002
 -- ============================================================
 -- SCHEMA COMPLETION STATUS
 -- ============================================================
--- ✅ ICG_AGG_v001 Schema Deployment Complete
+-- ✅ PAY_AGG_001 Schema Deployment Complete (SWIFT Message Processing)
 --
 -- OBJECTS CREATED:
--- • 2 Dynamic Tables: ICG_AGG_SWIFT_PACS008, ICG_AGG_SWIFT_PACS002
--- • 1 Data Product: ICG_DAP_SWIFT_JOIN_PACS008_002 (comprehensive payment lifecycle)
+-- • 3 Dynamic Tables: 
+--   - ICGA_AGG_DT_SWIFT_PACS008 (customer credit transfer instructions)
+--   - ICGA_AGG_DT_SWIFT_PACS002 (payment status reports and acknowledgments)
+--   - ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE (complete payment lifecycle with SLA analysis)
 -- • Automated refresh: 60-minute TARGET_LAG for near real-time business intelligence
 -- • Comprehensive field extraction: 50+ business data elements per message type
 --
 -- NEXT STEPS:
--- 1. ✅ ICG_AGG_v001 schema deployed successfully
--- 2. Verify dynamic table refresh: SHOW DYNAMIC TABLES IN SCHEMA ICG_AGG_v001;
+-- 1. ✅ PAY_AGG_001 schema deployed successfully (SWIFT processing objects)
+-- 2. Verify dynamic table refresh: SHOW DYNAMIC TABLES IN SCHEMA PAY_AGG_001;
 -- 3. Monitor processing performance and adjust TARGET_LAG if needed
--- 4. Deploy ICG_DAP_v001 schema for advanced analytics and reporting
+-- 4. Build additional SWIFT analytics in REP_AGG_001 for cross-domain reporting
 -- 5. Integrate with operational dashboards and monitoring systems
 --
 -- USAGE EXAMPLES:
 --
 -- -- Query all high-value payments (>= 100k EUR equivalent)
 -- SELECT debtor_name, creditor_name, transaction_amount, transaction_currency, payment_corridor
--- FROM ICG_AGG_SWIFT_PACS008 
+-- FROM ICGA_AGG_DT_SWIFT_PACS008 
 -- WHERE is_high_value_payment = TRUE
 -- ORDER BY transaction_amount DESC;
 --
 -- -- Query rejected payments with reasons
 -- SELECT original_end_to_end_id, transaction_status_description, status_reason, 
 --        instructing_agent_bic, instructed_agent_bic
--- FROM ICG_AGG_SWIFT_PACS002 
+-- FROM ICGA_AGG_DT_SWIFT_PACS002 
 -- WHERE is_rejection = TRUE
 -- ORDER BY creation_datetime DESC;
 --
 -- -- Query complete payment lifecycle with SLA analysis
 -- SELECT pacs008_end_to_end_id, transaction_amount, transaction_currency,
 --        debtor_name, creditor_name, transaction_status_description, ack_time
--- FROM ICG_DAP_SWIFT_JOIN_PACS008_002 
+-- FROM ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE 
 -- WHERE ack_time > 60  -- Payments taking longer than 60 minutes
 -- ORDER BY ack_time DESC;
 --
 -- -- Query cross-border payment flows by corridor
 -- SELECT payment_corridor, COUNT(*) as payment_count, 
 --        SUM(transaction_amount) as total_amount, transaction_currency
--- FROM ICG_AGG_SWIFT_PACS008 
+-- FROM ICGA_AGG_DT_SWIFT_PACS008 
 -- WHERE payment_type_classification = 'CROSS_BORDER'
 -- GROUP BY payment_corridor, transaction_currency
 -- ORDER BY total_amount DESC;
@@ -459,20 +459,21 @@ LEFT JOIN ICGA_AGG_SWIFT_PACS002 p002
 -- SELECT DATE(creation_datetime) as business_date,
 --        COUNT(*) as target2_payments,
 --        SUM(transaction_amount) as total_eur_amount
--- FROM ICG_AGG_SWIFT_PACS008 
+-- FROM ICGA_AGG_DT_SWIFT_PACS008 
 -- WHERE is_target2_payment = TRUE
 -- GROUP BY business_date
 -- ORDER BY business_date DESC;
 --
 -- MANUAL REFRESH COMMANDS:
--- ALTER DYNAMIC TABLE ICG_AGG_SWIFT_PACS008 REFRESH;
--- ALTER DYNAMIC TABLE ICG_AGG_SWIFT_PACS002 REFRESH;
--- ALTER DYNAMIC TABLE ICG_DAP_SWIFT_JOIN_PACS008_002 REFRESH;
+-- ALTER DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS008 REFRESH;
+-- ALTER DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS002 REFRESH;
+-- ALTER DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE REFRESH;
 --
 -- MONITORING:
--- - Dynamic table refresh status: SELECT * FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY());
--- - Processing performance: SELECT COUNT(*), AVG(xml_size_bytes) FROM ICG_AGG_SWIFT_PACS008;
--- - Message type distribution: SELECT message_type, COUNT(*) FROM (SELECT CASE WHEN FILE_NAME ILIKE '%pacs008%' THEN 'PACS.008' ELSE 'PACS.002' END as message_type FROM ICG_RAW_v001.ICG_RAW_SWIFT_MESSAGES) GROUP BY message_type;
+-- - Dynamic table refresh status: SELECT * FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY()) WHERE NAME LIKE 'ICGA_AGG_DT_%';
+-- - Processing performance: SELECT COUNT(*), AVG(xml_size_bytes) FROM ICGA_AGG_DT_SWIFT_PACS008;
+-- - Message type distribution: SELECT message_type, COUNT(*) FROM (SELECT CASE WHEN FILE_NAME ILIKE '%pacs008%' THEN 'PACS.008' ELSE 'PACS.002' END as message_type FROM PAY_RAW_001.ICGI_RAW_SWIFT_MESSAGES) GROUP BY message_type;
+-- - Payment lifecycle SLA: SELECT AVG(ack_time) as avg_ack_minutes, MAX(ack_time) as max_ack_minutes FROM ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE;
 --
 -- PERFORMANCE OPTIMIZATION:
 -- - Monitor warehouse usage during refresh periods
