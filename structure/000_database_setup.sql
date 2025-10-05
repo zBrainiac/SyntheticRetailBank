@@ -19,6 +19,7 @@
 --   • CRM_AGG_001 - Customer 360° views, SCD Type 2 addresses
 --   • REF_AGG_001 - Enhanced FX rates with spreads
 --   • PAY_AGG_001 - Transaction anomalies, account balances, SWIFT message processing
+--   • EQT_AGG_001 - Equity trade analytics and portfolio positions
 --   • LOA_AGG_v001 - Loan analytics and reporting
 --
 -- REPORTING Layer (Analytics):
@@ -53,6 +54,9 @@ CREATE SCHEMA IF NOT EXISTS PAY_AGG_001
 
 CREATE SCHEMA IF NOT EXISTS EQT_RAW_001
     COMMENT = 'Equity trading raw data schema for FIX protocol trades';
+
+CREATE SCHEMA IF NOT EXISTS EQT_AGG_001
+    COMMENT = 'Equity trading aggregation schema for trade analytics and portfolio positions';
 
 CREATE SCHEMA IF NOT EXISTS REP_AGG_001
     COMMENT = 'Reporting aggregation schema for dynamic tables and analytics';
