@@ -171,7 +171,13 @@ current_balances AS (
     SELECT 
         b.ACCOUNT_ID,
         b.CURRENT_BALANCE_BASE as current_cash_balance,
-        b.STARTING_BALANCE_BASE as starting_cash_balance
+        -- Calculate starting balance by subtracting net cash flow from current balance
+        b.CURRENT_BALANCE_BASE - COALESCE((
+            SELECT SUM(t.AMOUNT)
+            FROM AAA_DEV_SYNTHETIC_BANK.PAY_RAW_001.PAYI_TRANSACTIONS t
+            WHERE t.ACCOUNT_ID = b.ACCOUNT_ID
+              AND t.BOOKING_DATE >= CURRENT_DATE - INTERVAL '450 days'
+        ), 0) as starting_cash_balance
     FROM AAA_DEV_SYNTHETIC_BANK.PAY_AGG_001.PAYA_AGG_DT_ACCOUNT_BALANCES b
 ),
 

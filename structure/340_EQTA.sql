@@ -256,7 +256,8 @@ SELECT
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END) - 
         (
             CASE 
-                WHEN SUM(CASE WHEN t.SIDE = '2' THEN t.QUANTITY ELSE 0 END) > 0 THEN
+                WHEN SUM(CASE WHEN t.SIDE = '2' THEN t.QUANTITY ELSE 0 END) > 0 
+                 AND SUM(CASE WHEN t.SIDE = '1' THEN t.QUANTITY ELSE 0 END) > 0 THEN
                     (SUM(CASE WHEN t.SIDE = '1' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END) / 
                      SUM(CASE WHEN t.SIDE = '1' THEN t.QUANTITY ELSE 0 END)) * 
                     SUM(CASE WHEN t.SIDE = '2' THEN t.QUANTITY ELSE 0 END)
