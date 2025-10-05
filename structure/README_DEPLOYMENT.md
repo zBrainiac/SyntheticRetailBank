@@ -21,7 +21,11 @@ structure/
 ├── 311_ACCA.sql               # CRM Agg: Account Aggregation Layer
 ├── 330_PAYA.sql               # PAY Agg: Payment Anomaly Detection & Account Balances
 ├── 331_ICGA.sql               # PAY Agg: SWIFT Message Aggregation
-├── 500_REPP.sql               # REP Agg: Reporting & Analytics
+├── 340_EQTA.sql               # EQT Agg: Equity Trading Aggregation & Analytics
+├── 500_REPP.sql               # REP Agg: Core Reporting & Analytics
+├── 510_REPP_EQUITY.sql        # REP Agg: Equity Trading Reporting
+├── 520_REPP_CREDIT_RISK.sql   # REP Agg: Credit Risk & IRB Reporting
+├── 530_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
 └── README_DEPLOYMENT.md       # This deployment guide
 ```
 
@@ -269,23 +273,110 @@ Execute after all raw layer schemas are deployed:
   - `ICGA_AGG_DT_SWIFT_PACS002` - Parsed SWIFT PACS.002 payment status reports and acknowledgments
   - `ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE` - Complete payment lifecycle view joining instructions with status reports
 
-### 12. Reporting & Analytics
+### 12. Equity Trading Aggregation & Analytics
 ```sql
--- Execute last: Analytics and reporting
+-- Execute: Equity trading analytics
+@340_EQTA.sql
+```
+
+**Objects Created:**
+- **Schema**: `EQT_AGG_001`
+- **Dynamic Tables**: 
+  - `EQTA_AGG_DT_TRADE_SUMMARY` - Enriched trade-level analytics with metadata and classifications
+  - `EQTA_AGG_DT_PORTFOLIO_POSITIONS` - Current holdings and positions per account with P&L
+  - `EQTA_AGG_DT_CUSTOMER_ACTIVITY` - Customer trading behavior and activity metrics
+
+**Key Features:**
+- **Trade Analytics**: Comprehensive trade-level view with execution quality metrics
+- **Portfolio Positions**: Real-time position tracking with realized P&L calculation
+- **Customer Behavior**: Trading activity patterns and engagement analysis
+- **Commission Analysis**: Commission rate tracking in basis points
+- **Settlement Tracking**: Settlement period analysis and monitoring
+
+### 13. Core Reporting & Analytics
+```sql
+-- Execute: Core reporting tables
 @500_REPP.sql
 ```
 
 **Objects Created:**
 - **Schema**: `REP_AGG_001`
-- **Dynamic Tables**: 
+- **Dynamic Tables** (9 core tables): 
   - `REPP_AGG_DT_CUSTOMER_SUMMARY` - Comprehensive customer profiling with transaction statistics
   - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY` - Daily transaction volume and pattern analysis
   - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT` - Current foreign exchange exposure monitoring
-  - `REPP_AGG_DT_HIGH_RISK_PATTERNS` - High-risk transaction pattern detection for compliance
-  - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS` - IRB customer-level credit ratings and risk parameters
-  - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS` - IRB portfolio-level risk metrics aggregated by segment
-  - `REPP_AGG_DT_IRB_RWA_SUMMARY` - IRB Risk Weighted Assets summary for regulatory reporting
-  - `REPP_AGG_DT_IRB_RISK_TRENDS` - IRB risk parameter trends and model validation metrics
+  - `REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY` - Historical FX exposure trends
+  - `REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE` - Settlement timing and liquidity risk
+  - `REPP_AGG_DT_ANOMALY_ANALYSIS` - Customer-level anomaly detection
+  - `REPP_AGG_DT_HIGH_RISK_PATTERNS` - High-risk transaction pattern detection
+  - `REPP_AGG_DT_SETTLEMENT_ANALYSIS` - Settlement timing analysis
+
+**Key Features:**
+- **Customer Analytics**: 360° customer view with transaction profiling
+- **FX Risk Management**: Multi-dimensional currency exposure analysis
+- **Compliance Monitoring**: Anomaly detection and suspicious activity reporting
+- **Settlement Risk**: Liquidity and operational risk monitoring
+
+### 14. Equity Trading Reporting
+```sql
+-- Execute: Equity trading reporting
+@510_REPP_EQUITY.sql
+```
+
+**Objects Created:**
+- **Schema**: `REP_AGG_001`
+- **Dynamic Tables** (4 tables): 
+  - `REPP_AGG_DT_EQUITY_SUMMARY` - Customer equity trading activity summary
+  - `REPP_AGG_DT_EQUITY_POSITIONS` - Position summary by security
+  - `REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE` - FX exposure from equity trades
+  - `REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES` - Large trade compliance monitoring
+
+**Key Features:**
+- **Trading Activity**: Customer-level trading statistics and profiling
+- **Position Concentration**: Security-level position tracking and risk analysis
+- **Currency Exposure**: FX risk from multi-currency equity trading
+- **Compliance**: High-value trade monitoring (>100k CHF threshold)
+
+### 15. Credit Risk & IRB Reporting
+```sql
+-- Execute: Credit risk and IRB analytics
+@520_REPP_CREDIT_RISK.sql
+```
+
+**Objects Created:**
+- **Schema**: `REP_AGG_001`
+- **Dynamic Tables** (5 tables): 
+  - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS` - Customer-level credit ratings and risk parameters
+  - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS` - Portfolio-level risk aggregation
+  - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY` - Historical rating tracking (SCD Type 2)
+  - `REPP_AGG_DT_IRB_RWA_SUMMARY` - Risk Weighted Assets summary
+  - `REPP_AGG_DT_IRB_RISK_TRENDS` - Risk parameter trends and model validation
+
+**Key Features:**
+- **Basel III/IV Compliance**: IRB approach for regulatory capital calculation
+- **Credit Rating System**: Internal rating scale (AAA to CCC) with PD/LGD/EAD
+- **RWA Calculation**: Risk Weighted Assets and capital requirements
+- **Rating Migrations**: Historical tracking of rating changes and defaults
+- **Model Validation**: Backtesting and performance monitoring
+
+### 16. Portfolio Performance Reporting
+```sql
+-- Execute: Portfolio performance analytics
+@530_REPP_PORTFOLIO.sql
+```
+
+**Objects Created:**
+- **Schema**: `REP_AGG_001`
+- **Dynamic Tables** (1 table): 
+  - `REPP_AGG_DT_PORTFOLIO_PERFORMANCE` - Integrated cash + equity performance
+
+**Key Features:**
+- **Time Weighted Return (TWR)**: Industry-standard performance measurement
+- **Multi-Asset Integration**: Combined cash and equity performance
+- **Portfolio Allocation**: Cash vs. equity allocation analysis
+- **Risk Metrics**: Sharpe Ratio, volatility, max drawdown (placeholders)
+- **Performance Classification**: Automated performance categorization
+- **Wealth Management**: Client reporting and advisory analytics
 
 ## Schema Architecture
 
@@ -305,7 +396,8 @@ Execute after all raw layer schemas are deployed:
 | `REF_AGG_001`  | Reference Analytics | FX rates with analytics and volatility metrics        | 1-hour dynamic tables |
 | `PAY_AGG_001`  | Payment Analytics  | Anomaly detection, Account balances with FX            | 1-hour dynamic tables |
 | `PAY_AGG_001` | SWIFT Processing   | Parsed SWIFT messages and payment lifecycle analytics (ICGA_ prefix objects)  | 1-hour dynamic tables |
-| `REP_AGG_001`  | Reporting          | Customer summaries, transaction analytics, IRB metrics | 1-hour dynamic tables |
+| `EQT_AGG_001`  | Equity Analytics   | Trade summaries, portfolio positions, customer activity | 1-hour dynamic tables |
+| `REP_AGG_001`  | Reporting          | Customer summaries, transaction analytics, equity reports, IRB metrics, portfolio performance | 1-hour dynamic tables |
 
 ##  Advanced Features
 

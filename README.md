@@ -29,6 +29,13 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Trade-Based Money Laundering Detection**: Equity trading pattern analysis for unusual investment behaviors
 - **Regulatory Alert Generation**: Automated suspicious activity report (SAR) triggers and case management
 
+### **Investment Performance & Portfolio Analytics**
+- **Time Weighted Return (TWR)**: Industry-standard investment performance measurement eliminating cash flow timing effects
+- **Risk-Adjusted Returns**: Sharpe ratio calculation for portfolio performance evaluation
+- **Volatility Analysis**: Standard deviation of returns for risk assessment and client suitability
+- **Maximum Drawdown**: Peak-to-trough decline tracking for downside risk management
+- **Portfolio Attribution**: Account-level and customer-level performance aggregation and analysis
+
 ### **Governance & Audit Controls**
 - **Complete Audit Trail**: SCD Type 2 address tracking and comprehensive transaction history
 - **Data Lineage & Quality**: End-to-end data governance with validation and reconciliation controls
@@ -41,8 +48,10 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Credit Risk Parameters**: PD, LGD, EAD modeling with exposure-weighted portfolio aggregation
 - **Risk Weighted Assets**: Automated RWA calculation and regulatory capital requirement monitoring
 - **Credit Rating Systems**: Internal rating scales (AAA-CCC) with default identification and watch list management
+- **Rating History & Migrations**: SCD Type 2 historical tracking of credit ratings with daily snapshots for trend analysis
+- **Default Tracking**: Real-time monitoring of new defaults, cured defaults, and net default changes
 - **Portfolio Risk Management**: Credit concentration analysis, vintage tracking, and collateral coverage monitoring
-- **Model Validation**: IRB model backtesting, performance monitoring, and stress testing capabilities
+- **Model Validation**: IRB model backtesting, performance monitoring with actual vs. predicted default rates, and stress testing capabilities
 
 ### **Operational Risk Framework**
 - **Settlement Risk Management**: Payment timing analysis and counterparty exposure monitoring
@@ -72,9 +81,9 @@ This repository delivers a complete data generation and ingestion framework, org
 | **`anomaly_patterns.py`**          | Suspicious transaction pattern injection for AML testing and training                        |
 
 ### Domain-Oriented DDL (`structure/` directory)
-- **Raw Data Layer (0xx)**: Customer master (`CRMI`), accounts (`ACCI`), FX rates (`REFI`), payments (`PAYI`), equity trades (`EQTI`), SWIFT messages (`ICGI`)
-- **Aggregation Layer (3xx)**: Customer 360° views (`CRMA`), account balances (`ACCA`), payment anomalies (`PAYA`), SWIFT processing (`ICGA`)
-- **Reporting Layer (5xx)**: Risk analytics, compliance reporting, and management dashboards (`REPP`)
+- **Raw Data Layer (0xx)**: Customer master (`CRMI`), accounts (`ACCI`), FX rates (`REFI`), payments (`PAYI`), equity trades (`EQTI`), SWIFT messages (`ICGI`), loan documents (`LOAI`)
+- **Aggregation Layer (3xx)**: Customer 360° views (`CRMA`), account balances (`ACCA`), payment anomalies (`PAYA`), investment performance (`PAYA`), SWIFT processing (`ICGA`)
+- **Reporting Layer (5xx)**: Risk analytics, compliance reporting, investment performance, and management dashboards (`REPP`)
 - **Architecture**: Snowflake-optimized DDL with business domain separation and data maturity layers
 
 ## Installation
@@ -372,9 +381,15 @@ generated_data/
     - `REPP_AGG_DT_CUSTOMER_SUMMARY`
     - `CRMA_AGG_DT_CUSTOMER`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
+- **Investment Performance Analytics**: Portfolio management and performance attribution with risk-adjusted metrics
+  - *Key Reports*:
+    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
+    - `REPP_AGG_DT_EQUITY_SUMMARY`
+    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
 - **Credit Risk Model Validation**: IRB model development, backtesting, and regulatory validation
   - *Key Reports*:
     - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS`
+    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
     - `REPP_AGG_DT_IRB_RISK_TRENDS`
     - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
 - **Capital Adequacy Assessment**: Basel III/IV capital requirement calculation and stress testing
@@ -382,6 +397,7 @@ generated_data/
     - `REPP_AGG_DT_IRB_RWA_SUMMARY`
     - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
     - `REPP_AGG_DT_IRB_RISK_TRENDS`
+    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
 - **Regulatory Technology (RegTech) Evaluation**: Test vendor solutions against realistic banking scenarios
   - *Key Reports*:
     - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
@@ -392,6 +408,11 @@ generated_data/
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
     - `REPP_AGG_DT_EQUITY_SUMMARY`
     - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
+- **Portfolio Performance Measurement**: Investment performance tracking and client reporting with industry-standard metrics
+  - *Key Reports*:
+    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
+    - `REPP_AGG_DT_EQUITY_POSITIONS`
+    - `REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE`
 
 ### **Governance & Compliance Assurance**
 - **Regulatory Examination Preparation**: Demonstrate compliance capabilities to regulators with comprehensive audit trails
@@ -415,11 +436,17 @@ generated_data/
     - `REPP_AGG_DT_IRB_RWA_SUMMARY`
     - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
     - `REPP_AGG_DT_IRB_RISK_TRENDS`
+    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
 - **Business Continuity Planning**: Test operational resilience and recovery procedures with realistic data volumes
   - *Key Reports*:
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
     - `REPP_AGG_DT_EQUITY_SUMMARY`
     - `REFA_AGG_DT_FX_RATES_ENHANCED`
+- **Investment Advisory & Wealth Management**: Client performance reporting and portfolio management analytics
+  - *Key Reports*:
+    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
+    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
+    - `REPP_AGG_DT_EQUITY_SUMMARY`
 
 ## Technical Details
 
