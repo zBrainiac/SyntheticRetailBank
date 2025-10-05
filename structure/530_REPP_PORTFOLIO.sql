@@ -5,14 +5,14 @@
 --
 -- OVERVIEW:
 -- This schema contains dynamic tables for integrated portfolio performance
--- measurement. Combines cash account performance and equity trading performance
--- to provide comprehensive Time Weighted Return (TWR) analytics across all
--- asset classes for wealth management and client reporting.
+-- measurement. Combines cash account performance, equity trading, fixed income,
+-- and commodity trading to provide comprehensive Time Weighted Return (TWR)
+-- analytics across all asset classes for wealth management and client reporting.
 --
 -- BUSINESS PURPOSE:
--- - Integrated portfolio performance measurement (cash + equity)
--- - Time Weighted Return (TWR) calculation across asset classes
--- - Portfolio allocation analysis and rebalancing insights
+-- - Integrated portfolio performance measurement (cash + equity + fixed income + commodities)
+-- - Time Weighted Return (TWR) calculation across all asset classes
+-- - Multi-asset portfolio allocation analysis and rebalancing insights
 -- - Risk-adjusted performance metrics (Sharpe Ratio, volatility)
 -- - Client wealth management reporting
 -- - Investment advisory analytics
@@ -31,32 +31,45 @@
 --     +
 -- EQT_RAW_001.EQTI_TRADES (equity trades)
 --     +
+-- FII_RAW_001.FIII_TRADES (fixed income trades)
+--     +
+-- CMD_RAW_001.CMDI_TRADES (commodity trades)
+--     +
 -- PAY_AGG_001.PAYA_AGG_DT_ACCOUNT_BALANCES (current balances)
 --     +
 -- EQT_AGG_001.EQTA_AGG_DT_PORTFOLIO_POSITIONS (equity positions)
+--     +
+-- FII_AGG_001.FIIA_AGG_DT_PORTFOLIO_POSITIONS (fixed income positions)
+--     +
+-- CMD_AGG_001.CMDA_AGG_DT_PORTFOLIO_POSITIONS (commodity positions)
 --     ↓
--- REP_AGG_001.REPP_AGG_DT_PORTFOLIO_PERFORMANCE (integrated performance)
+-- REP_AGG_001.REPP_AGG_DT_PORTFOLIO_PERFORMANCE (integrated multi-asset performance)
 --
 -- RELATED SCHEMAS:
 -- - PAY_RAW_001: Cash transaction data
 -- - PAY_AGG_001: Account balance aggregation
 -- - EQT_RAW_001: Equity trading data
 -- - EQT_AGG_001: Equity position aggregation
+-- - FII_RAW_001: Fixed income trading data
+-- - FII_AGG_001: Fixed income position aggregation
+-- - CMD_RAW_001: Commodity trading data
+-- - CMD_AGG_001: Commodity position aggregation
 -- - CRM_AGG_001: Account master data
 -- - 500_REPP.sql: Core reporting tables
 -- - 510_REPP_EQUITY.sql: Equity trading reporting
 -- - 520_REPP_CREDIT_RISK.sql: Credit risk reporting
+-- - 525_REPP_FRTB.sql: FRTB market risk reporting
 -- ============================================================
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 USE SCHEMA REP_AGG_001;
 
 -- ============================================================
--- REPP_AGG_DT_PORTFOLIO_PERFORMANCE - Integrated Portfolio Performance (Cash + Equity)
+-- REPP_AGG_DT_PORTFOLIO_PERFORMANCE - Integrated Multi-Asset Portfolio Performance
 -- ============================================================
--- Comprehensive portfolio performance measurement combining cash account performance
--- and equity trading performance. Calculates Time Weighted Return (TWR) across all
--- asset classes for true portfolio analytics and wealth management reporting.
+-- Comprehensive portfolio performance measurement combining cash, equity, fixed income,
+-- and commodity trading. Calculates Time Weighted Return (TWR) across all asset classes
+-- for true multi-asset portfolio analytics and wealth management reporting.
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
     ACCOUNT_ID COMMENT 'Account identifier for portfolio tracking',
@@ -85,13 +98,37 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
     EQUITY_NET_RETURN_CHF COMMENT 'Net return from equity trading (realized P&L - commissions)',
     EQUITY_RETURN_PERCENTAGE COMMENT 'Equity return percentage (net return / invested)',
     
+    -- Fixed Income Trading Metrics
+    FI_TRADES_COUNT COMMENT 'Number of fixed income trades during period',
+    FI_BUY_TRADES COMMENT 'Number of fixed income buy trades',
+    FI_SELL_TRADES COMMENT 'Number of fixed income sell trades',
+    FI_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in fixed income (CHF)',
+    FI_NET_PL_CHF COMMENT 'Net profit/loss from fixed income trading (CHF)',
+    FI_COMMISSION_CHF COMMENT 'Total fixed income trading commissions (CHF)',
+    FI_RETURN_PERCENTAGE COMMENT 'Fixed income return percentage',
+    
+    -- Commodity Trading Metrics
+    CMD_TRADES_COUNT COMMENT 'Number of commodity trades during period',
+    CMD_BUY_TRADES COMMENT 'Number of commodity buy trades',
+    CMD_SELL_TRADES COMMENT 'Number of commodity sell trades',
+    CMD_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in commodities (CHF)',
+    CMD_NET_PL_CHF COMMENT 'Net profit/loss from commodity trading (CHF)',
+    CMD_COMMISSION_CHF COMMENT 'Total commodity trading commissions (CHF)',
+    CMD_RETURN_PERCENTAGE COMMENT 'Commodity return percentage',
+    
     -- Portfolio Allocation
     CURRENT_CASH_VALUE_CHF COMMENT 'Current cash position value (CHF)',
     CURRENT_EQUITY_POSITIONS COMMENT 'Number of open equity positions',
     CURRENT_EQUITY_VALUE_CHF COMMENT 'Current value of equity positions (at cost, CHF)',
-    TOTAL_PORTFOLIO_VALUE_CHF COMMENT 'Total portfolio value (cash + equity at cost)',
+    CURRENT_FI_POSITIONS COMMENT 'Number of open fixed income positions',
+    CURRENT_FI_VALUE_CHF COMMENT 'Current value of fixed income positions (at cost, CHF)',
+    CURRENT_CMD_POSITIONS COMMENT 'Number of open commodity positions',
+    CURRENT_CMD_VALUE_CHF COMMENT 'Current value of commodity positions (at cost, CHF)',
+    TOTAL_PORTFOLIO_VALUE_CHF COMMENT 'Total portfolio value (cash + all asset classes at cost)',
     CASH_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in cash',
     EQUITY_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in equities',
+    FI_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in fixed income',
+    CMD_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in commodities',
     
     -- Integrated Performance Metrics
     TOTAL_PORTFOLIO_TWR_PERCENTAGE COMMENT 'Combined Time Weighted Return for entire portfolio (%)',
@@ -112,11 +149,11 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
     -- Performance Classification
     PERFORMANCE_CATEGORY COMMENT 'Performance classification (EXCELLENT/GOOD/NEUTRAL/POOR/NEGATIVE)',
     RISK_CATEGORY COMMENT 'Risk classification (LOW/MODERATE/HIGH/VERY_HIGH)',
-    PORTFOLIO_TYPE COMMENT 'Portfolio composition type (CASH_ONLY/EQUITY_ONLY/BALANCED)',
+    PORTFOLIO_TYPE COMMENT 'Portfolio composition type (CASH_ONLY/EQUITY_FOCUSED/FI_FOCUSED/COMMODITY_FOCUSED/BALANCED/MULTI_ASSET)',
     
     -- Metadata
-    CALCULATION_TIMESTAMP COMMENT 'Timestamp when performance was calculated'
-) COMMENT = 'Integrated portfolio performance measurement combining cash and equity positions. Calculates Time Weighted Return (TWR) across all asset classes for comprehensive wealth management reporting and client analytics.'
+    CALCULATION_TIMESTAMP COMMENT 'Integrated Multi-Asset Portfolio Measurement: To deliver a single, comprehensive performance report that combines all asset classes (cash, equity, fixed income, commodities) into a single portfolio view. Calculates the Time Weighted Return (TWR).	
+    Wealth Management / Client Reporting: Provides crucial metrics for investment advisors to present to clients, including TWR (the industry standard for external reporting), asset allocation percentages, total value, and risk categories.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 WITH 
@@ -166,6 +203,40 @@ equity_performance AS (
     GROUP BY t.ACCOUNT_ID
 ),
 
+-- Fixed income trading performance
+fixed_income_performance AS (
+    SELECT 
+        t.ACCOUNT_ID,
+        COUNT(*) as fi_trades_count,
+        SUM(CASE WHEN t.SIDE = '1' THEN 1 ELSE 0 END) as fi_buy_trades,
+        SUM(CASE WHEN t.SIDE = '2' THEN 1 ELSE 0 END) as fi_sell_trades,
+        SUM(ABS(t.BASE_GROSS_AMOUNT)) as fi_total_invested_chf,
+        SUM(t.COMMISSION) as fi_total_commission_chf,
+        -- Simplified P&L calculation
+        SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE -ABS(t.BASE_GROSS_AMOUNT) END) as fi_net_pl_chf,
+        COUNT(DISTINCT DATE(t.TRADE_DATE)) as fi_trading_days
+    FROM AAA_DEV_SYNTHETIC_BANK.FII_RAW_001.FIII_TRADES t
+    WHERE t.TRADE_DATE >= CURRENT_DATE - INTERVAL '450 days'
+    GROUP BY t.ACCOUNT_ID
+),
+
+-- Commodity trading performance
+commodity_performance AS (
+    SELECT 
+        t.ACCOUNT_ID,
+        COUNT(*) as cmd_trades_count,
+        SUM(CASE WHEN t.SIDE = '1' THEN 1 ELSE 0 END) as cmd_buy_trades,
+        SUM(CASE WHEN t.SIDE = '2' THEN 1 ELSE 0 END) as cmd_sell_trades,
+        SUM(ABS(t.BASE_GROSS_AMOUNT)) as cmd_total_invested_chf,
+        SUM(t.COMMISSION) as cmd_total_commission_chf,
+        -- Simplified P&L calculation
+        SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE -ABS(t.BASE_GROSS_AMOUNT) END) as cmd_net_pl_chf,
+        COUNT(DISTINCT DATE(t.TRADE_DATE)) as cmd_trading_days
+    FROM AAA_DEV_SYNTHETIC_BANK.CMD_RAW_001.CMDI_TRADES t
+    WHERE t.TRADE_DATE >= CURRENT_DATE - INTERVAL '450 days'
+    GROUP BY t.ACCOUNT_ID
+),
+
 -- Current account balances
 current_balances AS (
     SELECT 
@@ -182,7 +253,7 @@ current_balances AS (
 ),
 
 -- Current equity positions
-current_positions AS (
+current_equity_positions AS (
     SELECT 
         p.ACCOUNT_ID,
         COUNT(*) as open_positions,
@@ -191,11 +262,35 @@ current_positions AS (
     FROM AAA_DEV_SYNTHETIC_BANK.EQT_AGG_001.EQTA_AGG_DT_PORTFOLIO_POSITIONS p
     WHERE p.POSITION_STATUS != 'CLOSED'
     GROUP BY p.ACCOUNT_ID
+),
+
+-- Current fixed income positions
+current_fi_positions AS (
+    SELECT 
+        p.ACCOUNT_ID,
+        COUNT(*) as fi_open_positions,
+        SUM(p.NET_INVESTMENT_CHF) as fi_value_at_cost,
+        SUM(p.REALIZED_PL_CHF) as fi_total_realized_pl
+    FROM AAA_DEV_SYNTHETIC_BANK.FII_AGG_001.FIIA_AGG_DT_PORTFOLIO_POSITIONS p
+    WHERE p.POSITION_STATUS != 'CLOSED'
+    GROUP BY p.ACCOUNT_ID
+),
+
+-- Current commodity positions
+current_cmd_positions AS (
+    SELECT 
+        p.ACCOUNT_ID,
+        COUNT(*) as cmd_open_positions,
+        SUM(p.NET_INVESTMENT_CHF) as cmd_value_at_cost,
+        SUM(p.REALIZED_PL_CHF) as cmd_total_realized_pl
+    FROM AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.CMDA_AGG_DT_PORTFOLIO_POSITIONS p
+    WHERE p.POSITION_STATUS != 'CLOSED'
+    GROUP BY p.ACCOUNT_ID
 )
 
 SELECT 
     -- Account Identification
-    COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID) as ACCOUNT_ID,
+    COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) as ACCOUNT_ID,
     acc.CUSTOMER_ID,
     acc.ACCOUNT_TYPE,
     acc.BASE_CURRENCY,
@@ -241,30 +336,97 @@ SELECT
         END, 4
     ) as EQUITY_RETURN_PERCENTAGE,
     
+    -- Fixed Income Trading Metrics
+    COALESCE(fip.fi_trades_count, 0) as FI_TRADES_COUNT,
+    COALESCE(fip.fi_buy_trades, 0) as FI_BUY_TRADES,
+    COALESCE(fip.fi_sell_trades, 0) as FI_SELL_TRADES,
+    ROUND(COALESCE(fip.fi_total_invested_chf, 0), 2) as FI_TOTAL_INVESTED_CHF,
+    ROUND(COALESCE(fip.fi_net_pl_chf, 0), 2) as FI_NET_PL_CHF,
+    ROUND(COALESCE(fip.fi_total_commission_chf, 0), 2) as FI_COMMISSION_CHF,
+    ROUND(
+        CASE 
+            WHEN COALESCE(fip.fi_total_invested_chf, 0) > 0 THEN
+                ((COALESCE(fip.fi_net_pl_chf, 0) - COALESCE(fip.fi_total_commission_chf, 0)) / 
+                 COALESCE(fip.fi_total_invested_chf, 0)) * 100
+            ELSE 0
+        END, 4
+    ) as FI_RETURN_PERCENTAGE,
+    
+    -- Commodity Trading Metrics
+    COALESCE(cmdp.cmd_trades_count, 0) as CMD_TRADES_COUNT,
+    COALESCE(cmdp.cmd_buy_trades, 0) as CMD_BUY_TRADES,
+    COALESCE(cmdp.cmd_sell_trades, 0) as CMD_SELL_TRADES,
+    ROUND(COALESCE(cmdp.cmd_total_invested_chf, 0), 2) as CMD_TOTAL_INVESTED_CHF,
+    ROUND(COALESCE(cmdp.cmd_net_pl_chf, 0), 2) as CMD_NET_PL_CHF,
+    ROUND(COALESCE(cmdp.cmd_total_commission_chf, 0), 2) as CMD_COMMISSION_CHF,
+    ROUND(
+        CASE 
+            WHEN COALESCE(cmdp.cmd_total_invested_chf, 0) > 0 THEN
+                ((COALESCE(cmdp.cmd_net_pl_chf, 0) - COALESCE(cmdp.cmd_total_commission_chf, 0)) / 
+                 COALESCE(cmdp.cmd_total_invested_chf, 0)) * 100
+            ELSE 0
+        END, 4
+    ) as CMD_RETURN_PERCENTAGE,
+    
     -- Portfolio Allocation
     ROUND(COALESCE(cb.current_cash_balance, 0), 2) as CURRENT_CASH_VALUE_CHF,
-    COALESCE(pos.open_positions, 0) as CURRENT_EQUITY_POSITIONS,
-    ROUND(COALESCE(pos.equity_value_at_cost, 0), 2) as CURRENT_EQUITY_VALUE_CHF,
-    ROUND(COALESCE(cb.current_cash_balance, 0) + COALESCE(pos.equity_value_at_cost, 0), 2) as TOTAL_PORTFOLIO_VALUE_CHF,
+    COALESCE(ceqp.open_positions, 0) as CURRENT_EQUITY_POSITIONS,
+    ROUND(COALESCE(ceqp.equity_value_at_cost, 0), 2) as CURRENT_EQUITY_VALUE_CHF,
+    COALESCE(cfip.fi_open_positions, 0) as CURRENT_FI_POSITIONS,
+    ROUND(COALESCE(cfip.fi_value_at_cost, 0), 2) as CURRENT_FI_VALUE_CHF,
+    COALESCE(ccmdp.cmd_open_positions, 0) as CURRENT_CMD_POSITIONS,
+    ROUND(COALESCE(ccmdp.cmd_value_at_cost, 0), 2) as CURRENT_CMD_VALUE_CHF,
+    ROUND(
+        COALESCE(cb.current_cash_balance, 0) + 
+        COALESCE(ceqp.equity_value_at_cost, 0) + 
+        COALESCE(cfip.fi_value_at_cost, 0) + 
+        COALESCE(ccmdp.cmd_value_at_cost, 0), 
+    2) as TOTAL_PORTFOLIO_VALUE_CHF,
     
     -- Allocation Percentages
     ROUND(
         CASE 
-            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(pos.equity_value_at_cost, 0)) > 0 THEN
+            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0)) > 0 THEN
                 (COALESCE(cb.current_cash_balance, 0) / 
-                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(pos.equity_value_at_cost, 0))) * 100
+                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0))) * 100
             ELSE 100
         END, 2
     ) as CASH_ALLOCATION_PERCENTAGE,
     
     ROUND(
         CASE 
-            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(pos.equity_value_at_cost, 0)) > 0 THEN
-                (COALESCE(pos.equity_value_at_cost, 0) / 
-                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(pos.equity_value_at_cost, 0))) * 100
+            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0)) > 0 THEN
+                (COALESCE(ceqp.equity_value_at_cost, 0) / 
+                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0))) * 100
             ELSE 0
         END, 2
     ) as EQUITY_ALLOCATION_PERCENTAGE,
+    
+    ROUND(
+        CASE 
+            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0)) > 0 THEN
+                (COALESCE(cfip.fi_value_at_cost, 0) / 
+                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0))) * 100
+            ELSE 0
+        END, 2
+    ) as FI_ALLOCATION_PERCENTAGE,
+    
+    ROUND(
+        CASE 
+            WHEN (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0)) > 0 THEN
+                (COALESCE(ccmdp.cmd_value_at_cost, 0) / 
+                 (COALESCE(cb.current_cash_balance, 0) + COALESCE(ceqp.equity_value_at_cost, 0) + 
+                  COALESCE(cfip.fi_value_at_cost, 0) + COALESCE(ccmdp.cmd_value_at_cost, 0))) * 100
+            ELSE 0
+        END, 2
+    ) as CMD_ALLOCATION_PERCENTAGE,
     
     -- Integrated Performance (weighted average of cash and equity returns)
     ROUND(
@@ -477,9 +639,18 @@ SELECT
     
     -- Portfolio Type
     CASE 
-        WHEN COALESCE(ep.equity_trades_count, 0) = 0 THEN 'CASH_ONLY'
-        WHEN COALESCE(cp.cash_transaction_count, 0) = 0 THEN 'EQUITY_ONLY'
-        ELSE 'BALANCED'
+        WHEN COALESCE(ep.equity_trades_count, 0) = 0 
+         AND COALESCE(fip.fi_trades_count, 0) = 0 
+         AND COALESCE(cmdp.cmd_trades_count, 0) = 0 THEN 'CASH_ONLY'
+        WHEN COALESCE(ep.equity_trades_count, 0) > 0 
+         AND COALESCE(fip.fi_trades_count, 0) > 0 
+         AND COALESCE(cmdp.cmd_trades_count, 0) > 0 THEN 'MULTI_ASSET'
+        WHEN COALESCE(ep.equity_trades_count, 0) > 0 
+         AND (COALESCE(fip.fi_trades_count, 0) > 0 OR COALESCE(cmdp.cmd_trades_count, 0) > 0) THEN 'BALANCED'
+        WHEN COALESCE(ep.equity_trades_count, 0) > 0 THEN 'EQUITY_FOCUSED'
+        WHEN COALESCE(fip.fi_trades_count, 0) > 0 THEN 'FI_FOCUSED'
+        WHEN COALESCE(cmdp.cmd_trades_count, 0) > 0 THEN 'COMMODITY_FOCUSED'
+        ELSE 'CASH_ONLY'
     END as PORTFOLIO_TYPE,
     
     -- Metadata
@@ -487,12 +658,18 @@ SELECT
 
 FROM cash_performance cp
 FULL OUTER JOIN equity_performance ep ON cp.ACCOUNT_ID = ep.ACCOUNT_ID
-LEFT JOIN current_balances cb ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID) = cb.ACCOUNT_ID
-LEFT JOIN current_positions pos ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID) = pos.ACCOUNT_ID
+FULL OUTER JOIN fixed_income_performance fip ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID) = fip.ACCOUNT_ID
+FULL OUTER JOIN commodity_performance cmdp ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID) = cmdp.ACCOUNT_ID
+LEFT JOIN current_balances cb ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) = cb.ACCOUNT_ID
+LEFT JOIN current_equity_positions ceqp ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) = ceqp.ACCOUNT_ID
+LEFT JOIN current_fi_positions cfip ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) = cfip.ACCOUNT_ID
+LEFT JOIN current_cmd_positions ccmdp ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) = ccmdp.ACCOUNT_ID
 LEFT JOIN AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.ACCA_AGG_DT_ACCOUNTS acc 
-    ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID) = acc.ACCOUNT_ID
+    ON COALESCE(cp.ACCOUNT_ID, ep.ACCOUNT_ID, fip.ACCOUNT_ID, cmdp.ACCOUNT_ID) = acc.ACCOUNT_ID
 WHERE COALESCE(cb.starting_cash_balance, 0) > 0 
    OR COALESCE(ep.total_invested_chf, 0) > 0
+   OR COALESCE(fip.fi_total_invested_chf, 0) > 0
+   OR COALESCE(cmdp.cmd_total_invested_chf, 0) > 0
 ORDER BY TOTAL_PORTFOLIO_VALUE_CHF DESC;
 
 -- ============================================================

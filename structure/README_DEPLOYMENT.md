@@ -16,15 +16,20 @@ structure/
 ├── 030_PAYI.sql               # PAY Raw: Payment Transactions
 ├── 031_ICGI.sql               # PAY Raw: SWIFT ISO20022 Message Processing
 ├── 040_EQTI.sql               # EQT Raw: Equity Trading
+├── 050_FIII.sql               # FII Raw: Fixed Income Trading (NEW)
+├── 055_CMDI.sql               # CMD Raw: Commodity Trading (NEW)
 ├── 060_LOAI.sql               # LOA Raw: Loan & Document Processing
 ├── 310_CRMA.sql               # CRM Agg: Customer Address Aggregation (SCD Type 2)
 ├── 311_ACCA.sql               # CRM Agg: Account Aggregation Layer
 ├── 330_PAYA.sql               # PAY Agg: Payment Anomaly Detection & Account Balances
 ├── 331_ICGA.sql               # PAY Agg: SWIFT Message Aggregation
 ├── 340_EQTA.sql               # EQT Agg: Equity Trading Aggregation & Analytics
+├── 350_FIIA.sql               # FII Agg: Fixed Income Aggregation & Analytics (NEW)
+├── 355_CMDA.sql               # CMD Agg: Commodity Aggregation & Analytics (NEW)
 ├── 500_REPP.sql               # REP Agg: Core Reporting & Analytics
 ├── 510_REPP_EQUITY.sql        # REP Agg: Equity Trading Reporting
 ├── 520_REPP_CREDIT_RISK.sql   # REP Agg: Credit Risk & IRB Reporting
+├── 525_REPP_FRTB.sql          # REP Agg: FRTB Market Risk Reporting (NEW)
 ├── 530_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
 └── README_DEPLOYMENT.md       # This deployment guide
 ```
@@ -36,8 +41,8 @@ structure/
 | **Layer**                           | **Schemas**                                                                  | **Schema Object - Prefixes** <br/> (Tables / View / ...)         |
 |-------------------------------------|------------------------------------------------------------------------------|------------------------------------------------------------------|
 | **🟢 DAP** <br/> Data Products      |                                                                |                                                             |
-| **🟡 AGG** <br/> Aggregation Layer  | CRM_AGG_001<br/>PAY_AGG_001<br/>REP_AGG_001                 | CRMA_<br/>ACCA_<br/>PAYA_<br/>ICGA_<br/>REPP_                     |
-| **🔴 RAW** <br/> RAW / Landing zone | CRM_RAW_001<br/>REF_RAW_001<br/>PAY_RAW_001<br/>EQT_RAW_001 | CRMI_<br/>ACCI_<br/>REFI_<br/>PAYI_<br/>EQTI_<br/>ICGI_ |
+| **🟡 AGG** <br/> Aggregation Layer  | CRM_AGG_001<br/>PAY_AGG_001<br/>EQT_AGG_001<br/>FII_AGG_001<br/>CMD_AGG_001<br/>REP_AGG_001 | CRMA_<br/>ACCA_<br/>PAYA_<br/>ICGA_<br/>EQTA_<br/>FIIA_<br/>CMDA_<br/>REPP_ |
+| **🔴 RAW** <br/> RAW / Landing zone | CRM_RAW_001<br/>REF_RAW_001<br/>PAY_RAW_001<br/>EQT_RAW_001<br/>FII_RAW_001<br/>CMD_RAW_001 | CRMI_<br/>ACCI_<br/>REFI_<br/>PAYI_<br/>EQTI_<br/>ICGI_<br/>FIII_<br/>CMDI_ |
 
 
 
@@ -183,7 +188,52 @@ structure/
 - **Streams**: `EQTI_STREAM_TRADES_FILES`
 - **Tasks**: `EQTI_TASK_LOAD_TRADES`
 
-### 7. SWIFT ISO20022 Message Processing
+### 7. Fixed Income Trading (FRTB)
+**Business Domain**: `FII`
+
+```sql
+-- Execute seventh: Fixed income trades (bonds and swaps)
+@050_FIII.sql
+```
+
+**Objects Created:**
+- **Schema**: `FII_RAW_001`
+- **Stages**: `FIII_STAGE`
+- **Tables**: `FIII_TRADES`
+- **Streams**: `FIII_TRADES_STREAM`
+- **Tasks**: `FIII_LOAD_TRADES_TASK` (serverless, 60 min)
+
+**Key Features:**
+- **Government Bonds**: Sovereign debt (CHF, EUR, USD, GBP)
+- **Corporate Bonds**: Investment grade and high yield with credit ratings
+- **Interest Rate Swaps**: SARON, EURIBOR, SOFR, SONIA
+- **FRTB Risk Metrics**: Duration, DV01, credit spreads, liquidity scores
+- **Automated Loading**: Serverless task for CSV ingestion
+
+### 8. Commodity Trading (FRTB)
+**Business Domain**: `CMD`
+
+```sql
+-- Execute eighth: Commodity trades (energy, metals, agricultural)
+@055_CMDI.sql
+```
+
+**Objects Created:**
+- **Schema**: `CMD_RAW_001`
+- **Stages**: `CMDI_STAGE`
+- **Tables**: `CMDI_TRADES`
+- **Streams**: `CMDI_TRADES_STREAM`
+- **Tasks**: `CMDI_LOAD_TRADES_TASK` (serverless, 60 min)
+
+**Key Features:**
+- **Energy**: Crude Oil (WTI, Brent), Natural Gas, Heating Oil
+- **Precious Metals**: Gold, Silver, Platinum, Palladium
+- **Base Metals**: Copper, Aluminum, Zinc, Nickel
+- **Agricultural**: Corn, Wheat, Soybeans, Coffee, Sugar
+- **FRTB Risk Metrics**: Delta, volatility, spot/forward prices, liquidity scores
+- **Physical Delivery**: Delivery month, location, and contract tracking
+
+### 9. SWIFT ISO20022 Message Processing
 **Business Domain**: `ICG` 
 
 ```sql
@@ -293,7 +343,51 @@ Execute after all raw layer schemas are deployed:
 - **Commission Analysis**: Commission rate tracking in basis points
 - **Settlement Tracking**: Settlement period analysis and monitoring
 
-### 13. Core Reporting & Analytics
+### 13. Fixed Income Aggregation & Analytics (FRTB)
+```sql
+-- Execute: Fixed income analytics
+@350_FIIA.sql
+```
+
+**Objects Created:**
+- **Schema**: `FII_AGG_001`
+- **Dynamic Tables** (5 tables):
+  - `FIIA_AGG_DT_TRADE_SUMMARY` - Enriched trade analytics with risk metrics
+  - `FIIA_AGG_DT_PORTFOLIO_POSITIONS` - Current holdings by customer/issuer
+  - `FIIA_AGG_DT_DURATION_ANALYSIS` - Interest rate risk metrics (duration, DV01)
+  - `FIIA_AGG_DT_CREDIT_EXPOSURE` - Credit risk by rating and issuer type
+  - `FIIA_AGG_DT_YIELD_CURVE` - Yield curve construction by currency
+
+**Key Features:**
+- **Interest Rate Risk**: Duration and DV01 analytics for rate sensitivity
+- **Credit Risk**: Exposure aggregation by credit rating and issuer
+- **Yield Curve**: Multi-currency yield curve construction
+- **Maturity Analysis**: Position bucketing by maturity (short/medium/long term)
+- **FRTB Compliance**: Risk metrics for Standardized Approach capital calculations
+
+### 14. Commodity Aggregation & Analytics (FRTB)
+```sql
+-- Execute: Commodity analytics
+@355_CMDA.sql
+```
+
+**Objects Created:**
+- **Schema**: `CMD_AGG_001`
+- **Dynamic Tables** (5 tables):
+  - `CMDA_AGG_DT_TRADE_SUMMARY` - Enriched trade analytics with risk metrics
+  - `CMDA_AGG_DT_PORTFOLIO_POSITIONS` - Current holdings by commodity type
+  - `CMDA_AGG_DT_DELTA_EXPOSURE` - Price risk exposure by commodity class
+  - `CMDA_AGG_DT_VOLATILITY_ANALYSIS` - Volatility metrics and regime classification
+  - `CMDA_AGG_DT_DELIVERY_SCHEDULE` - Physical delivery tracking and logistics
+
+**Key Features:**
+- **Delta Risk**: Price sensitivity aggregation by commodity class
+- **Volatility Analysis**: Volatility regime classification (LOW/NORMAL/HIGH/EXTREME)
+- **Physical Delivery**: Delivery obligation tracking for futures and forwards
+- **Concentration Risk**: Position concentration analysis by commodity type
+- **FRTB Compliance**: Risk metrics for Standardized Approach capital calculations
+
+### 15. Core Reporting & Analytics
 ```sql
 -- Execute: Core reporting tables
 @500_REPP.sql
@@ -378,6 +472,36 @@ Execute after all raw layer schemas are deployed:
 - **Performance Classification**: Automated performance categorization
 - **Wealth Management**: Client reporting and advisory analytics
 
+### 19. FRTB Market Risk Reporting
+```sql
+-- Execute: FRTB market risk capital calculations
+@525_REPP_FRTB.sql
+```
+
+**Objects Created:**
+- **Schema**: `REP_AGG_001`
+- **Dynamic Tables** (4 tables):
+  - `REPP_AGG_DT_FRTB_RISK_POSITIONS` - Consolidated positions by risk class
+  - `REPP_AGG_DT_FRTB_SENSITIVITIES` - Delta/Vega/Curvature sensitivities
+  - `REPP_AGG_DT_FRTB_CAPITAL_CHARGES` - SA capital charges by risk bucket
+  - `REPP_AGG_DT_FRTB_NMRF_ANALYSIS` - Non-Modellable Risk Factor identification
+
+**Key Features:**
+- **FRTB Standardized Approach**: Basel III/IV compliant capital calculations
+- **Multi-Asset Coverage**: Equity, FX, Interest Rate, Commodity, Credit Spread
+- **Risk Sensitivities**: Delta, Vega, and Curvature risk aggregation
+- **Capital Requirements**: Risk-weighted capital charges by risk bucket
+- **NMRF Identification**: Illiquid position identification and capital add-ons
+- **Risk Bucketing**: Granular risk classification per FRTB framework
+- **Regulatory Reporting**: Ready for Basel III/IV compliance reporting
+
+**FRTB Risk Classes:**
+1. **Equity Risk** - Delta from equity positions (25% risk weight)
+2. **FX Risk** - Delta from multi-currency exposures (15% risk weight)
+3. **Interest Rate Risk** - Delta and DV01 from bonds/swaps (1.5-3% risk weight)
+4. **Commodity Risk** - Delta from commodities (20-35% risk weight by type)
+5. **Credit Spread Risk** - From corporate bonds (2-6% risk weight by rating)
+
 ## Schema Architecture
 
 ### RAW LAYER (Data Ingestion)
@@ -385,19 +509,21 @@ Execute after all raw layer schemas are deployed:
 |----------------|----------------------------------|----------------------------------------------------------------|------------------------|
 | `CRM_RAW_001`  | Customer Master & Exposed Person | CRMI_PARTY, CRMI_ADDRESSES, CRMI_EXPOSED_PERSON, ACCI_ACCOUNTS | Stream-triggered tasks |
 | `REF_RAW_001`  | Reference Data                   | REFI_FX_RATES                                                  | Stream-triggered tasks |
-| `PAY_RAW_001`  | Payment Transactions             | PAYI_TRANSACTIONS                                              | Stream-triggered tasks |
+| `PAY_RAW_001`  | Payment Transactions & SWIFT     | PAYI_TRANSACTIONS, ICGI_RAW_SWIFT_MESSAGES                     | Stream-triggered tasks |
 | `EQT_RAW_001`  | Equity Trading                   | EQTI_TRADES                                                    | Stream-triggered tasks |
-| `PAY_RAW_001` | SWIFT Messages                   | ICGI_RAW_SWIFT_MESSAGES                                        | Stream-triggered tasks |
+| `FII_RAW_001`  | Fixed Income Trading             | FIII_TRADES                                                    | Serverless tasks (60 min) |
+| `CMD_RAW_001`  | Commodity Trading                | CMDI_TRADES                                                    | Serverless tasks (60 min) |
 
 ### AGGREGATION LAYER (Business Logic)
-| Schema         | Purpose            | Key Objects                                            | Refresh Strategy      |
-|----------------|--------------------|--------------------------------------------------------|-----------------------|
-| `CRM_AGG_001`  | Customer Analytics | Address SCD Type 2, Customer 360°, Account aggregation | 1-hour dynamic tables |
-| `REF_AGG_001`  | Reference Analytics | FX rates with analytics and volatility metrics        | 1-hour dynamic tables |
-| `PAY_AGG_001`  | Payment Analytics  | Anomaly detection, Account balances with FX            | 1-hour dynamic tables |
-| `PAY_AGG_001` | SWIFT Processing   | Parsed SWIFT messages and payment lifecycle analytics (ICGA_ prefix objects)  | 1-hour dynamic tables |
-| `EQT_AGG_001`  | Equity Analytics   | Trade summaries, portfolio positions, customer activity | 1-hour dynamic tables |
-| `REP_AGG_001`  | Reporting          | Customer summaries, transaction analytics, equity reports, IRB metrics, portfolio performance | 1-hour dynamic tables |
+| Schema         | Purpose                  | Key Objects                                            | Refresh Strategy      |
+|----------------|--------------------------|--------------------------------------------------------|-----------------------|
+| `CRM_AGG_001`  | Customer Analytics       | Address SCD Type 2, Customer 360°, Account aggregation | 1-hour dynamic tables |
+| `REF_AGG_001`  | Reference Analytics      | FX rates with analytics and volatility metrics         | 1-hour dynamic tables |
+| `PAY_AGG_001`  | Payment Analytics        | Anomaly detection, Account balances, SWIFT processing  | 1-hour dynamic tables |
+| `EQT_AGG_001`  | Equity Trading Analytics | Portfolio positions, Trade summary, Customer activity  | 1-hour dynamic tables |
+| `FII_AGG_001`  | Fixed Income Analytics   | Duration/DV01, Credit exposure, Yield curve            | 1-hour dynamic tables |
+| `CMD_AGG_001`  | Commodity Analytics      | Delta exposure, Volatility, Delivery schedule          | 1-hour dynamic tables |
+| `REP_AGG_001`  | Reporting & FRTB         | Cross-domain reporting, FRTB capital calculations      | 1-hour dynamic tables |
 
 ##  Advanced Features
 

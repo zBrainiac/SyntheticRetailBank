@@ -90,9 +90,9 @@ class FileGenerator:
         print("\nGenerating FX rates...")
         fx_generator = FXRateGenerator(self.config)
         fx_rates = fx_generator.generate_fx_rates()
-        fx_file = fx_generator.save_fx_rates_to_csv(fx_rates, str(self.fx_rates_dir))
+        files_created = fx_generator.save_fx_rates_to_csv_by_date(fx_rates, str(self.fx_rates_dir))
         print(f"Generated {len(fx_rates)} FX rate records")
-        print(f"FX rates saved to: {fx_file}")
+        print(f"FX rates saved to: {self.fx_rates_dir} ({len(files_created)} files, one per date)")
         
         # Generate transactions
         print("\nGenerating transaction data...")
@@ -175,7 +175,8 @@ class FileGenerator:
             "customer_file": str(customer_file),
             "address_file": str(address_file),
             "account_file": account_file,
-            "fx_file": fx_file,
+            "fx_files": files_created,
+            "fx_file_count": len(files_created),
             "daily_files": daily_files,
             "summary_file": summary_file,
             "total_customers": len(customers),

@@ -75,7 +75,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_CUSTOMER_RATINGS(
     TOTAL_EXPOSURE_CHF COMMENT 'Total credit exposure across all facilities in CHF',
     SECURED_EXPOSURE_CHF COMMENT 'Secured portion of exposure with collateral',
     UNSECURED_EXPOSURE_CHF COMMENT 'Unsecured exposure without collateral'
-) COMMENT = 'IRB customer-level credit ratings and risk parameters for Basel III/IV regulatory capital calculation and credit risk management'
+) COMMENT = 'Basel III/IV Individual Credit Risk Parameters: To assign and store the key Internal Ratings Based (IRB) metrics—PD (Probability of Default), LGD (Loss Given Default), EAD (Exposure at Default)—at the customer level.
+Credit Risk/Regulatory Capital: The foundational table for Basel III/IV compliance. These parameters are used directly to calculate Risk Weighted Assets (RWA) and Expected Loss (EL) for regulatory capital requirement reporting.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -174,7 +175,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_PORTFOLIO_METRICS(
     COLLATERAL_COVERAGE_RATIO COMMENT 'Secured exposure as % of total exposure',
     VINTAGE_MONTHS COMMENT 'Average customer vintage in months for maturity analysis',
     CONCENTRATION_RISK_SCORE COMMENT 'Portfolio concentration risk score (1-10 scale)'
-) COMMENT = 'IRB portfolio-level risk metrics aggregated by segment and rating for regulatory capital calculation and risk management'
+) COMMENT = 'Basel III/IV Portfolio RWA and EL Calculation: To aggregate the customer IRB parameters by portfolio segment and rating bucket, directly calculating the portfolios RWA, Expected Loss (EL), and Capital Requirement.
+Credit Risk/Regulatory Capital: Provides the aggregated figures necessary for official Basel III/IV capital reporting. Tracks default rates, watch list rates, and collateral coverage for portfolio-level risk oversight.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -275,7 +277,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_RWA_SUMMARY(
     RETAIL_RWA_CHF COMMENT 'Retail portfolio Risk Weighted Assets in CHF',
     CORPORATE_RWA_CHF COMMENT 'Corporate portfolio Risk Weighted Assets in CHF',
     SME_RWA_CHF COMMENT 'SME portfolio Risk Weighted Assets in CHF'
-) COMMENT = 'IRB Risk Weighted Assets summary for regulatory capital reporting and Basel III/IV compliance monitoring'
+) COMMENT = 'Basel III/IV Top-Level Capital Reporting: To provide the highest-level summary of the banks credit risk profile, including total RWA, total capital requirement, and simulated regulatory ratios (e.g., Tier 1, Total Capital, Leverage Ratio).
+Regulatory Reporting/Executive Management: The executive dashboard for Basel III/IV compliance, offering an immediate view of capital adequacy against minimum regulatory thresholds.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -320,7 +323,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_RISK_TRENDS(
     MODEL_PERFORMANCE_SCORE COMMENT 'PD model performance score (1-10, 10=best)',
     BACKTESTING_ACCURACY COMMENT 'Model backtesting accuracy (%) against actual defaults',
     STRESS_TEST_MULTIPLIER COMMENT 'Stress testing multiplier applied to base PD'
-) COMMENT = 'IRB risk parameter trends and model validation metrics for ongoing model performance monitoring and regulatory compliance'
+) COMMENT = 'Credit Model Validation and Performance Monitoring: To track the historical trends of key IRB risk parameters (Avg PD, Avg LGD, RWA) and critical model performance metrics (e.g., Backtesting Accuracy, Model Performance Score).
+Model Risk Management: Crucial for ongoing IRB model validation, ensuring the PD/LGD/EAD models remain calibrated and accurate as required by Basel regulations, and tracking rating migrations.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT

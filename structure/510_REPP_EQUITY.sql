@@ -63,7 +63,9 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_SUMMARY(
     AVG_TRADE_SIZE_CHF COMMENT 'Average trade size for customer profiling',
     FIRST_TRADE_DATE COMMENT 'First trading activity date',
     LAST_TRADE_DATE COMMENT 'Most recent trading activity date'
-) COMMENT = 'Equity trading summary by customer for portfolio analysis and risk management'
+) COMMENT = 'Customer Equity Trading Performance: To summarize the trading activity and profitability (via net position and commissions) for each customer and account.	
+Brokerage/CRM: Measures customer engagement and revenue generation (commissions). 
+Risk: Monitors net market position (buyer/seller) for risk exposure at the client level.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -98,7 +100,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_POSITIONS(
     MIN_PRICE COMMENT 'Lowest trading price observed',
     MAX_PRICE COMMENT 'Highest trading price observed',
     LAST_TRADE_DATE COMMENT 'Most recent trading date for this security'
-) COMMENT = 'Equity position summary by security for market risk analysis and concentration monitoring'
+) COMMENT = 'Concentration Risk and Market Exposure by Security: To track the aggregate net position (long/short) for every traded security across all customers.
+Market Risk: Identifies securities where the banks customers have high volume or concentrated positions, which could impact liquidity and require capital provisioning.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -128,7 +131,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE(
     MAX_FX_RATE COMMENT 'Maximum FX rate observed',
     UNIQUE_CUSTOMERS COMMENT 'Number of customers trading in this currency',
     UNIQUE_SYMBOLS COMMENT 'Number of different securities traded in this currency'
-) COMMENT = 'Equity trading currency exposure analysis for FX risk management and portfolio diversification monitoring'
+) COMMENT = 'FX Risk from Foreign Equity Trading: To measure the currency exposure generated specifically by trading securities denominated in non-base currencies.	
+Market Risk/Treasury: Isolates the FX risk component of the trading book, ensuring accurate currency hedging and compliance with non-base currency exposure limits.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -158,7 +162,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES(
     CHF_VALUE COMMENT 'Trade value in CHF for threshold monitoring',
     MARKET COMMENT 'Market/exchange where trade was executed',
     VENUE COMMENT 'Trading venue for best execution analysis'
-) COMMENT = 'High-value equity trades (>100k CHF) for compliance monitoring and large exposure tracking'
+) COMMENT = 'Large Trade Compliance Monitoring: To filter and track all equity trades exceeding a significant value threshold (e.g., 100k CHF).	
+Compliance/Audit: Essential for compliance monitoring to detect potential market manipulation, front-running, or unauthorized large trading activity that requires immediate review and audit trail maintenance.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT

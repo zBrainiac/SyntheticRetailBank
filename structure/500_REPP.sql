@@ -60,7 +60,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY(
     AVG_TRANSACTION_AMOUNT COMMENT 'Average transaction size for customer profiling',
     MAX_TRANSACTION_AMOUNT COMMENT 'Largest single transaction for risk assessment',
     ANOMALOUS_TRANSACTIONS COMMENT 'Count of transactions with suspicious patterns'
-) COMMENT = 'Comprehensive customer profiling with transaction statistics for relationship management, risk assessment, and business intelligence'
+) COMMENT = 'Customer 360° Profile and Relationship Risk Assessment (CDD): To provide a consolidated, holistic view of a customer by linking personal details with aggregated transactional behavior (volume, value, account diversity).
+Compliance/CDD/KYC: Used for ongoing Customer Due Diligence, monitoring relationship health, and flagging customers with anomalous behavior (HAS_ANOMALY). Risk: Identifies risk exposure through multi-currency holdings and maximum transaction size.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -92,7 +93,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY(
     OUTGOING_COUNT COMMENT 'Number of outgoing/debit transactions',
     ANOMALOUS_COUNT COMMENT 'Daily suspicious transaction count',
     CURRENCY_COUNT COMMENT 'Number of different currencies traded daily'
-) COMMENT = 'Daily transaction volume and pattern analysis for operational metrics, trend monitoring, and business intelligence reporting'
+) COMMENT = 'Operational Performance and Daily Liquidity Metrics: To monitor the banks daily activity, transaction volume, and flow (incoming vs. outgoing). This tracks the general health of the payment system and customer engagement.
+Operations/Liquidity: Monitors daily transaction counts for system capacity planning. Compliance: Tracks daily count of anomalous transactions for Suspicious Activity Monitoring.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -119,7 +121,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT(
     MIN_FX_RATE COMMENT 'Minimum exchange rate observed (placeholder)',
     MAX_FX_RATE COMMENT 'Maximum exchange rate observed (placeholder)',
     UNIQUE_CUSTOMERS COMMENT 'Number of customers with exposure to this currency'
-) COMMENT = 'Current foreign exchange exposure monitoring for risk management and regulatory reporting of non-CHF currency positions'
+) COMMENT = 'Foreign Exchange (FX) Risk Monitoring (Spot): To provide a current, aggregated view of the banks non-base currency transaction exposure. Used to manage the net open position risk across all currencies.
+Market Risk: Measures FX exposure for compliance with internal limits and external regulatory requirements (e.g., assessing large single currency positions).'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -160,7 +163,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY(
     GROWTH_RATE_30D_PERCENT COMMENT '30-day growth rate percentage for trend monitoring',
     DAILY_VOLUME_CATEGORY COMMENT 'Daily transaction volume risk classification',
     DAILY_EXPOSURE_CATEGORY COMMENT 'Daily exposure amount risk classification'
-) COMMENT = 'Historical foreign exchange exposure analysis with rolling trends for market risk management and business intelligence'
+) COMMENT = 'FX Market Trend and Volatility Analysis: To provide a time series of currency exposure, including 7-day rolling totals and 30-day growth rates. This enables sophisticated analysis of market risk trends.
+Market Risk/Treasury: Used for analyzing currency volatility, forecasting future liquidity needs, and classifying exposure into high, medium, and low categories for risk appetite adherence.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -247,7 +251,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE(
     BACKDATED_SETTLEMENTS COMMENT 'Backdated settlements (compliance risk)',
     SETTLEMENT_RISK_LEVEL COMMENT 'Overall settlement risk classification',
     SETTLEMENT_TIMING_TYPE COMMENT 'Settlement timing pattern for operational planning'
-) COMMENT = 'Settlement timing and liquidity risk analysis for treasury management and operational risk monitoring'
+) COMMENT = 'Settlement Timing and Liquidity Risk Analysis: To analyze the timing of fund settlements (VALUE_DATE vs. BOOKING_DATE) for non-base currencies. It focuses on the settlement lag to manage liquidity and operational risk. 
+Operational Risk/Treasury: Flags transactions with high settlement risk (delayed or backdated) which are critical for operational stability, liquidity planning, and identifying potential non-compliance patterns.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -302,7 +307,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_ANOMALY_ANALYSIS(
     ANOMALY_PERCENTAGE COMMENT 'Percentage of anomalous activity',
     ANOMALOUS_AMOUNT COMMENT 'Total value of suspicious transactions',
     ANOMALY_TYPES COMMENT 'Types of anomalies detected for investigation'
-) COMMENT = 'Customer-level anomaly analysis for compliance monitoring, AML investigation, and suspicious activity reporting'
+) COMMENT = 'Customer-level anomaly analysis for compliance monitoring, AML investigation, and suspicious activity reporting.
+Compliance/AML: Directly supports Anti-Money Laundering operations by identifying and prioritizing high-risk customers for further AML investigation and the generation of Suspicious Activity Reports (SARs).'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -334,7 +340,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_RISK_PATTERNS(
     DIRECTION COMMENT 'Transaction flow direction (IN/OUT)',
     DESCRIPTION COMMENT 'Transaction description text for analysis',
     RISK_CATEGORY COMMENT 'Primary risk classification for compliance review (HIGH_AMOUNT/ANOMALOUS/OFFSHORE/CRYPTO/etc.)',
-    SETTLEMENT_DAYS COMMENT 'Number of days between booking and settlement'
+    SETTLEMENT_DAYS COMMENT 'Transaction Surveillance Hot List for Compliance: To create a focused list of individual transactions that breach pre-defined risk thresholds (e.g., high-amount, off-hours, offshore, crypto, backdated settlements).	
+    Compliance/Sanctions: Serves as the primary feed for transaction surveillance and compliance review. It uses explicit risk categories (HIGH_AMOUNT, ANOMALOUS, OFFSHORE) to expedite the investigation process.'
 ) TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT
@@ -384,7 +391,8 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_SETTLEMENT_ANALYSIS(
     SAME_DAY_COUNT COMMENT 'Same-day settlements',
     NEXT_DAY_COUNT COMMENT 'Next business day settlements',
     T_PLUS_2_3_COUNT COMMENT 'Standard settlement period transactions'
-) COMMENT = 'Settlement timing and operational risk analysis for treasury management and liquidity planning'
+) COMMENT = 'Aggregated Operational Settlement Analysis: To provide a view of overall settlement efficiency by grouping transactions based on the number of settlement days.
+Operations/Liquidity: Used to manage and improve payment processing efficiency, tracking the volume of same-day, next-day, and delayed settlements. Critical for monitoring compliance with real-time or T+X settlement mandates.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT

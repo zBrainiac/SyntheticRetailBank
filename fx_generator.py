@@ -175,6 +175,61 @@ class FXRateGenerator:
         
         return filename
     
+    def save_fx_rates_to_csv_by_date(self, fx_rates: List[FXRate], output_dir: str) -> List[Tuple[str, int, str]]:
+        """
+        Save FX rates to separate CSV files grouped by date
+        
+        Args:
+            fx_rates: List of FXRate objects
+            output_dir: Directory where date-specific CSV files will be saved
+        
+        Returns:
+            List of tuples (date, count, filename)
+        """
+        from collections import defaultdict
+        from pathlib import Path
+        
+        if not fx_rates:
+            print("No FX rates to save")
+            return []
+        
+        # Create output directory
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Group rates by date
+        rates_by_date = defaultdict(list)
+        for fx_rate in fx_rates:
+            rate_date = fx_rate.date.strftime("%Y-%m-%d")
+            rates_by_date[rate_date].append(fx_rate)
+        
+        # Field names for CSV
+        fieldnames = ["date", "from_currency", "to_currency", "mid_rate", "bid_rate", "ask_rate"]
+        
+        # Save each date to a separate file
+        files_created = []
+        for rate_date, date_rates in sorted(rates_by_date.items()):
+            filename = f"{output_dir}/fx_rates_{rate_date}.csv"
+            
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for fx_rate in date_rates:
+                    writer.writerow({
+                        "date": fx_rate.date.strftime("%Y-%m-%d"),
+                        "from_currency": fx_rate.from_currency,
+                        "to_currency": fx_rate.to_currency,
+                        "mid_rate": fx_rate.rate,
+                        "bid_rate": fx_rate.bid_rate,
+                        "ask_rate": fx_rate.ask_rate
+                    })
+            
+            files_created.append((rate_date, len(date_rates), filename))
+            print(f"  ✓ fx_rates_{rate_date}.csv: {len(date_rates)} rates")
+        
+        print(f"\n✓ Saved {len(fx_rates)} FX rates across {len(files_created)} files in {output_dir}")
+        return files_created
+    
     def get_fx_rate(self, fx_rates: List[FXRate], date: datetime, 
                    from_currency: str, to_currency: str) -> float:
         """Get FX rate for a specific date and currency pair"""

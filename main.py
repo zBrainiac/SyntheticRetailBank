@@ -23,6 +23,8 @@ from swift_generator import SWIFTGenerator
 from pep_generator import PEPGenerator
 from mortgage_email_generator import MortgageEmailGenerator
 from address_update_generator import AddressUpdateGenerator
+from fixed_income_generator import FixedIncomeTradeGenerator
+from commodity_generator import CommodityTradeGenerator
 
 
 def parse_arguments():
@@ -56,6 +58,9 @@ Examples:
   Generate all artifacts (banking data, SWIFT, PEP, mortgage emails, address updates):
     python main.py --customers 50 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --clean
 
+  Generate complete dataset with FRTB market risk data:
+    python main.py --customers 100 --generate-swift --generate-pep --generate-fixed-income --generate-commodities --clean
+
   Generate PEP data only:
     python main.py --generate-pep --pep-records 100
 
@@ -64,6 +69,12 @@ Examples:
 
   Generate address updates for SCD Type 2:
     python main.py --generate-address-updates --address-update-files 8
+
+  Generate fixed income trades (bonds & swaps):
+    python main.py --generate-fixed-income --fixed-income-trades 1000 --bond-swap-ratio 0.7
+
+  Generate commodity trades:
+    python main.py --generate-commodities --commodity-trades 500
         """
     )
     
@@ -230,6 +241,41 @@ Examples:
         help="Number of address updates per file (default: 5-15%% of customers)"
     )
     
+    # Fixed income generation options
+    parser.add_argument(
+        "--generate-fixed-income",
+        action="store_true",
+        help="Generate fixed income trades (bonds and swaps)"
+    )
+    
+    parser.add_argument(
+        "--fixed-income-trades",
+        type=int,
+        default=1000,
+        help="Number of fixed income trades to generate (default: 1000)"
+    )
+    
+    parser.add_argument(
+        "--bond-swap-ratio",
+        type=float,
+        default=0.7,
+        help="Ratio of bonds to swaps (default: 0.7 = 70%% bonds, 30%% swaps)"
+    )
+    
+    # Commodity generation options
+    parser.add_argument(
+        "--generate-commodities",
+        action="store_true",
+        help="Generate commodity trades (energy, metals, agricultural)"
+    )
+    
+    parser.add_argument(
+        "--commodity-trades",
+        type=int,
+        default=500,
+        help="Number of commodity trades to generate (default: 500)"
+    )
+    
     return parser.parse_args()
 
 
@@ -363,7 +409,7 @@ def main():
             print(f"  {results['customer_file']}")
             print(f"  {results['address_file']}")
             print(f"  {results['account_file']}")
-            print(f"  {results['fx_file']}")
+            print(f"  FX rates: {results['fx_file_count']} files (one per date)")
             for daily_file in results['daily_files'][:5]:  # Show first 5 files
                 print(f"  {daily_file}")
             if len(results['daily_files']) > 5:
@@ -524,6 +570,202 @@ def main():
                     import traceback
                     traceback.print_exc()
         
+        # Generate fixed income trades if requested
+        fixed_income_results = None
+        if args.generate_fixed_income:
+            try:
+                print("\n" + "=" * 80)
+                print("FIXED INCOME TRADE GENERATION (BONDS & SWAPS)")
+                print("=" * 80)
+                
+                # Load customer IDs from results
+                customer_ids = [f"CUST_{str(i+1).zfill(5)}" for i in range(results['total_customers'])]
+                
+                # Load account data from results (use investment accounts for fixed income)
+                import csv
+                account_file_path = Path(config.output_directory) / "master_data" / "accounts.csv"
+                investment_accounts = []
+                with open(account_file_path, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row['account_type'] == 'INVESTMENT':
+                            investment_accounts.append({
+                                'account_id': row['account_id'],
+                                'customer_id': row['customer_id'],
+                                'base_currency': row['base_currency']
+                            })
+                
+                if not investment_accounts:
+                    print("⚠️  No investment accounts found. Skipping fixed income generation.")
+                    print("   Tip: Increase --customers to get more investment accounts.")
+                    raise ValueError("No investment accounts available for fixed income trading")
+                
+                # Build FX rates dictionary from all date files
+                fx_rates_dict = {'CHF': 1.0}  # Base currency
+                fx_rates_dir = Path(config.output_directory) / "fx_rates"
+                
+                # Read all FX rate files (fx_rates_YYYY-MM-DD.csv)
+                fx_files = sorted(fx_rates_dir.glob("fx_rates_*.csv"))
+                if not fx_files:
+                    # Fallback to old single file format if it exists
+                    old_fx_file = fx_rates_dir / "fx_rates.csv"
+                    if old_fx_file.exists():
+                        fx_files = [old_fx_file]
+                
+                for fx_file in fx_files:
+                    with open(fx_file, 'r') as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            if row['to_currency'] == 'CHF':
+                                # Keep the most recent rate for each currency
+                                fx_rates_dict[row['from_currency']] = float(row['mid_rate'])
+                
+                # Initialize fixed income generator
+                fi_generator = FixedIncomeTradeGenerator(
+                    customers=customer_ids,
+                    accounts=investment_accounts,
+                    fx_rates=fx_rates_dict,
+                    start_date=config.start_date.date(),
+                    end_date=config.end_date.date()
+                )
+                
+                # Generate trades
+                fi_trades = fi_generator.generate_trades(
+                    num_trades=args.fixed_income_trades,
+                    bond_swap_ratio=args.bond_swap_ratio
+                )
+                
+                # Save to CSV
+                fi_output_dir = Path(config.output_directory) / "fixed_income_trades"
+                fi_output_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Save to separate files by date
+                files_created = fi_generator.save_to_csv_by_date(fi_trades, fi_output_dir)
+                
+                # Calculate statistics
+                bond_count = sum(1 for t in fi_trades if t.instrument_type == 'BOND')
+                swap_count = sum(1 for t in fi_trades if t.instrument_type == 'IRS')
+                total_notional = sum(t.base_gross_amount for t in fi_trades)
+                
+                fixed_income_results = {
+                    'total_trades': len(fi_trades),
+                    'bonds': bond_count,
+                    'swaps': swap_count,
+                    'total_notional_chf': total_notional,
+                    'output_dir': str(fi_output_dir),
+                    'files_created': len(files_created)
+                }
+                
+                print(f"✅ Generated {len(fi_trades)} fixed income trades")
+                print(f"   - Bonds: {bond_count}")
+                print(f"   - Interest Rate Swaps: {swap_count}")
+                print(f"   - Total Notional: CHF {total_notional:,.2f}")
+                print(f"📁 Fixed income directory: {fi_output_dir}")
+                print(f"📄 Files created: {len(files_created)}")
+                
+            except Exception as e:
+                print(f"\n❌ Fixed income generation failed: {str(e)}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+        
+        # Generate commodity trades if requested
+        commodity_results = None
+        if args.generate_commodities:
+            try:
+                print("\n" + "=" * 80)
+                print("COMMODITY TRADE GENERATION (ENERGY, METALS, AGRICULTURAL)")
+                print("=" * 80)
+                
+                # Load customer IDs from results
+                customer_ids = [f"CUST_{str(i+1).zfill(5)}" for i in range(results['total_customers'])]
+                
+                # Load account data from results (use investment accounts for commodities)
+                import csv
+                account_file_path = Path(config.output_directory) / "master_data" / "accounts.csv"
+                investment_accounts = []
+                with open(account_file_path, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row['account_type'] == 'INVESTMENT':
+                            investment_accounts.append({
+                                'account_id': row['account_id'],
+                                'customer_id': row['customer_id'],
+                                'base_currency': row['base_currency']
+                            })
+                
+                if not investment_accounts:
+                    print("⚠️  No investment accounts found. Skipping commodity generation.")
+                    print("   Tip: Increase --customers to get more investment accounts.")
+                    raise ValueError("No investment accounts available for commodity trading")
+                
+                # Build FX rates dictionary from all date files
+                fx_rates_dict = {'CHF': 1.0}  # Base currency
+                fx_rates_dir = Path(config.output_directory) / "fx_rates"
+                
+                # Read all FX rate files (fx_rates_YYYY-MM-DD.csv)
+                fx_files = sorted(fx_rates_dir.glob("fx_rates_*.csv"))
+                if not fx_files:
+                    # Fallback to old single file format if it exists
+                    old_fx_file = fx_rates_dir / "fx_rates.csv"
+                    if old_fx_file.exists():
+                        fx_files = [old_fx_file]
+                
+                for fx_file in fx_files:
+                    with open(fx_file, 'r') as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            if row['to_currency'] == 'CHF':
+                                # Keep the most recent rate for each currency
+                                fx_rates_dict[row['from_currency']] = float(row['mid_rate'])
+                
+                # Initialize commodity generator
+                commodity_generator = CommodityTradeGenerator(
+                    customers=customer_ids,
+                    accounts=investment_accounts,
+                    fx_rates=fx_rates_dict,
+                    start_date=config.start_date.date(),
+                    end_date=config.end_date.date()
+                )
+                
+                # Generate trades
+                commodity_trades = commodity_generator.generate_trades(num_trades=args.commodity_trades)
+                
+                # Save to CSV
+                commodity_output_dir = Path(config.output_directory) / "commodity_trades"
+                commodity_output_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Save to separate files by date
+                files_created = commodity_generator.save_to_csv_by_date(commodity_trades, commodity_output_dir)
+                
+                # Calculate statistics
+                commodity_types = {}
+                for trade in commodity_trades:
+                    commodity_types[trade.commodity_type] = commodity_types.get(trade.commodity_type, 0) + 1
+                
+                total_value = sum(abs(t.base_gross_amount) for t in commodity_trades)
+                
+                commodity_results = {
+                    'total_trades': len(commodity_trades),
+                    'commodity_types': commodity_types,
+                    'total_value_chf': total_value,
+                    'output_dir': str(commodity_output_dir),
+                    'files_created': len(files_created)
+                }
+                
+                print(f"✅ Generated {len(commodity_trades)} commodity trades")
+                for ctype, count in commodity_types.items():
+                    print(f"   - {ctype}: {count}")
+                print(f"   - Total Value: CHF {total_value:,.2f}")
+                print(f"📁 Commodity directory: {commodity_output_dir}")
+                print(f"📄 Files created: {len(files_created)}")
+                
+            except Exception as e:
+                print(f"\n❌ Commodity generation failed: {str(e)}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+        
         # Final summary
         print("\n" + "=" * 80)
         print("🎉 COMPLETE GENERATION SUMMARY")
@@ -573,6 +815,29 @@ def main():
         else:
             print(f"⏭️  Address update generation: SKIPPED (use --generate-address-updates to enable)")
         
+        if args.generate_fixed_income and fixed_income_results:
+            print(f"✅ Fixed income generation: SUCCESS")
+            print(f"   - Total trades: {fixed_income_results['total_trades']}")
+            print(f"   - Bonds: {fixed_income_results['bonds']}, Swaps: {fixed_income_results['swaps']}")
+            print(f"   - Total Notional: CHF {fixed_income_results['total_notional_chf']:,.2f}")
+            print(f"   - Files created: {fixed_income_results['files_created']} (one per trade date)")
+        elif args.generate_fixed_income:
+            print(f"❌ Fixed income generation: FAILED")
+        else:
+            print(f"⏭️  Fixed income generation: SKIPPED (use --generate-fixed-income to enable)")
+        
+        if args.generate_commodities and commodity_results:
+            print(f"✅ Commodity generation: SUCCESS")
+            print(f"   - Total trades: {commodity_results['total_trades']}")
+            commodity_summary = ', '.join([f"{k}:{v}" for k, v in commodity_results['commodity_types'].items()])
+            print(f"   - Types: {commodity_summary}")
+            print(f"   - Total Value: CHF {commodity_results['total_value_chf']:,.2f}")
+            print(f"   - Files created: {commodity_results['files_created']} (one per trade date)")
+        elif args.generate_commodities:
+            print(f"❌ Commodity generation: FAILED")
+        else:
+            print(f"⏭️  Commodity generation: SKIPPED (use --generate-commodities to enable)")
+        
         print(f"\n📁 Output directory: {Path(config.output_directory).absolute()}")
         if args.generate_swift and swift_results:
             print(f"📁 SWIFT directory: {Path(swift_results['summary']['configuration']['output_directory']).absolute()}")
@@ -580,6 +845,10 @@ def main():
             print(f"📁 PEP file: {pep_results['output_file']}")
         if args.generate_mortgage_emails and mortgage_results:
             print(f"📁 Email directory: {mortgage_results['output_dir']}")
+        if args.generate_fixed_income and fixed_income_results:
+            print(f"📁 Fixed income directory: {fixed_income_results['output_dir']}")
+        if args.generate_commodities and commodity_results:
+            print(f"📁 Commodity directory: {commodity_results['output_dir']}")
         
         print("\n💡 Next steps:")
         print("   1. Load CSV files into Snowflake using DDL scripts in ./structure/")
@@ -593,7 +862,13 @@ def main():
         if args.generate_mortgage_emails and mortgage_results:
             print("   7. Use mortgage emails for loan processing workflow testing")
             print("   8. Integrate with CRM systems for customer communication")
-        print("   9. Query aggregated data from REPP_AGG_001 schema")
+        if args.generate_fixed_income and fixed_income_results:
+            print("   9. Load fixed income trades into FII_RAW_001 schema for interest rate risk")
+            print("   10. Calculate DV01 and duration metrics for FRTB capital requirements")
+        if args.generate_commodities and commodity_results:
+            print("   11. Load commodity trades into CMD_RAW_001 schema for commodity risk")
+            print("   12. Implement FRTB Standardized Approach (SA) capital calculations")
+        print("   13. Query aggregated data from REPP_AGG_001 schema")
         
         print("\n✅ Generation completed successfully!")
         
