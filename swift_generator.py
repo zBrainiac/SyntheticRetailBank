@@ -643,6 +643,16 @@ class SWIFTGenerator:
                 "sample_results": results[:50]  # Sample for analysis
             }
             
+            # Clean up temporary messages directory
+            messages_dir = Path(working_dir) / "messages"
+            if messages_dir.exists():
+                try:
+                    import shutil
+                    shutil.rmtree(messages_dir)
+                    print(f"🧹 Cleaned up temporary messages directory: {messages_dir}")
+                except Exception as e:
+                    print(f"⚠️  Warning: Could not clean up messages directory: {e}")
+            
             return {
                 "summary": summary,
                 "results": results,

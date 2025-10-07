@@ -12,7 +12,7 @@
 -- BUSINESS PURPOSE:
 -- - Portfolio position tracking (current holdings per customer/account)
 -- - Trade analytics and execution quality monitoring
--- - Profit & Loss (P&L) calculation per position
+-- - Profit and Loss (P&L) calculation per position
 -- - Trading activity analysis and pattern detection
 -- - Market exposure and concentration risk monitoring
 -- - Customer investment behavior analytics
@@ -169,7 +169,7 @@ ORDER BY t.TRADE_DATE DESC;
 -- EQTA_AGG_DT_PORTFOLIO_POSITIONS - Current Holdings & Positions
 -- ============================================================
 -- Current portfolio positions per account/symbol showing holdings, average cost,
--- and P&L. Aggregates all buy/sell trades to calculate net positions.
+-- and P and L. Aggregates all buy/sell trades to calculate net positions.
 
 CREATE OR REPLACE DYNAMIC TABLE EQTA_AGG_DT_PORTFOLIO_POSITIONS(
     ACCOUNT_ID COMMENT 'Investment account identifier',
@@ -196,7 +196,7 @@ CREATE OR REPLACE DYNAMIC TABLE EQTA_AGG_DT_PORTFOLIO_POSITIONS(
     TRADE_COUNT COMMENT 'Total number of trades for this position',
     HOLDING_DAYS COMMENT 'Days since first trade',
     LAST_UPDATED COMMENT 'Timestamp when position was last calculated'
-) COMMENT = 'Current portfolio positions per account and symbol. Aggregates all trades to show net holdings, average costs, and realized P&L. Used for portfolio management, risk monitoring, and performance reporting.'
+) COMMENT = 'Current portfolio positions per account and symbol. Aggregates all trades to show net holdings, average costs, and realized P and L. Used for portfolio management, risk monitoring, and performance reporting.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
@@ -251,7 +251,7 @@ SELECT
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END), 2
     ) AS NET_INVESTMENT_CHF,
     
-    -- Realized P&L (only for shares that have been sold)
+    -- Realized P and L (only for shares that have been sold)
     ROUND(
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END) - 
         (

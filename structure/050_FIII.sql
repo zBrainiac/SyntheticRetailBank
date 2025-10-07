@@ -23,13 +23,13 @@
 -- │  └─ FIII_TRADES_STREAM - Change data capture for incremental processing
 -- │
 -- ├─ STAGES (1):
--- │  └─ FIII_STAGE - Internal stage for CSV file ingestion
+-- │  └─ FIII_TRADES - Internal stage for CSV file ingestion
 -- │
 -- └─ TASKS (1):
 --    └─ FIII_LOAD_TRADES_TASK - Serverless task for automated CSV loading
 --
 -- DATA FLOW:
--- CSV Files → FIII_STAGE → FIII_TRADES → FIII_TRADES_STREAM → FII_AGG_001
+-- CSV Files → FIII_TRADES → FIII_TRADES → FIII_TRADES_STREAM → FII_AGG_001
 --
 -- RELATED SCHEMAS:
 -- - FII_AGG_001: Aggregation layer for duration, DV01, and credit risk analytics
@@ -109,11 +109,11 @@ ON TABLE FIII_TRADES
 COMMENT = 'CDC stream for FIII_TRADES table - captures inserts, updates, deletes';
 
 -- ============================================================
--- FIII_STAGE - Internal Stage for CSV Ingestion
+-- FIII_TRADES - Internal Stage for CSV Ingestion
 -- ============================================================
 -- Internal stage for loading CSV files from fixed_income_generator.py
 
-CREATE OR REPLACE STAGE FIII_STAGE
+CREATE OR REPLACE STAGE FIII_TRADES
     FILE_FORMAT = (
         TYPE = CSV
         FIELD_DELIMITER = ','
@@ -127,7 +127,7 @@ CREATE OR REPLACE STAGE FIII_STAGE
 COMMENT = 'Internal stage for fixed income trade CSV files';
 
 -- Enable directory table for file tracking and metadata
-ALTER STAGE FIII_STAGE REFRESH;
+ALTER STAGE FIII_TRADES REFRESH;
 
 -- ============================================================
 -- FIII_LOAD_TRADES_TASK - Automated CSV Loading
@@ -142,7 +142,7 @@ WHEN
 AS
     -- Copy new files from stage to table
     COPY INTO FIII_TRADES
-    FROM @FIII_STAGE
+    FROM @FIII_TRADES
     FILE_FORMAT = (
         TYPE = CSV
         FIELD_DELIMITER = ','
@@ -163,8 +163,8 @@ ALTER TASK FIII_LOAD_TRADES_TASK RESUME;
 -- ============================================================
 --
 -- 1. Load CSV file manually:
---    PUT file://path/to/fixed_income_trades.csv @FIII_STAGE;
---    COPY INTO FIII_TRADES FROM @FIII_STAGE
+--    PUT file://path/to/fixed_income_trades.csv @FIII_TRADES;
+--    COPY INTO FIII_TRADES FROM @FIII_TRADES
 --    FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"');
 --
 -- 2. Query recent trades:
@@ -190,7 +190,7 @@ ALTER TASK FIII_LOAD_TRADES_TASK RESUME;
 --    ORDER BY SCHEDULED_TIME DESC;
 --
 -- 7. Query directory table to see loaded files:
---    SELECT * FROM DIRECTORY(@FIII_STAGE);
+--    SELECT * FROM DIRECTORY(@FIII_TRADES);
 --
 -- 8. Check file metadata and load history:
 --    SELECT 
@@ -198,7 +198,7 @@ ALTER TASK FIII_LOAD_TRADES_TASK RESUME;
 --      SIZE,
 --      LAST_MODIFIED,
 --      MD5
---    FROM DIRECTORY(@FIII_STAGE)
+--    FROM DIRECTORY(@FIII_TRADES)
 --    ORDER BY LAST_MODIFIED DESC;
 --
 -- ============================================================

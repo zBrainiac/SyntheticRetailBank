@@ -95,7 +95,7 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
     EQUITY_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in equities (CHF)',
     EQUITY_REALIZED_PL_CHF COMMENT 'Realized profit/loss from equity sales (CHF)',
     EQUITY_COMMISSION_CHF COMMENT 'Total trading commissions paid (CHF)',
-    EQUITY_NET_RETURN_CHF COMMENT 'Net return from equity trading (realized P&L - commissions)',
+    EQUITY_NET_RETURN_CHF COMMENT 'Net return from equity trading (realized P and L - commissions)',
     EQUITY_RETURN_PERCENTAGE COMMENT 'Equity return percentage (net return / invested)',
     
     -- Fixed Income Trading Metrics
@@ -152,8 +152,9 @@ CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
     PORTFOLIO_TYPE COMMENT 'Portfolio composition type (CASH_ONLY/EQUITY_FOCUSED/FI_FOCUSED/COMMODITY_FOCUSED/BALANCED/MULTI_ASSET)',
     
     -- Metadata
-    CALCULATION_TIMESTAMP COMMENT 'Integrated Multi-Asset Portfolio Measurement: To deliver a single, comprehensive performance report that combines all asset classes (cash, equity, fixed income, commodities) into a single portfolio view. Calculates the Time Weighted Return (TWR).	
+    CALCULATION_TIMESTAMP COMMENT 'Integrated Multi-Asset Portfolio Measurement: To deliver a single, comprehensive performance report that combines all asset classes (cash, equity, fixed income, commodities) into a single portfolio view. Calculates the Time Weighted Return (TWR).                                       
     Wealth Management / Client Reporting: Provides crucial metrics for investment advisors to present to clients, including TWR (the industry standard for external reporting), asset allocation percentages, total value, and risk categories.'
+) COMMENT = 'Integrated Multi-Asset Portfolio Performance: Comprehensive portfolio analytics combining cash, equity, fixed income, and commodity trading performance with Time Weighted Return (TWR) calculations for wealth management and client reporting.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 WITH 
@@ -193,7 +194,7 @@ equity_performance AS (
         -- Commissions
         SUM(t.COMMISSION) as total_commission_chf,
         
-        -- Realized P&L (simplified)
+        -- Realized P and L (simplified)
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END) - 
         SUM(CASE WHEN t.SIDE = '1' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE 0 END) as realized_pl_chf,
         
@@ -212,7 +213,7 @@ fixed_income_performance AS (
         SUM(CASE WHEN t.SIDE = '2' THEN 1 ELSE 0 END) as fi_sell_trades,
         SUM(ABS(t.BASE_GROSS_AMOUNT)) as fi_total_invested_chf,
         SUM(t.COMMISSION) as fi_total_commission_chf,
-        -- Simplified P&L calculation
+        -- Simplified P and L calculation
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE -ABS(t.BASE_GROSS_AMOUNT) END) as fi_net_pl_chf,
         COUNT(DISTINCT DATE(t.TRADE_DATE)) as fi_trading_days
     FROM AAA_DEV_SYNTHETIC_BANK.FII_RAW_001.FIII_TRADES t
@@ -229,7 +230,7 @@ commodity_performance AS (
         SUM(CASE WHEN t.SIDE = '2' THEN 1 ELSE 0 END) as cmd_sell_trades,
         SUM(ABS(t.BASE_GROSS_AMOUNT)) as cmd_total_invested_chf,
         SUM(t.COMMISSION) as cmd_total_commission_chf,
-        -- Simplified P&L calculation
+        -- Simplified P and L calculation
         SUM(CASE WHEN t.SIDE = '2' THEN ABS(t.BASE_GROSS_AMOUNT) ELSE -ABS(t.BASE_GROSS_AMOUNT) END) as cmd_net_pl_chf,
         COUNT(DISTINCT DATE(t.TRADE_DATE)) as cmd_trading_days
     FROM AAA_DEV_SYNTHETIC_BANK.CMD_RAW_001.CMDI_TRADES t

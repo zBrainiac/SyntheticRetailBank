@@ -143,8 +143,6 @@ CREATE OR REPLACE TASK LOAI_TASK_LOAD_EMAILS
     -- processing of loan-related communications. Executes every 60 minutes with
     -- serverless compute and conditional execution based on file arrival detection.
 AS
-BEGIN
-    -- Load new email files into the raw table with comprehensive error handling
     COPY INTO LOAI_RAW_EMAILS (FILE_NAME, RAW_CONTENT)
     FROM (
         SELECT 
@@ -154,7 +152,6 @@ BEGIN
     )
     PATTERN = '.*\.(eml|msg|mbox)'                   -- Process common email file formats
     ON_ERROR = CONTINUE;                             -- Continue processing on individual file errors for resilience
-END;
 
 -- Task to automatically load new PDF documents
 CREATE OR REPLACE TASK LOAI_TASK_LOAD_DOCUMENTS
@@ -165,8 +162,6 @@ CREATE OR REPLACE TASK LOAI_TASK_LOAD_DOCUMENTS
     -- efficient processing of loan-related documents. Executes every 60 minutes
     -- with serverless compute and conditional execution based on file arrival detection.
 AS
-BEGIN
-    -- Load new PDF files into the raw table with comprehensive error handling
     COPY INTO LOAI_RAW_DOCUMENTS (FILE_NAME, RAW_CONTENT)
     FROM (
         SELECT 
@@ -176,7 +171,6 @@ BEGIN
     )
     PATTERN = '.*\.pdf'                              -- Process PDF documents
     ON_ERROR = CONTINUE;                             -- Continue processing on individual file errors for resilience
-END;
 
 -- Activate the tasks for production operations
 ALTER TASK LOAI_TASK_LOAD_EMAILS RESUME;

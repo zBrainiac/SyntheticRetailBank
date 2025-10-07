@@ -23,13 +23,13 @@
 -- │  └─ CMDI_TRADES_STREAM - Change data capture for incremental processing
 -- │
 -- ├─ STAGES (1):
--- │  └─ CMDI_STAGE - Internal stage for CSV file ingestion
+-- │  └─ CMDI_TRADES - Internal stage for CSV file ingestion
 -- │
 -- └─ TASKS (1):
 --    └─ CMDI_LOAD_TRADES_TASK - Serverless task for automated CSV loading
 --
 -- DATA FLOW:
--- CSV Files → CMDI_STAGE → CMDI_TRADES → CMDI_TRADES_STREAM → CMD_AGG_001
+-- CSV Files → CMDI_TRADES → CMDI_TRADES → CMDI_TRADES_STREAM → CMD_AGG_001
 --
 -- RELATED SCHEMAS:
 -- - CMD_AGG_001: Aggregation layer for delta risk and volatility analytics
@@ -111,11 +111,11 @@ ON TABLE CMDI_TRADES
 COMMENT = 'CDC stream for CMDI_TRADES table - captures inserts, updates, deletes';
 
 -- ============================================================
--- CMDI_STAGE - Internal Stage for CSV Ingestion
+-- CMDI_TRADES - Internal Stage for CSV Ingestion
 -- ============================================================
 -- Internal stage for loading CSV files from commodity_generator.py
 
-CREATE OR REPLACE STAGE CMDI_STAGE
+CREATE OR REPLACE STAGE CMDI_TRADES
     FILE_FORMAT = (
         TYPE = CSV
         FIELD_DELIMITER = ','
@@ -129,7 +129,7 @@ CREATE OR REPLACE STAGE CMDI_STAGE
 COMMENT = 'Internal stage for commodity trade CSV files';
 
 -- Enable directory table for file tracking and metadata
-ALTER STAGE CMDI_STAGE REFRESH;
+ALTER STAGE CMDI_TRADES REFRESH;
 
 -- ============================================================
 -- CMDI_LOAD_TRADES_TASK - Automated CSV Loading
@@ -144,7 +144,7 @@ WHEN
 AS
     -- Copy new files from stage to table
     COPY INTO CMDI_TRADES
-    FROM @CMDI_STAGE
+    FROM @CMDI_TRADES
     FILE_FORMAT = (
         TYPE = CSV
         FIELD_DELIMITER = ','
@@ -165,8 +165,8 @@ ALTER TASK CMDI_LOAD_TRADES_TASK RESUME;
 -- ============================================================
 --
 -- 1. Load CSV file manually:
---    PUT file://path/to/commodity_trades.csv @CMDI_STAGE;
---    COPY INTO CMDI_TRADES FROM @CMDI_STAGE
+--    PUT file://path/to/commodity_trades.csv @CMDI_TRADES;
+--    COPY INTO CMDI_TRADES FROM @CMDI_TRADES
 --    FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"');
 --
 -- 2. Query recent trades:
@@ -207,7 +207,7 @@ ALTER TASK CMDI_LOAD_TRADES_TASK RESUME;
 --    ORDER BY DELIVERY_MONTH;
 --
 -- 9. Query directory table to see loaded files:
---    SELECT * FROM DIRECTORY(@CMDI_STAGE);
+--    SELECT * FROM DIRECTORY(@CMDI_TRADES);
 --
 -- 10. Check file metadata and load history:
 --     SELECT 
@@ -215,7 +215,7 @@ ALTER TASK CMDI_LOAD_TRADES_TASK RESUME;
 --       SIZE,
 --       LAST_MODIFIED,
 --       MD5
---     FROM DIRECTORY(@CMDI_STAGE)
+--     FROM DIRECTORY(@CMDI_TRADES)
 --     ORDER BY LAST_MODIFIED DESC;
 --
 -- ============================================================

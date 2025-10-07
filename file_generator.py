@@ -318,7 +318,14 @@ class FileGenerator:
                 "emails",
                 "mortgage_emails",
                 "pep_data",
-                "reports"
+                "reports",
+                "fixed_income_trades",
+                "commodity_trades"
+            ]
+            
+            # Clean nested subdirectories
+            nested_subdirs_to_clean = [
+                ("master_data", "address_updates")
             ]
             
             for subdir_name in subdirs_to_clean:
@@ -333,6 +340,20 @@ class FileGenerator:
                     for file in subdir.glob("*.json"):
                         file.unlink()
                     print(f"Cleaned subdirectory: {subdir}")
+            
+            # Clean nested subdirectories
+            for parent_dir, nested_dir in nested_subdirs_to_clean:
+                nested_path = self.output_dir / parent_dir / nested_dir
+                if nested_path.exists():
+                    for file in nested_path.glob("*.csv"):
+                        file.unlink()
+                    for file in nested_path.glob("*.txt"):
+                        file.unlink()
+                    for file in nested_path.glob("*.xml"):
+                        file.unlink()
+                    for file in nested_path.glob("*.json"):
+                        file.unlink()
+                    print(f"Cleaned nested subdirectory: {nested_path}")
             
             print(f"Cleaned output directory: {self.output_dir}")
         else:

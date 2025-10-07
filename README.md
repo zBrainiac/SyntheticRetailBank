@@ -107,6 +107,51 @@ This repository delivers a complete data generation and ingestion framework, org
 pip install -r requirements.txt
 ```
 
+## 🚀 Quick Start
+
+### **One-Command Deployment (Recommended)**
+
+Deploy the complete synthetic bank with automatic data upload:
+
+```bash
+# 1. Generate data FIRST
+python main.py --customers 1000 --period 30 --generate-swift --generate-pep
+
+# 2. Deploy everything (structure + data upload + task activation)
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen
+```
+
+**Result**: Fully operational synthetic bank with all data loaded and processing automatically! 🎉
+
+**⚠️ Important**: Always generate data **before** deploying structure, as the deployment script expects the generated files to exist for automatic upload.
+
+### **Step-by-Step Deployment**
+
+If you prefer manual control:
+
+```bash
+# 1. Generate data FIRST
+python main.py --customers 1000 --period 30 --generate-swift --generate-pep
+
+# 2. Deploy SQL structure only
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen
+
+# 3. Upload data manually
+./upload-data.sh --CONNECTION_NAME=sfseeurope-mdaeppen
+```
+
+**⚠️ Important**: Data generation must happen **before** structure deployment!
+
+### **Testing & Debugging**
+
+```bash
+# Preview everything (dry run)
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen --DRY_RUN
+
+# Test single SQL file
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen --FILE=031_ICGI.sql
+```
+
 ## Usage
 
 ### Basic Usage
@@ -141,22 +186,22 @@ python main.py
 #### Specific Use Cases
 ```bash
 # Generate larger dataset with more anomalies
-python main.py --customers 100 --anomaly-rate 5.0
+./venv/bin/python python main.py --customers 100 --anomaly-rate 5.0
 
 # Generate with SWIFT ISO20022 messages
-python main.py --customers 50 --generate-swift
+./venv/bin/python python main.py --customers 50 --generate-swift
 
 # Custom SWIFT settings
-python main.py --customers 100 --generate-swift --swift-percentage 25 --swift-avg-messages 2.0
+./venv/bin/python python main.py --customers 100 --generate-swift --swift-percentage 25 --swift-avg-messages 2.0
 
 # Custom time period and output directory
-python main.py --customers 25 --period 12 --output-dir ./custom_data
+./venv/bin/python python main.py --customers 25 --period 12 --output-dir ./custom_data
 
 # Clean previous output before generating new data
-python main.py --clean --customers 50
+./venv/bin/python python main.py --clean --customers 50
 
 # Verbose output with detailed configuration
-python main.py --verbose --customers 20 --anomaly-rate 3.0
+./venv/bin/python python main.py --verbose --customers 20 --anomaly-rate 3.0
 
 # generate all (small dataset)
 ./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 3 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --swift-percentage 40 --pep-records 150 --mortgage-customers 5 --address-update-files 12 --clean

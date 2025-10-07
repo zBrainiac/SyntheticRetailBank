@@ -137,8 +137,6 @@ CREATE OR REPLACE TASK ICGI_TASK_LOAD_SWIFT_MESSAGES
     -- with serverless compute and conditional execution based on file arrival detection for
     -- optimal resource utilization and operational cost management.
 AS
-BEGIN
-    -- Load new SWIFT XML files into the raw table with comprehensive error handling
     COPY INTO ICGI_RAW_SWIFT_MESSAGES (FILE_NAME, RAW_XML)
     FROM (
         SELECT 
@@ -149,7 +147,6 @@ BEGIN
     PATTERN = '.*\.xml'                              -- Process all XML files regardless of naming convention
     FILE_FORMAT = ICGI_XML_FILE_FORMAT               -- Use optimized XML format for ISO20022 messages
     ON_ERROR = CONTINUE;                             -- Continue processing on individual file errors for resilience
-END;
 
 -- Activate the task for production operations
 ALTER TASK ICGI_TASK_LOAD_SWIFT_MESSAGES RESUME;
