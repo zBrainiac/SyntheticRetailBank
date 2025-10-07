@@ -102,13 +102,13 @@ CREATE OR REPLACE TABLE CMDI_TRADES (
 ) COMMENT = 'Raw commodity trades (energy, metals, agricultural) with FRTB risk metrics';
 
 -- ============================================================
--- CMDI_TRADES_STREAM - Change Data Capture
+-- CMDI_TRADES_STREAM - File Detection Stream
 -- ============================================================
--- Captures all changes to CMDI_TRADES for incremental processing
+-- Monitors CMDI_TRADES stage for new commodity trade CSV files
 
 CREATE OR REPLACE STREAM CMDI_TRADES_STREAM 
-ON TABLE CMDI_TRADES
-COMMENT = 'CDC stream for CMDI_TRADES table - captures inserts, updates, deletes';
+ON STAGE CMDI_TRADES
+COMMENT = 'Monitors CMDI_TRADES stage for new commodity trade CSV files';
 
 -- ============================================================
 -- CMDI_TRADES - Internal Stage for CSV Ingestion
@@ -143,7 +143,13 @@ WHEN
     SYSTEM$STREAM_HAS_DATA('CMDI_TRADES_STREAM')
 AS
     -- Copy new files from stage to table
-    COPY INTO CMDI_TRADES
+    COPY INTO CMDI_TRADES (
+        TRADE_DATE, SETTLEMENT_DATE, TRADE_ID, CUSTOMER_ID, ACCOUNT_ID, ORDER_ID,
+        COMMODITY_TYPE, COMMODITY_NAME, COMMODITY_CODE, CONTRACT_TYPE, SIDE, QUANTITY, UNIT, PRICE, CURRENCY,
+        GROSS_AMOUNT, COMMISSION, NET_AMOUNT, BASE_CURRENCY, BASE_GROSS_AMOUNT, BASE_NET_AMOUNT, FX_RATE,
+        CONTRACT_SIZE, NUM_CONTRACTS, DELIVERY_MONTH, DELIVERY_LOCATION, DELTA, VEGA, SPOT_PRICE, FORWARD_PRICE, VOLATILITY,
+        EXCHANGE, BROKER_ID, VENUE, LIQUIDITY_SCORE
+    )
     FROM @CMDI_TRADES
     FILE_FORMAT = (
         TYPE = CSV

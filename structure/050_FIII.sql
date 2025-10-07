@@ -100,13 +100,13 @@ CREATE OR REPLACE TABLE FIII_TRADES (
 ) COMMENT = 'Raw fixed income trades (bonds and swaps) with FRTB risk metrics';
 
 -- ============================================================
--- FIII_TRADES_STREAM - Change Data Capture
+-- FIII_TRADES_STREAM - File Detection Stream
 -- ============================================================
--- Captures all changes to FIII_TRADES for incremental processing
+-- Monitors FIII_TRADES stage for new fixed income trade CSV files
 
 CREATE OR REPLACE STREAM FIII_TRADES_STREAM 
-ON TABLE FIII_TRADES
-COMMENT = 'CDC stream for FIII_TRADES table - captures inserts, updates, deletes';
+ON STAGE FIII_TRADES
+COMMENT = 'Monitors FIII_TRADES stage for new fixed income trade CSV files';
 
 -- ============================================================
 -- FIII_TRADES - Internal Stage for CSV Ingestion
@@ -141,7 +141,14 @@ WHEN
     SYSTEM$STREAM_HAS_DATA('FIII_TRADES_STREAM')
 AS
     -- Copy new files from stage to table
-    COPY INTO FIII_TRADES
+    COPY INTO FIII_TRADES (
+        TRADE_DATE, SETTLEMENT_DATE, TRADE_ID, CUSTOMER_ID, ACCOUNT_ID, ORDER_ID,
+        INSTRUMENT_TYPE, INSTRUMENT_ID, ISSUER, ISSUER_TYPE, CURRENCY, SIDE,
+        NOTIONAL, PRICE, ACCRUED_INTEREST, GROSS_AMOUNT, FIXED_RATE, FLOATING_RATE_INDEX, TENOR_YEARS,
+        COMMISSION, NET_AMOUNT, BASE_CURRENCY, BASE_GROSS_AMOUNT, BASE_NET_AMOUNT, FX_RATE,
+        COUPON_RATE, MATURITY_DATE, DURATION, DV01, CREDIT_RATING, CREDIT_SPREAD_BPS,
+        MARKET, BROKER_ID, VENUE, LIQUIDITY_SCORE
+    )
     FROM @FIII_TRADES
     FILE_FORMAT = (
         TYPE = CSV
