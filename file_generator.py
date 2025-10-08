@@ -72,6 +72,11 @@ class FileGenerator:
         address_file = self.master_data_dir / "customer_addresses.csv"
         customer_generator.save_addresses_to_csv(str(address_file))
         
+        # Add fuzzy matching test customer for PEP screening testing
+        print("Adding fuzzy matching test customer for PEP screening...")
+        test_customer, test_address = customer_generator.add_fuzzy_matching_test_customer()
+        print(f"Added test customer: {test_customer.first_name} {test_customer.family_name} (ID: {test_customer.customer_id})")
+        
         anomalous_customers = customer_generator.get_anomalous_customers()
         print(f"Generated {len(customers)} customers ({len(anomalous_customers)} anomalous)")
         print(f"Customer data saved to: {customer_file}")

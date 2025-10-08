@@ -297,5 +297,90 @@ class CustomerGenerator:
     def get_anomalous_customers(self) -> List[Customer]:
         """Get list of customers marked for anomalous behavior"""
         return [customer for customer in self.customers if customer.has_anomaly]
+    
+    def generate_fuzzy_matching_test_customer(self) -> Customer:
+        """
+        Generate a customer with a name similar to 'YURY TOPCHEV' for fuzzy matching testing.
+        This creates a test case for PEP screening and fuzzy name matching algorithms.
+        
+        Name variations used for testing:
+        - Character substitution: YURI TOPCHEV (Y→I)
+        - Phonetic similarity: YURA TOPCHEV (nickname variation)
+        - Character transposition: YUYR TOPCHEV (Y-R swap)
+        """
+        # Use a variation that's similar but not identical to "YURY TOPCHEV"
+        # This tests fuzzy matching algorithms without using the exact target name
+        test_first_name = "YURI"  # Character substitution: YURY → YURI
+        test_last_name = "TOPCHEV"  # Keep last name identical for testing
+        
+        # Generate a customer ID that's clearly marked as a test customer
+        test_customer_id = f"CUST_{self.config.num_customers + 1:05d}_FUZZY_TEST"
+        
+        # Use a realistic onboarding date
+        onboarding_date = self._generate_onboarding_date()
+        
+        # Use EUR as reporting currency (common in EMEA)
+        reporting_currency = "EUR"
+        
+        # Create the test customer
+        test_customer = Customer(
+            customer_id=test_customer_id,
+            first_name=test_first_name,
+            family_name=test_last_name,
+            date_of_birth=self.fake.date_of_birth(minimum_age=25, maximum_age=65).strftime("%Y-%m-%d"),
+            onboarding_date=onboarding_date.strftime("%Y-%m-%d"),
+            reporting_currency=reporting_currency,
+            has_anomaly=False  # Not marked as anomalous, just for fuzzy matching test
+        )
+        
+        return test_customer
+    
+    def generate_fuzzy_matching_test_address(self, customer_id: str) -> CustomerAddress:
+        """
+        Generate an address for the fuzzy matching test customer.
+        Uses a realistic EMEA address pattern.
+        """
+        # Use a realistic EMEA address (Germany for this test)
+        fake_de = Faker('de_DE')
+        
+        address_data = {
+            'street_address': fake_de.street_address(),
+            'city': fake_de.city(),
+            'state': fake_de.state(),
+            'zipcode': fake_de.postcode()
+        }
+        
+        # Use current timestamp for insert
+        insert_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        test_address = CustomerAddress(
+            customer_id=customer_id,
+            street_address=address_data['street_address'],
+            city=address_data['city'],
+            state=address_data['state'],
+            zipcode=address_data['zipcode'],
+            country="Germany",
+            insert_timestamp_utc=insert_timestamp
+        )
+        
+        return test_address
+    
+    def add_fuzzy_matching_test_customer(self) -> tuple[Customer, CustomerAddress]:
+        """
+        Add a fuzzy matching test customer to the existing customer list.
+        This customer has a name similar to 'YURY TOPCHEV' for testing fuzzy matching algorithms.
+        
+        Returns:
+            tuple: (test_customer, test_address)
+        """
+        # Generate the test customer
+        test_customer = self.generate_fuzzy_matching_test_customer()
+        test_address = self.generate_fuzzy_matching_test_address(test_customer.customer_id)
+        
+        # Add to existing lists
+        self.customers.append(test_customer)
+        self.customer_addresses.append(test_address)
+        
+        return test_customer, test_address
 
 

@@ -10,6 +10,7 @@ The DDL is organized by **business domain** to ensure a clear separation of conc
 ```
 structure/
 ├── 000_database_setup.sql     # Database and warehouse creation
+├── 001_get_listings.sql       # Snowflake Data Exchange: Global Sanctions Data Setup
 ├── 010_CRMI.sql               # CRM Raw: Customer Master Data & Exposed Person System
 ├── 011_ACCI.sql               # CRM Raw: Account Master Data
 ├── 020_REFI.sql               # REF Raw: FX Rates Reference Data
@@ -74,6 +75,42 @@ structure/
 -- Execute first: Database and warehouse creation
 @000_database_setup.sql
 ```
+
+### 1a. Snowflake Data Exchange Setup (Optional)
+**External Data Source**: Global Sanctions Data
+
+```sql
+-- Execute after database setup: Global sanctions data from Data Exchange
+@001_get_listings.sql
+```
+
+**Purpose:**
+- **Compliance Data**: Import global sanctions and watchlist data
+- **PEP Screening**: Enhance Politically Exposed Persons screening
+- **Regulatory Support**: Provide external reference data for compliance
+- **Risk Management**: Support KYC/AML processes with real-time data
+
+**Prerequisites:**
+- Snowflake account with Data Exchange access
+- Legal terms acceptance for data usage
+- Email verification for listing access
+
+**Objects Created:**
+- **Database**: `REF_DAP_GLOBAL_SANCTIONS_DATA_SET`
+- **Schema**: `GLOBAL_SANCTIONS_DATA`
+- **Table**: `SANCTIONS_DATAFEED` - Comprehensive international sanctions data
+
+**Key Features:**
+- **Real-Time Updates**: Regular updates for current sanctions information
+- **Global Coverage**: International sanctions and watchlist data
+- **Compliance Integration**: Direct integration with customer screening processes
+- **Regulatory Reporting**: Support for audit and compliance requirements
+
+**Integration Points:**
+- Cross-reference with `CRMI_EXPOSED_PERSON` data
+- Enhance customer onboarding screening processes
+- Support transaction monitoring and counterparty screening
+- Provide evidence for regulatory compliance and audit requirements
 
 ### 2. Customer Master Data & Exposed Person System
 **Business Domain**: `CRM`

@@ -136,6 +136,15 @@ This repository delivers a complete data generation and ingestion framework, org
 | **`address_update_generator.py`**  | SCD Type 2 address change files for data governance and audit trails                         |
 | **`anomaly_patterns.py`**          | Suspicious transaction pattern injection for AML testing and training                        |
 
+### External Data Integration
+
+| Component                          | Description                                                                                  |
+|------------------------------------|----------------------------------------------------------------------------------------------|
+| **`001_get_listings.sql`**         | Snowflake Data Exchange setup for Global Sanctions Data - real-time compliance screening    |
+| **Global Sanctions Data**          | External sanctions and watchlist data from Snowflake Data Exchange marketplace              |
+| **PEP Enhancement**                | Integration with Politically Exposed Persons screening for regulatory compliance             |
+| **Compliance Support**             | Real-time sanctions checking for customer onboarding and transaction monitoring             |
+
 ### Domain-Oriented DDL (`structure/` directory)
 - **Raw Data Layer (0xx)**: Customer master (`CRMI`), accounts (`ACCI`), FX rates (`REFI`), payments (`PAYI`), equity trades (`EQTI`), SWIFT messages (`ICGI`), loan documents (`LOAI`)
 - **Aggregation Layer (3xx)**: Customer 360° views (`CRMA`), account balances (`ACCA`), payment anomalies (`PAYA`), investment performance (`PAYA`), SWIFT processing (`ICGA`)

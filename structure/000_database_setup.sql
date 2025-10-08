@@ -89,7 +89,7 @@ CREATE SCHEMA IF NOT EXISTS LOA_AGG_v001
 -- Create sensitivity tags for column-level data protection and masking policies
 -- These tags enable role-based access control and automated data masking
 
--- Public data - no restrictions
+-- Create sensitivity tag in the current database context
 CREATE TAG IF NOT EXISTS SENSITIVITY_LEVEL
     COMMENT = 'Data sensitivity classification for privacy and compliance controls. Valid values: "restricted" (highly sensitive financial/PII data requiring strict access controls) | "top_secret" (maximum protection for personal identifiers and addresses). Used for automated masking policies and role-based access control.';
 

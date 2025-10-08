@@ -68,14 +68,14 @@ USE SCHEMA CRM_AGG_001;
 
 
 CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_ADDRESSES_CURRENT(
-    CUSTOMER_ID COMMENT 'Customer identifier for address lookup (CUST_XXXXX format)',
-    STREET_ADDRESS COMMENT 'Current street address for customer correspondence',
-    CITY COMMENT 'Current city for customer location and compliance',
-    STATE COMMENT 'Current state/region for regulatory jurisdiction',
-    ZIPCODE COMMENT 'Current postal code for address validation',
-    COUNTRY COMMENT 'Current country for regulatory and tax purposes',
-    CURRENT_FROM COMMENT 'Date when this address became current/effective',
-    IS_CURRENT COMMENT 'Boolean flag indicating this is the current address (always TRUE)'
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for address lookup (CUST_XXXXX format)',
+    STREET_ADDRESS VARCHAR(200) COMMENT 'Current street address for customer correspondence',
+    CITY VARCHAR(100) COMMENT 'Current city for customer location and compliance',
+    STATE VARCHAR(100) COMMENT 'Current state/region for regulatory jurisdiction',
+    ZIPCODE VARCHAR(20) COMMENT 'Current postal code for address validation',
+    COUNTRY VARCHAR(50) COMMENT 'Current country for regulatory and tax purposes',
+    CURRENT_FROM TIMESTAMP_NTZ COMMENT 'Date when this address became current/effective',
+    IS_CURRENT BOOLEAN COMMENT 'Boolean flag indicating this is the current address (always TRUE)'
 ) COMMENT = 'Current/latest address for each customer. Operational view with one record per customer showing the most recent address based on INSERT_TIMESTAMP_UTC. Used for real-time customer lookups and front-end applications.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
@@ -110,16 +110,16 @@ WHERE rn = 1;
 -- Includes VALID_FROM/VALID_TO ranges and IS_CURRENT flags for each address period.
 
 CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_ADDRESSES_HISTORY(
-    CUSTOMER_ID COMMENT 'Customer identifier for address history tracking',
-    STREET_ADDRESS COMMENT 'Historical street address for compliance audit trail',
-    CITY COMMENT 'Historical city for location tracking and analysis',
-    STATE COMMENT 'Historical state/region for regulatory compliance',
-    ZIPCODE COMMENT 'Historical postal code for address validation',
-    COUNTRY COMMENT 'Historical country for regulatory and tax compliance',
-    VALID_FROM COMMENT 'Start date when this address was effective (SCD Type 2)',
-    VALID_TO COMMENT 'End date when this address was superseded (NULL if current)',
-    IS_CURRENT COMMENT 'Boolean flag indicating if this is the current address',
-    INSERT_TIMESTAMP_UTC COMMENT 'Original timestamp when address was recorded in system'
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for address history tracking',
+    STREET_ADDRESS VARCHAR(200) COMMENT 'Historical street address for compliance audit trail',
+    CITY VARCHAR(100) COMMENT 'Historical city for location tracking and analysis',
+    STATE VARCHAR(100) COMMENT 'Historical state/region for regulatory compliance',
+    ZIPCODE VARCHAR(20) COMMENT 'Historical postal code for address validation',
+    COUNTRY VARCHAR(50) COMMENT 'Historical country for regulatory and tax compliance',
+    VALID_FROM DATE COMMENT 'Start date when this address was effective (SCD Type 2)',
+    VALID_TO DATE COMMENT 'End date when this address was superseded (NULL if current)',
+    IS_CURRENT BOOLEAN COMMENT 'Boolean flag indicating if this is the current address',
+    INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ COMMENT 'Original timestamp when address was recorded in system'
 ) COMMENT = 'SCD Type 2 address history with VALID_FROM/VALID_TO effective date ranges. Converts append-only base table into proper slowly changing dimension for compliance reporting, historical analysis, and point-in-time customer address queries.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
@@ -154,43 +154,43 @@ ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
 -- across all customer touchpoints with quantified match confidence levels.
 
 CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
-    CUSTOMER_ID COMMENT 'Unique customer identifier for relationship management',
-    FIRST_NAME COMMENT 'Customer first name for identification and compliance',
-    FAMILY_NAME COMMENT 'Customer family/last name for identification and compliance',
-    FULL_NAME COMMENT 'Customer full name (First + Last) for reporting',
-    DATE_OF_BIRTH COMMENT 'Customer date of birth for identity verification',
-    ONBOARDING_DATE COMMENT 'Date when customer relationship was established',
-    REPORTING_CURRENCY COMMENT 'Customer reporting currency based on country',
-    HAS_ANOMALY COMMENT 'Flag indicating if customer has anomalous transaction patterns',
-    STREET_ADDRESS COMMENT 'Current street address for correspondence',
-    CITY COMMENT 'Current city for location and regulatory purposes',
-    STATE COMMENT 'Current state/region for jurisdiction and compliance',
-    ZIPCODE COMMENT 'Current postal code for address validation',
-    COUNTRY COMMENT 'Current country for regulatory and tax purposes',
-    ADDRESS_EFFECTIVE_DATE COMMENT 'Date when current address became effective',
-    TOTAL_ACCOUNTS COMMENT 'Total number of accounts held by customer',
-    ACCOUNT_TYPES COMMENT 'Comma-separated list of account types held',
-    CURRENCIES COMMENT 'Comma-separated list of currencies used by customer',
-    CHECKING_ACCOUNTS COMMENT 'Number of checking accounts held',
-    SAVINGS_ACCOUNTS COMMENT 'Number of savings accounts held',
-    BUSINESS_ACCOUNTS COMMENT 'Number of business accounts held',
-    INVESTMENT_ACCOUNTS COMMENT 'Number of investment accounts held',
-    EXPOSED_PERSON_EXACT_MATCH_ID COMMENT 'PEP ID for exact name match (compliance)',
-    EXPOSED_PERSON_EXACT_MATCH_NAME COMMENT 'PEP name for exact match (compliance)',
-    EXPOSED_PERSON_EXACT_CATEGORY COMMENT 'PEP category for exact match (DOMESTIC/FOREIGN/etc.)',
-    EXPOSED_PERSON_EXACT_RISK_LEVEL COMMENT 'PEP risk level for exact match (CRITICAL/HIGH/MEDIUM/LOW)',
-    EXPOSED_PERSON_EXACT_STATUS COMMENT 'PEP status for exact match (ACTIVE/INACTIVE)',
-    EXPOSED_PERSON_FUZZY_MATCH_ID COMMENT 'PEP ID for fuzzy name match (compliance)',
-    EXPOSED_PERSON_FUZZY_MATCH_NAME COMMENT 'PEP name for fuzzy match (compliance)',
-    EXPOSED_PERSON_FUZZY_CATEGORY COMMENT 'PEP category for fuzzy match (DOMESTIC/FOREIGN/etc.)',
-    EXPOSED_PERSON_FUZZY_RISK_LEVEL COMMENT 'PEP risk level for fuzzy match (CRITICAL/HIGH/MEDIUM/LOW)',
-    EXPOSED_PERSON_FUZZY_STATUS COMMENT 'PEP status for fuzzy match (ACTIVE/INACTIVE)',
-    EXPOSED_PERSON_MATCH_ACCURACY_PERCENT COMMENT 'PEP match accuracy percentage (70-100% for fuzzy, 100% for exact)',
-    EXPOSED_PERSON_MATCH_TYPE COMMENT 'Type of PEP match (EXACT_MATCH/FUZZY_MATCH/NO_MATCH)',
-    OVERALL_EXPOSED_PERSON_RISK COMMENT 'Overall PEP risk assessment (CRITICAL/HIGH/MEDIUM/LOW/NO_EXPOSED_PERSON_RISK)',
-    REQUIRES_EXPOSED_PERSON_REVIEW COMMENT 'Boolean flag indicating if customer requires PEP compliance review',
-    HIGH_RISK_CUSTOMER COMMENT 'Boolean flag for customers with both anomalies and PEP matches',
-    LAST_UPDATED COMMENT 'Timestamp when customer record was last updated'
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Unique customer identifier for relationship management',
+    FIRST_NAME VARCHAR(100) COMMENT 'Customer first name for identification and compliance',
+    FAMILY_NAME VARCHAR(100) COMMENT 'Customer family/last name for identification and compliance',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer full name (First + Last) for reporting',
+    DATE_OF_BIRTH DATE COMMENT 'Customer date of birth for identity verification',
+    ONBOARDING_DATE DATE COMMENT 'Date when customer relationship was established',
+    REPORTING_CURRENCY VARCHAR(3) COMMENT 'Customer reporting currency based on country',
+    HAS_ANOMALY BOOLEAN COMMENT 'Flag indicating if customer has anomalous transaction patterns',
+    STREET_ADDRESS VARCHAR(200) COMMENT 'Current street address for correspondence',
+    CITY VARCHAR(100) COMMENT 'Current city for location and regulatory purposes',
+    STATE VARCHAR(100) COMMENT 'Current state/region for jurisdiction and compliance',
+    ZIPCODE VARCHAR(20) COMMENT 'Current postal code for address validation',
+    COUNTRY VARCHAR(50) COMMENT 'Current country for regulatory and tax purposes',
+    ADDRESS_EFFECTIVE_DATE TIMESTAMP_NTZ COMMENT 'Date when current address became effective',
+    TOTAL_ACCOUNTS NUMBER(10,0) COMMENT 'Total number of accounts held by customer',
+    ACCOUNT_TYPES VARCHAR(200) COMMENT 'Comma-separated list of account types held',
+    CURRENCIES VARCHAR(50) COMMENT 'Comma-separated list of currencies used by customer',
+    CHECKING_ACCOUNTS NUMBER(10,0) COMMENT 'Number of checking accounts held',
+    SAVINGS_ACCOUNTS NUMBER(10,0) COMMENT 'Number of savings accounts held',
+    BUSINESS_ACCOUNTS NUMBER(10,0) COMMENT 'Number of business accounts held',
+    INVESTMENT_ACCOUNTS NUMBER(10,0) COMMENT 'Number of investment accounts held',
+    EXPOSED_PERSON_EXACT_MATCH_ID VARCHAR(50) COMMENT 'PEP ID for exact name match (compliance)',
+    EXPOSED_PERSON_EXACT_MATCH_NAME VARCHAR(200) COMMENT 'PEP name for exact match (compliance)',
+    EXPOSED_PERSON_EXACT_CATEGORY VARCHAR(50) COMMENT 'PEP category for exact match (DOMESTIC/FOREIGN/etc.)',
+    EXPOSED_PERSON_EXACT_RISK_LEVEL VARCHAR(20) COMMENT 'PEP risk level for exact match (CRITICAL/HIGH/MEDIUM/LOW)',
+    EXPOSED_PERSON_EXACT_STATUS VARCHAR(20) COMMENT 'PEP status for exact match (ACTIVE/INACTIVE)',
+    EXPOSED_PERSON_FUZZY_MATCH_ID VARCHAR(50) COMMENT 'PEP ID for fuzzy name match (compliance)',
+    EXPOSED_PERSON_FUZZY_MATCH_NAME VARCHAR(200) COMMENT 'PEP name for fuzzy match (compliance)',
+    EXPOSED_PERSON_FUZZY_CATEGORY VARCHAR(50) COMMENT 'PEP category for fuzzy match (DOMESTIC/FOREIGN/etc.)',
+    EXPOSED_PERSON_FUZZY_RISK_LEVEL VARCHAR(20) COMMENT 'PEP risk level for fuzzy match (CRITICAL/HIGH/MEDIUM/LOW)',
+    EXPOSED_PERSON_FUZZY_STATUS VARCHAR(20) COMMENT 'PEP status for fuzzy match (ACTIVE/INACTIVE)',
+    EXPOSED_PERSON_MATCH_ACCURACY_PERCENT NUMBER(5,2) COMMENT 'PEP match accuracy percentage (70-100% for fuzzy, 100% for exact)',
+    EXPOSED_PERSON_MATCH_TYPE VARCHAR(15) COMMENT 'Type of PEP match (EXACT_MATCH/FUZZY_MATCH/NO_MATCH)',
+    OVERALL_EXPOSED_PERSON_RISK VARCHAR(30) COMMENT 'Overall PEP risk assessment (CRITICAL/HIGH/MEDIUM/LOW/NO_EXPOSED_PERSON_RISK)',
+    REQUIRES_EXPOSED_PERSON_REVIEW BOOLEAN COMMENT 'Boolean flag indicating if customer requires PEP compliance review',
+    HIGH_RISK_CUSTOMER BOOLEAN COMMENT 'Boolean flag for customers with both anomalies and PEP matches',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when customer record was last updated'
 ) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, account summary, and Exposed Person fuzzy matching with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
