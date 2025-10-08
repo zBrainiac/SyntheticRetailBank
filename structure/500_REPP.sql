@@ -48,18 +48,18 @@ USE SCHEMA REP_AGG_001;
 
 -- Customer summary with transaction statistics
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY(
-    CUSTOMER_ID COMMENT 'Unique customer identifier for relationship management (CUST_XXXXX format)',
-    FULL_NAME COMMENT 'Customer full name (First + Last) for reporting and compliance',
-    HAS_ANOMALY COMMENT 'Flag indicating if customer has anomalous behavior patterns',
-    ONBOARDING_DATE COMMENT 'Date when customer relationship was established',
-    TOTAL_ACCOUNTS COMMENT 'Number of accounts held by customer',
-    CURRENCY_COUNT COMMENT 'Number of different currencies in customer portfolio',
-    ACCOUNT_CURRENCIES COMMENT 'Comma-separated list of all currencies used by customer',
-    TOTAL_TRANSACTIONS COMMENT 'Total number of transactions across all accounts',
-    TOTAL_BASE_AMOUNT COMMENT 'Total transaction volume in base currency',
-    AVG_TRANSACTION_AMOUNT COMMENT 'Average transaction size for customer profiling',
-    MAX_TRANSACTION_AMOUNT COMMENT 'Largest single transaction for risk assessment',
-    ANOMALOUS_TRANSACTIONS COMMENT 'Count of transactions with suspicious patterns'
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Unique customer identifier for relationship management (CUST_XXXXX format)',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer full name (First + Last) for reporting and compliance',
+    HAS_ANOMALY BOOLEAN COMMENT 'Flag indicating if customer has anomalous behavior patterns',
+    ONBOARDING_DATE DATE COMMENT 'Date when customer relationship was established',
+    TOTAL_ACCOUNTS NUMBER(10,0) COMMENT 'Number of accounts held by customer',
+    CURRENCY_COUNT NUMBER(10,0) COMMENT 'Number of different currencies in customer portfolio',
+    ACCOUNT_CURRENCIES VARCHAR(100) COMMENT 'Comma-separated list of all currencies used by customer',
+    TOTAL_TRANSACTIONS NUMBER(10,0) COMMENT 'Total number of transactions across all accounts',
+    TOTAL_BASE_AMOUNT DECIMAL(28,2) COMMENT 'Total transaction volume in base currency',
+    AVG_TRANSACTION_AMOUNT DECIMAL(28,2) COMMENT 'Average transaction size for customer profiling',
+    MAX_TRANSACTION_AMOUNT DECIMAL(28,2) COMMENT 'Largest single transaction for risk assessment',
+    ANOMALOUS_TRANSACTIONS NUMBER(10,0) COMMENT 'Count of transactions with suspicious patterns'
 ) COMMENT = 'Customer 360° Profile and Relationship Risk Assessment (CDD): To provide a consolidated, holistic view of a customer by linking personal details with aggregated transactional behavior (volume, value, account diversity).
 Compliance/CDD/KYC: Used for ongoing Customer Due Diligence, monitoring relationship health, and flagging customers with anomalous behavior (HAS_ANOMALY). Risk: Identifies risk exposure through multi-currency holdings and maximum transaction size.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -84,15 +84,15 @@ GROUP BY c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.HAS_ANOMALY, c.ONBOARDING
 
 -- Daily transaction summary
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY(
-    TRANSACTION_DATE COMMENT 'Business date for daily reporting and trend analysis',
-    TRANSACTION_COUNT COMMENT 'Total daily transaction volume for operational metrics',
-    UNIQUE_CUSTOMERS COMMENT 'Number of active customers per day',
-    TOTAL_BASE_AMOUNT COMMENT 'Daily transaction value in base currency',
-    AVG_BASE_AMOUNT COMMENT 'Average transaction size for market analysis',
-    INCOMING_COUNT COMMENT 'Number of incoming/credit transactions',
-    OUTGOING_COUNT COMMENT 'Number of outgoing/debit transactions',
-    ANOMALOUS_COUNT COMMENT 'Daily suspicious transaction count',
-    CURRENCY_COUNT COMMENT 'Number of different currencies traded daily'
+    TRANSACTION_DATE DATE COMMENT 'Business date for daily reporting and trend analysis',
+    TRANSACTION_COUNT NUMBER(10,0) COMMENT 'Total daily transaction volume for operational metrics',
+    UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of active customers per day',
+    TOTAL_BASE_AMOUNT DECIMAL(28,2) COMMENT 'Daily transaction value in base currency',
+    AVG_BASE_AMOUNT DECIMAL(28,2) COMMENT 'Average transaction size for market analysis',
+    INCOMING_COUNT NUMBER(10,0) COMMENT 'Number of incoming/credit transactions',
+    OUTGOING_COUNT NUMBER(10,0) COMMENT 'Number of outgoing/debit transactions',
+    ANOMALOUS_COUNT NUMBER(10,0) COMMENT 'Daily suspicious transaction count',
+    CURRENCY_COUNT NUMBER(10,0) COMMENT 'Number of different currencies traded daily'
 ) COMMENT = 'Operational Performance and Daily Liquidity Metrics: To monitor the banks daily activity, transaction volume, and flow (incoming vs. outgoing). This tracks the general health of the payment system and customer engagement.
 Operations/Liquidity: Monitors daily transaction counts for system capacity planning. Compliance: Tracks daily count of anomalous transactions for Suspicious Activity Monitoring.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -113,14 +113,14 @@ ORDER BY TRANSACTION_DATE;
 
 -- Currency exposure summary (non-CHF currencies)
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT(
-    CURRENCY COMMENT 'Foreign currency code (ISO 4217) for exposure analysis',
-    TRANSACTION_COUNT COMMENT 'Number of transactions in this currency',
-    TOTAL_ORIGINAL_AMOUNT COMMENT 'Total exposure in original currency',
-    TOTAL_CHF_AMOUNT COMMENT 'Total exposure converted to CHF (placeholder)',
-    AVG_FX_RATE COMMENT 'Average exchange rate (placeholder for future FX integration)',
-    MIN_FX_RATE COMMENT 'Minimum exchange rate observed (placeholder)',
-    MAX_FX_RATE COMMENT 'Maximum exchange rate observed (placeholder)',
-    UNIQUE_CUSTOMERS COMMENT 'Number of customers with exposure to this currency'
+    CURRENCY VARCHAR(3) COMMENT 'Foreign currency code (ISO 4217) for exposure analysis',
+    TRANSACTION_COUNT NUMBER(10,0) COMMENT 'Number of transactions in this currency',
+    TOTAL_ORIGINAL_AMOUNT DECIMAL(28,2) COMMENT 'Total exposure in original currency',
+    TOTAL_CHF_AMOUNT DECIMAL(28,2) COMMENT 'Total exposure converted to CHF (placeholder)',
+    AVG_FX_RATE DECIMAL(15,6) COMMENT 'Average exchange rate (placeholder for future FX integration)',
+    MIN_FX_RATE DECIMAL(15,6) COMMENT 'Minimum exchange rate observed (placeholder)',
+    MAX_FX_RATE DECIMAL(15,6) COMMENT 'Maximum exchange rate observed (placeholder)',
+    UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of customers with exposure to this currency'
 ) COMMENT = 'Foreign Exchange (FX) Risk Monitoring (Spot): To provide a current, aggregated view of the banks non-base currency transaction exposure. Used to manage the net open position risk across all currencies.
 Market Risk: Measures FX exposure for compliance with internal limits and external regulatory requirements (e.g., assessing large single currency positions).'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -148,21 +148,21 @@ ORDER BY TOTAL_CHF_AMOUNT DESC;
 
 -- Currency exposure over time (daily trends)
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY(
-    EXPOSURE_DATE COMMENT 'Business date for time series analysis',
-    CURRENCY COMMENT 'Foreign currency for exposure tracking',
-    DAILY_TRANSACTION_COUNT COMMENT 'Daily transaction volume per currency',
-    DAILY_TOTAL_AMOUNT COMMENT 'Daily total exposure amount',
-    DAILY_AVG_AMOUNT COMMENT 'Daily average transaction size',
-    DAILY_MIN_AMOUNT COMMENT 'Smallest transaction of the day',
-    DAILY_MAX_AMOUNT COMMENT 'Largest transaction of the day',
-    DAILY_UNIQUE_CUSTOMERS COMMENT 'Number of customers active in this currency',
-    ROLLING_7D_TRANSACTION_COUNT COMMENT '7-day rolling transaction volume',
-    ROLLING_7D_TOTAL_AMOUNT COMMENT '7-day rolling exposure amount',
-    ROLLING_7D_AVG_DAILY_AMOUNT COMMENT '7-day average daily exposure',
-    AMOUNT_30_DAYS_AGO COMMENT 'Exposure amount 30 days prior for comparison',
-    GROWTH_RATE_30D_PERCENT COMMENT '30-day growth rate percentage for trend monitoring',
-    DAILY_VOLUME_CATEGORY COMMENT 'Daily transaction volume risk classification',
-    DAILY_EXPOSURE_CATEGORY COMMENT 'Daily exposure amount risk classification'
+    EXPOSURE_DATE DATE COMMENT 'Business date for time series analysis',
+    CURRENCY VARCHAR(3) COMMENT 'Foreign currency for exposure tracking',
+    DAILY_TRANSACTION_COUNT NUMBER(10,0) COMMENT 'Daily transaction volume per currency',
+    DAILY_TOTAL_AMOUNT DECIMAL(28,2) COMMENT 'Daily total exposure amount',
+    DAILY_AVG_AMOUNT DECIMAL(28,2) COMMENT 'Daily average transaction size',
+    DAILY_MIN_AMOUNT DECIMAL(28,2) COMMENT 'Smallest transaction of the day',
+    DAILY_MAX_AMOUNT DECIMAL(28,2) COMMENT 'Largest transaction of the day',
+    DAILY_UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of customers active in this currency',
+    ROLLING_7D_TRANSACTION_COUNT NUMBER(10,0) COMMENT '7-day rolling transaction volume',
+    ROLLING_7D_TOTAL_AMOUNT DECIMAL(28,2) COMMENT '7-day rolling exposure amount',
+    ROLLING_7D_AVG_DAILY_AMOUNT DECIMAL(28,2) COMMENT '7-day average daily exposure',
+    AMOUNT_30_DAYS_AGO DECIMAL(28,2) COMMENT 'Exposure amount 30 days prior for comparison',
+    GROWTH_RATE_30D_PERCENT DECIMAL(8,2) COMMENT '30-day growth rate percentage for trend monitoring',
+    DAILY_VOLUME_CATEGORY VARCHAR(20) COMMENT 'Daily transaction volume risk classification',
+    DAILY_EXPOSURE_CATEGORY VARCHAR(20) COMMENT 'Daily exposure amount risk classification'
 ) COMMENT = 'FX Market Trend and Volatility Analysis: To provide a time series of currency exposure, including 7-day rolling totals and 30-day growth rates. This enables sophisticated analysis of market risk trends.
 Market Risk/Treasury: Used for analyzing currency volatility, forecasting future liquidity needs, and classifying exposure into high, medium, and low categories for risk appetite adherence.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -239,18 +239,18 @@ ORDER BY EXPOSURE_DATE DESC, DAILY_TOTAL_AMOUNT DESC;
 
 -- Settlement timing exposure analysis
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE(
-    SETTLEMENT_DATE COMMENT 'Settlement date for liquidity planning',
-    CURRENCY COMMENT 'Currency for settlement risk analysis',
-    SETTLEMENT_TRANSACTION_COUNT COMMENT 'Number of transactions settling on this date',
-    SETTLEMENT_TOTAL_AMOUNT COMMENT 'Total amount settling in this currency',
-    AVG_SETTLEMENT_DAYS COMMENT 'Average settlement period for operational planning',
-    SAME_DAY_SETTLEMENTS COMMENT 'Immediate settlement transactions',
-    T_PLUS_1_SETTLEMENTS COMMENT 'Next business day settlements',
-    T_PLUS_2_3_SETTLEMENTS COMMENT 'Standard settlement period transactions',
-    DELAYED_SETTLEMENTS COMMENT 'Delayed settlements requiring attention',
-    BACKDATED_SETTLEMENTS COMMENT 'Backdated settlements (compliance risk)',
-    SETTLEMENT_RISK_LEVEL COMMENT 'Overall settlement risk classification',
-    SETTLEMENT_TIMING_TYPE COMMENT 'Settlement timing pattern for operational planning'
+    SETTLEMENT_DATE DATE COMMENT 'Settlement date for liquidity planning',
+    CURRENCY VARCHAR(3) COMMENT 'Currency for settlement risk analysis',
+    SETTLEMENT_TRANSACTION_COUNT NUMBER(10,0) COMMENT 'Number of transactions settling on this date',
+    SETTLEMENT_TOTAL_AMOUNT DECIMAL(28,2) COMMENT 'Total amount settling in this currency',
+    AVG_SETTLEMENT_DAYS DECIMAL(8,2) COMMENT 'Average settlement period for operational planning',
+    SAME_DAY_SETTLEMENTS NUMBER(10,0) COMMENT 'Immediate settlement transactions',
+    T_PLUS_1_SETTLEMENTS NUMBER(10,0) COMMENT 'Next business day settlements',
+    T_PLUS_2_3_SETTLEMENTS NUMBER(10,0) COMMENT 'Standard settlement period transactions',
+    DELAYED_SETTLEMENTS NUMBER(10,0) COMMENT 'Delayed settlements requiring attention',
+    BACKDATED_SETTLEMENTS NUMBER(10,0) COMMENT 'Backdated settlements (compliance risk)',
+    SETTLEMENT_RISK_LEVEL VARCHAR(30) COMMENT 'Overall settlement risk classification',
+    SETTLEMENT_TIMING_TYPE VARCHAR(30) COMMENT 'Settlement timing pattern for operational planning'
 ) COMMENT = 'Settlement Timing and Liquidity Risk Analysis: To analyze the timing of fund settlements (VALUE_DATE vs. BOOKING_DATE) for non-base currencies. It focuses on the settlement lag to manage liquidity and operational risk. 
 Operational Risk/Treasury: Flags transactions with high settlement risk (delayed or backdated) which are critical for operational stability, liquidity planning, and identifying potential non-compliance patterns.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -299,14 +299,14 @@ ORDER BY SETTLEMENT_DATE DESC, SETTLEMENT_TOTAL_AMOUNT DESC;
 
 -- Anomaly detection summary
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_ANOMALY_ANALYSIS(
-    CUSTOMER_ID COMMENT 'Customer identifier for compliance tracking',
-    FULL_NAME COMMENT 'Customer name for investigation reports',
-    IS_ANOMALOUS_CUSTOMER COMMENT 'Customer-level anomaly flag from profiling',
-    TOTAL_TRANSACTIONS COMMENT 'Total transaction count for baseline comparison',
-    ANOMALOUS_TRANSACTIONS COMMENT 'Count of flagged transactions',
-    ANOMALY_PERCENTAGE COMMENT 'Percentage of anomalous activity',
-    ANOMALOUS_AMOUNT COMMENT 'Total value of suspicious transactions',
-    ANOMALY_TYPES COMMENT 'Types of anomalies detected for investigation'
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for compliance tracking',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer name for investigation reports',
+    IS_ANOMALOUS_CUSTOMER BOOLEAN COMMENT 'Customer-level anomaly flag from profiling',
+    TOTAL_TRANSACTIONS NUMBER(10,0) COMMENT 'Total transaction count for baseline comparison',
+    ANOMALOUS_TRANSACTIONS NUMBER(10,0) COMMENT 'Count of flagged transactions',
+    ANOMALY_PERCENTAGE DECIMAL(8,2) COMMENT 'Percentage of anomalous activity',
+    ANOMALOUS_AMOUNT DECIMAL(28,2) COMMENT 'Total value of suspicious transactions',
+    ANOMALY_TYPES VARCHAR(2000) COMMENT 'Types of anomalies detected for investigation'
 ) COMMENT = 'Customer-level anomaly analysis for compliance monitoring, AML investigation, and suspicious activity reporting.
 Compliance/AML: Directly supports Anti-Money Laundering operations by identifying and prioritizing high-risk customers for further AML investigation and the generation of Suspicious Activity Reports (SARs).'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -331,16 +331,16 @@ ORDER BY ANOMALY_PERCENTAGE DESC, ANOMALOUS_AMOUNT DESC;
 
 -- High-risk transaction patterns
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_RISK_PATTERNS(
-    TRANSACTION_ID COMMENT 'Unique identifier for each transaction',
-    CUSTOMER_ID COMMENT 'Customer identifier for risk profiling',
-    BOOKING_DATE COMMENT 'Date when transaction was booked in system',
-    VALUE_DATE COMMENT 'Settlement date for the transaction',
-    AMOUNT COMMENT 'Transaction amount in original currency',
-    CURRENCY COMMENT 'Currency code (ISO 4217) of the transaction',
-    DIRECTION COMMENT 'Transaction flow direction (IN/OUT)',
-    DESCRIPTION COMMENT 'Transaction description text for analysis',
-    RISK_CATEGORY COMMENT 'Primary risk classification for compliance review (HIGH_AMOUNT/ANOMALOUS/OFFSHORE/CRYPTO/etc.)',
-    SETTLEMENT_DAYS COMMENT 'Transaction Surveillance Hot List for Compliance: To create a focused list of individual transactions that breach pre-defined risk thresholds (e.g., high-amount, off-hours, offshore, crypto, backdated settlements).	
+    TRANSACTION_ID VARCHAR(50) COMMENT 'Unique identifier for each transaction',
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for risk profiling',
+    BOOKING_DATE TIMESTAMP_NTZ COMMENT 'Date when transaction was booked in system',
+    VALUE_DATE DATE COMMENT 'Settlement date for the transaction',
+    AMOUNT DECIMAL(28,2) COMMENT 'Transaction amount in original currency',
+    CURRENCY VARCHAR(3) COMMENT 'Currency code (ISO 4217) of the transaction',
+    DIRECTION VARCHAR(3) COMMENT 'Transaction flow direction (IN/OUT)',
+    DESCRIPTION VARCHAR(500) COMMENT 'Transaction description text for analysis',
+    RISK_CATEGORY VARCHAR(30) COMMENT 'Primary risk classification for compliance review (HIGH_AMOUNT/ANOMALOUS/OFFSHORE/CRYPTO/etc.)',
+    SETTLEMENT_DAYS NUMBER(10,0) COMMENT 'Transaction Surveillance Hot List for Compliance: To create a focused list of individual transactions that breach pre-defined risk thresholds (e.g., high-amount, off-hours, offshore, crypto, backdated settlements).	
     Compliance/Sanctions: Serves as the primary feed for transaction surveillance and compliance review. It uses explicit risk categories (HIGH_AMOUNT, ANOMALOUS, OFFSHORE) to expedite the investigation process.'
 ) TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
@@ -379,18 +379,18 @@ ORDER BY AMOUNT DESC, BOOKING_DATE DESC;
 
 -- Settlement risk analysis
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_SETTLEMENT_ANALYSIS(
-    BOOKING_DATE COMMENT 'Transaction booking date for settlement tracking',
-    VALUE_DATE COMMENT 'Actual settlement date for liquidity planning',
-    SETTLEMENT_DAYS COMMENT 'Settlement period for operational analysis',
-    TRANSACTION_COUNT COMMENT 'Number of transactions with this settlement pattern',
-    UNIQUE_CUSTOMERS COMMENT 'Number of customers affected by settlement timing',
-    TOTAL_AMOUNT COMMENT 'Total value settling with this timing',
-    AVG_AMOUNT COMMENT 'Average transaction size for this settlement pattern',
-    BACKDATED_COUNT COMMENT 'Backdated settlements (compliance concern)',
-    DELAYED_COUNT COMMENT 'Delayed settlements (operational risk)',
-    SAME_DAY_COUNT COMMENT 'Same-day settlements',
-    NEXT_DAY_COUNT COMMENT 'Next business day settlements',
-    T_PLUS_2_3_COUNT COMMENT 'Standard settlement period transactions'
+    BOOKING_DATE DATE COMMENT 'Transaction booking date for settlement tracking',
+    VALUE_DATE DATE COMMENT 'Actual settlement date for liquidity planning',
+    SETTLEMENT_DAYS NUMBER(10,0) COMMENT 'Settlement period for operational analysis',
+    TRANSACTION_COUNT NUMBER(10,0) COMMENT 'Number of transactions with this settlement pattern',
+    UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of customers affected by settlement timing',
+    TOTAL_AMOUNT DECIMAL(28,2) COMMENT 'Total value settling with this timing',
+    AVG_AMOUNT DECIMAL(28,2) COMMENT 'Average transaction size for this settlement pattern',
+    BACKDATED_COUNT NUMBER(10,0) COMMENT 'Backdated settlements (compliance concern)',
+    DELAYED_COUNT NUMBER(10,0) COMMENT 'Delayed settlements (operational risk)',
+    SAME_DAY_COUNT NUMBER(10,0) COMMENT 'Same-day settlements',
+    NEXT_DAY_COUNT NUMBER(10,0) COMMENT 'Next business day settlements',
+    T_PLUS_2_3_COUNT NUMBER(10,0) COMMENT 'Standard settlement period transactions'
 ) COMMENT = 'Aggregated Operational Settlement Analysis: To provide a view of overall settlement efficiency by grouping transactions based on the number of settlement days.
 Operations/Liquidity: Used to manage and improve payment processing efficiency, tracking the volume of same-day, next-day, and delayed settlements. Critical for monitoring compliance with real-time or T+X settlement mandates.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH

@@ -62,19 +62,19 @@ CREATE OR REPLACE TABLE CMDI_TRADES (
     
     -- Trade Details
     SIDE VARCHAR(1) COMMENT '1=Buy, 2=Sell (FIX standard)',
-    QUANTITY FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Quantity in commodity units',
+    QUANTITY FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Quantity in commodity units',
     UNIT VARCHAR(20) COMMENT 'Barrel, Troy Ounce, Metric Ton, Bushel, etc.',
     PRICE FLOAT COMMENT 'Price per unit in trade currency',
     CURRENCY VARCHAR(3) COMMENT 'Trading currency (USD, EUR, GBP, CHF)',
     
     -- Financial Details
-    GROSS_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed gross amount: quantity * price',
-    COMMISSION FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Trading commission',
-    NET_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed net amount: gross_amount +/- commission',
+    GROSS_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed gross amount: quantity * price',
+    COMMISSION FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Trading commission',
+    NET_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed net amount: gross_amount +/- commission',
     
     -- Base Currency (CHF)
     BASE_CURRENCY VARCHAR(3) COMMENT 'Base reporting currency (CHF)',
-    BASE_GROSS_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Gross amount in CHF',
+    BASE_GROSS_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Gross amount in CHF',
     BASE_NET_AMOUNT FLOAT COMMENT 'Net amount in CHF',
     FX_RATE FLOAT COMMENT 'Exchange rate used for conversion to CHF',
     
@@ -102,15 +102,6 @@ CREATE OR REPLACE TABLE CMDI_TRADES (
 ) COMMENT = 'Raw commodity trades (energy, metals, agricultural) with FRTB risk metrics';
 
 -- ============================================================
--- CMDI_TRADES_STREAM - File Detection Stream
--- ============================================================
--- Monitors CMDI_TRADES stage for new commodity trade CSV files
-
-CREATE OR REPLACE STREAM CMDI_TRADES_STREAM 
-ON STAGE CMDI_TRADES
-COMMENT = 'Monitors CMDI_TRADES stage for new commodity trade CSV files';
-
--- ============================================================
 -- CMDI_TRADES - Internal Stage for CSV Ingestion
 -- ============================================================
 -- Internal stage for loading CSV files from commodity_generator.py
@@ -130,6 +121,15 @@ COMMENT = 'Internal stage for commodity trade CSV files';
 
 -- Enable directory table for file tracking and metadata
 ALTER STAGE CMDI_TRADES REFRESH;
+
+-- ============================================================
+-- CMDI_TRADES_STREAM - File Detection Stream
+-- ============================================================
+-- Monitors CMDI_TRADES stage for new commodity trade CSV files
+
+CREATE OR REPLACE STREAM CMDI_TRADES_STREAM 
+ON STAGE CMDI_TRADES
+COMMENT = 'Monitors CMDI_TRADES stage for new commodity trade CSV files';
 
 -- ============================================================
 -- CMDI_LOAD_TRADES_TASK - Automated CSV Loading

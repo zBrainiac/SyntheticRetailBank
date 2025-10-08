@@ -162,7 +162,7 @@ Deploy the complete synthetic bank with automatic data upload:
 python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 
 # 2. Deploy everything (structure + data upload + task activation)
-./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
 ```
 
 **Result**: Fully operational synthetic bank with all data loaded and processing automatically! 🎉
@@ -178,10 +178,10 @@ If you prefer manual control:
 python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 
 # 2. Deploy SQL structure only
-./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
 
 # 3. Upload data manually
-./upload-data.sh --CONNECTION_NAME=sfseeurope-mdaeppen
+./upload-data.sh --CONNECTION_NAME=<my-sf-connection>
 ```
 
 **⚠️ Important**: Data generation must happen **before** structure deployment!
@@ -190,10 +190,10 @@ python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 
 ```bash
 # Preview everything (dry run)
-./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen --DRY_RUN
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --DRY_RUN
 
 # Test single SQL file
-./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=sfseeurope-mdaeppen --FILE=031_ICGI.sql
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --FILE=031_ICGI.sql
 ```
 
 ## Usage

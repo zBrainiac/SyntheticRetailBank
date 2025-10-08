@@ -67,19 +67,19 @@ USE SCHEMA REP_AGG_001;
 -- Aggregates all trading positions across asset classes for FRTB reporting
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_FRTB_RISK_POSITIONS(
-    RISK_CLASS COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
-    RISK_BUCKET COMMENT 'Risk bucket within risk class',
-    CUSTOMER_ID COMMENT 'Customer identifier',
-    ACCOUNT_ID COMMENT 'Investment account',
-    INSTRUMENT_TYPE COMMENT 'Type of instrument',
-    INSTRUMENT_NAME COMMENT 'Instrument name/identifier',
-    CURRENCY COMMENT 'Trading currency',
-    POSITION_VALUE_CHF COMMENT 'Position value in CHF',
-    DELTA_CHF COMMENT 'Delta sensitivity in CHF',
-    VEGA_CHF COMMENT 'Vega sensitivity in CHF (if applicable)',
-    LIQUIDITY_SCORE COMMENT 'Liquidity score (1-10)',
-    IS_NMRF COMMENT 'Non-Modellable Risk Factor flag',
-    LAST_UPDATED COMMENT 'Timestamp when calculated'
+    RISK_CLASS VARCHAR(20) COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
+    RISK_BUCKET VARCHAR(30) COMMENT 'Risk bucket within risk class',
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier',
+    ACCOUNT_ID VARCHAR(20) COMMENT 'Investment account',
+    INSTRUMENT_TYPE VARCHAR(30) COMMENT 'Type of instrument',
+    INSTRUMENT_NAME VARCHAR(50) COMMENT 'Instrument name/identifier',
+    CURRENCY VARCHAR(3) COMMENT 'Trading currency',
+    POSITION_VALUE_CHF DECIMAL(28,2) COMMENT 'Position value in CHF',
+    DELTA_CHF DECIMAL(28,2) COMMENT 'Delta sensitivity in CHF',
+    VEGA_CHF DECIMAL(28,2) COMMENT 'Vega sensitivity in CHF (if applicable)',
+    LIQUIDITY_SCORE DECIMAL(3,1) COMMENT 'Liquidity score (1-10)',
+    IS_NMRF BOOLEAN COMMENT 'Non-Modellable Risk Factor flag',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when calculated'
 ) COMMENT = 'Consolidated Trading Book Risk Exposure: To aggregate all open positions from the trading book—across equities, fixed income, commodities, and FX—into a unified view, classified by FRTB Risk Class.
 FRTB (Fundamental Review of the Trading Book): Provides the granular position data required as the input for calculating regulatory capital under the Standardized Approach (SA). It consolidates risk for reporting and limit monitoring.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -206,18 +206,18 @@ ORDER BY RISK_CLASS, RISK_BUCKET, POSITION_VALUE_CHF DESC;
 -- Aggregates delta, vega, and curvature sensitivities by risk class
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_FRTB_SENSITIVITIES(
-    RISK_CLASS COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
-    RISK_BUCKET COMMENT 'Risk bucket within risk class',
-    TOTAL_POSITIONS COMMENT 'Number of positions',
-    LONG_POSITIONS COMMENT 'Number of long positions',
-    SHORT_POSITIONS COMMENT 'Number of short positions',
-    GROSS_DELTA_CHF COMMENT 'Gross delta (sum of absolute values)',
-    NET_DELTA_CHF COMMENT 'Net delta (long - short)',
-    GROSS_VEGA_CHF COMMENT 'Gross vega (sum of absolute values)',
-    NET_VEGA_CHF COMMENT 'Net vega (long - short)',
-    LARGEST_POSITION_CHF COMMENT 'Largest single position value',
-    NMRF_POSITIONS COMMENT 'Number of NMRF positions',
-    LAST_UPDATED COMMENT 'Timestamp when calculated'
+    RISK_CLASS VARCHAR(20) COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
+    RISK_BUCKET VARCHAR(30) COMMENT 'Risk bucket within risk class',
+    TOTAL_POSITIONS NUMBER(10,0) COMMENT 'Number of positions',
+    LONG_POSITIONS NUMBER(10,0) COMMENT 'Number of long positions',
+    SHORT_POSITIONS NUMBER(10,0) COMMENT 'Number of short positions',
+    GROSS_DELTA_CHF DECIMAL(28,2) COMMENT 'Gross delta (sum of absolute values)',
+    NET_DELTA_CHF DECIMAL(28,2) COMMENT 'Net delta (long - short)',
+    GROSS_VEGA_CHF DECIMAL(28,2) COMMENT 'Gross vega (sum of absolute values)',
+    NET_VEGA_CHF DECIMAL(28,2) COMMENT 'Net vega (long - short)',
+    LARGEST_POSITION_CHF DECIMAL(28,2) COMMENT 'Largest single position value',
+    NMRF_POSITIONS NUMBER(10,0) COMMENT 'Number of NMRF positions',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when calculated'
 ) COMMENT = 'Risk Aggregation and Net Exposure Measurement: To calculate and aggregate the Δ (Delta), ν (Vega), and Curvature sensitivities by risk class and bucket. This summarizes the banks exposure to small movements in underlying risk factors.
 Market Risk Management: Essential for internal risk control, quantifying the exposure of the trading book to interest rate changes (Δ for bonds), volatility (ν for options/swaps), and non-linear risk (Curvature).'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -245,17 +245,17 @@ ORDER BY RISK_CLASS, RISK_BUCKET;
 -- Calculates FRTB SA capital charges by risk class and bucket
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_FRTB_CAPITAL_CHARGES(
-    RISK_CLASS COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
-    RISK_BUCKET COMMENT 'Risk bucket within risk class',
-    GROSS_DELTA_CHF COMMENT 'Gross delta sensitivity',
-    NET_DELTA_CHF COMMENT 'Net delta sensitivity',
-    RISK_WEIGHT COMMENT 'FRTB risk weight (%)',
-    DELTA_CAPITAL_CHARGE_CHF COMMENT 'Delta capital charge',
-    VEGA_CAPITAL_CHARGE_CHF COMMENT 'Vega capital charge',
-    CURVATURE_CAPITAL_CHARGE_CHF COMMENT 'Curvature capital charge',
-    NMRF_ADD_ON_CHF COMMENT 'NMRF capital add-on',
-    TOTAL_CAPITAL_CHARGE_CHF COMMENT 'Total capital charge for bucket',
-    LAST_UPDATED COMMENT 'Timestamp when calculated'
+    RISK_CLASS VARCHAR(20) COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
+    RISK_BUCKET VARCHAR(30) COMMENT 'Risk bucket within risk class',
+    GROSS_DELTA_CHF DECIMAL(28,2) COMMENT 'Gross delta sensitivity',
+    NET_DELTA_CHF DECIMAL(28,2) COMMENT 'Net delta sensitivity',
+    RISK_WEIGHT DECIMAL(8,2) COMMENT 'FRTB risk weight (%)',
+    DELTA_CAPITAL_CHARGE_CHF DECIMAL(28,2) COMMENT 'Delta capital charge',
+    VEGA_CAPITAL_CHARGE_CHF DECIMAL(28,2) COMMENT 'Vega capital charge',
+    CURVATURE_CAPITAL_CHARGE_CHF DECIMAL(28,2) COMMENT 'Curvature capital charge',
+    NMRF_ADD_ON_CHF DECIMAL(28,2) COMMENT 'NMRF capital add-on',
+    TOTAL_CAPITAL_CHARGE_CHF DECIMAL(28,2) COMMENT 'Total capital charge for bucket',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when calculated'
 ) COMMENT = 'FRTB Regulatory Capital Calculation (Standardized Approach): To compute the actual capital requirement for each risk class and bucket by applying mandated FRTB Risk Weights to the calculated sensitivities.
 Basel III/IV Regulatory Compliance: The core output for regulatory reporting. It determines the Total Capital Charge (SA-based RWA), including Delta, Vega, Curvature, and the NMRF Add-On, which must be covered by the banks capital.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -366,16 +366,16 @@ ORDER BY TOTAL_CAPITAL_CHARGE_CHF DESC;
 -- Identifies Non-Modellable Risk Factors requiring capital add-ons
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_FRTB_NMRF_ANALYSIS(
-    RISK_CLASS COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
-    RISK_BUCKET COMMENT 'Risk bucket within risk class',
-    INSTRUMENT_NAME COMMENT 'Instrument name/identifier',
-    CUSTOMER_ID COMMENT 'Customer identifier',
-    POSITION_VALUE_CHF COMMENT 'Position value in CHF',
-    DELTA_CHF COMMENT 'Delta sensitivity',
-    LIQUIDITY_SCORE COMMENT 'Liquidity score (1-10)',
-    NMRF_REASON COMMENT 'Reason for NMRF classification',
-    CAPITAL_ADD_ON_CHF COMMENT 'Additional capital requirement',
-    LAST_UPDATED COMMENT 'Timestamp when calculated'
+    RISK_CLASS VARCHAR(20) COMMENT 'EQUITY, FX, INTEREST_RATE, COMMODITY, CREDIT_SPREAD',
+    RISK_BUCKET VARCHAR(30) COMMENT 'Risk bucket within risk class',
+    INSTRUMENT_NAME VARCHAR(50) COMMENT 'Instrument name/identifier',
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier',
+    POSITION_VALUE_CHF DECIMAL(28,2) COMMENT 'Position value in CHF',
+    DELTA_CHF DECIMAL(28,2) COMMENT 'Delta sensitivity',
+    LIQUIDITY_SCORE DECIMAL(3,1) COMMENT 'Liquidity score (1-10)',
+    NMRF_REASON VARCHAR(50) COMMENT 'Reason for NMRF classification',
+    CAPITAL_ADD_ON_CHF DECIMAL(28,2) COMMENT 'Additional capital requirement',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when calculated'
 ) COMMENT = 'Non-Modellable Risk Factor (NMRF) Identification and Add-On: To explicitly identify and quantify capital add-ons for illiquid or complex trading positions (e.g., high-yield credit, agricultural commodities) where market data is insufficient for internal modeling.
 Market Risk / Regulatory Compliance: Directly addresses the FRTB requirement for liquidity-based capital charges. It isolates and calculates the capital add-on based on the position value and liquidity score, ensuring sufficient capital for difficult-to-hedge risks.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH

@@ -72,87 +72,87 @@ USE SCHEMA REP_AGG_001;
 -- for true multi-asset portfolio analytics and wealth management reporting.
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
-    ACCOUNT_ID COMMENT 'Account identifier for portfolio tracking',
-    CUSTOMER_ID COMMENT 'Customer identifier for relationship management',
-    ACCOUNT_TYPE COMMENT 'Account type (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
-    BASE_CURRENCY COMMENT 'Base currency for reporting',
-    MEASUREMENT_PERIOD_START COMMENT 'Start date of performance measurement period',
-    MEASUREMENT_PERIOD_END COMMENT 'End date of performance measurement period',
-    DAYS_IN_PERIOD COMMENT 'Number of days in measurement period',
+    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for portfolio tracking',
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for relationship management',
+    ACCOUNT_TYPE VARCHAR(20) COMMENT 'Account type (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
+    BASE_CURRENCY VARCHAR(3) COMMENT 'Base currency for reporting',
+    MEASUREMENT_PERIOD_START DATE COMMENT 'Start date of performance measurement period',
+    MEASUREMENT_PERIOD_END DATE COMMENT 'End date of performance measurement period',
+    DAYS_IN_PERIOD NUMBER(10,0) COMMENT 'Number of days in measurement period',
     
     -- Cash Account Metrics
-    CASH_STARTING_BALANCE COMMENT 'Cash balance at start of period',
-    CASH_ENDING_BALANCE COMMENT 'Cash balance at end of period',
-    CASH_DEPOSITS COMMENT 'Total cash deposits during period',
-    CASH_WITHDRAWALS COMMENT 'Total cash withdrawals during period',
-    CASH_NET_FLOW COMMENT 'Net cash flow (deposits - withdrawals)',
-    CASH_TWR_PERCENTAGE COMMENT 'Time Weighted Return for cash account (%)',
+    CASH_STARTING_BALANCE DECIMAL(38,2) COMMENT 'Cash balance at start of period',
+    CASH_ENDING_BALANCE DECIMAL(38,2) COMMENT 'Cash balance at end of period',
+    CASH_DEPOSITS DECIMAL(38,2) COMMENT 'Total cash deposits during period',
+    CASH_WITHDRAWALS DECIMAL(38,2) COMMENT 'Total cash withdrawals during period',
+    CASH_NET_FLOW DECIMAL(38,2) COMMENT 'Net cash flow (deposits - withdrawals)',
+    CASH_TWR_PERCENTAGE DECIMAL(20,4) COMMENT 'Time Weighted Return for cash account (%)',
     
     -- Equity Trading Metrics
-    EQUITY_TRADES_COUNT COMMENT 'Number of equity trades during period',
-    EQUITY_BUY_TRADES COMMENT 'Number of equity buy trades',
-    EQUITY_SELL_TRADES COMMENT 'Number of equity sell trades',
-    EQUITY_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in equities (CHF)',
-    EQUITY_REALIZED_PL_CHF COMMENT 'Realized profit/loss from equity sales (CHF)',
-    EQUITY_COMMISSION_CHF COMMENT 'Total trading commissions paid (CHF)',
-    EQUITY_NET_RETURN_CHF COMMENT 'Net return from equity trading (realized P and L - commissions)',
-    EQUITY_RETURN_PERCENTAGE COMMENT 'Equity return percentage (net return / invested)',
+    EQUITY_TRADES_COUNT NUMBER(10,0) COMMENT 'Number of equity trades during period',
+    EQUITY_BUY_TRADES NUMBER(10,0) COMMENT 'Number of equity buy trades',
+    EQUITY_SELL_TRADES NUMBER(10,0) COMMENT 'Number of equity sell trades',
+    EQUITY_TOTAL_INVESTED_CHF DECIMAL(38,2) COMMENT 'Total amount invested in equities (CHF)',
+    EQUITY_REALIZED_PL_CHF DECIMAL(38,2) COMMENT 'Realized profit/loss from equity sales (CHF)',
+    EQUITY_COMMISSION_CHF DECIMAL(38,2) COMMENT 'Total trading commissions paid (CHF)',
+    EQUITY_NET_RETURN_CHF DECIMAL(38,2) COMMENT 'Net return from equity trading (realized P and L - commissions)',
+    EQUITY_RETURN_PERCENTAGE DECIMAL(20,4) COMMENT 'Equity return percentage (net return / invested)',
     
     -- Fixed Income Trading Metrics
-    FI_TRADES_COUNT COMMENT 'Number of fixed income trades during period',
-    FI_BUY_TRADES COMMENT 'Number of fixed income buy trades',
-    FI_SELL_TRADES COMMENT 'Number of fixed income sell trades',
-    FI_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in fixed income (CHF)',
-    FI_NET_PL_CHF COMMENT 'Net profit/loss from fixed income trading (CHF)',
-    FI_COMMISSION_CHF COMMENT 'Total fixed income trading commissions (CHF)',
-    FI_RETURN_PERCENTAGE COMMENT 'Fixed income return percentage',
+    FI_TRADES_COUNT NUMBER(10,0) COMMENT 'Number of fixed income trades during period',
+    FI_BUY_TRADES NUMBER(10,0) COMMENT 'Number of fixed income buy trades',
+    FI_SELL_TRADES NUMBER(10,0) COMMENT 'Number of fixed income sell trades',
+    FI_TOTAL_INVESTED_CHF DECIMAL(38,2) COMMENT 'Total amount invested in fixed income (CHF)',
+    FI_NET_PL_CHF DECIMAL(38,2) COMMENT 'Net profit/loss from fixed income trading (CHF)',
+    FI_COMMISSION_CHF DECIMAL(38,2) COMMENT 'Total fixed income trading commissions (CHF)',
+    FI_RETURN_PERCENTAGE DECIMAL(20,4) COMMENT 'Fixed income return percentage',
     
     -- Commodity Trading Metrics
-    CMD_TRADES_COUNT COMMENT 'Number of commodity trades during period',
-    CMD_BUY_TRADES COMMENT 'Number of commodity buy trades',
-    CMD_SELL_TRADES COMMENT 'Number of commodity sell trades',
-    CMD_TOTAL_INVESTED_CHF COMMENT 'Total amount invested in commodities (CHF)',
-    CMD_NET_PL_CHF COMMENT 'Net profit/loss from commodity trading (CHF)',
-    CMD_COMMISSION_CHF COMMENT 'Total commodity trading commissions (CHF)',
-    CMD_RETURN_PERCENTAGE COMMENT 'Commodity return percentage',
+    CMD_TRADES_COUNT NUMBER(10,0) COMMENT 'Number of commodity trades during period',
+    CMD_BUY_TRADES NUMBER(10,0) COMMENT 'Number of commodity buy trades',
+    CMD_SELL_TRADES NUMBER(10,0) COMMENT 'Number of commodity sell trades',
+    CMD_TOTAL_INVESTED_CHF DECIMAL(38,2) COMMENT 'Total amount invested in commodities (CHF)',
+    CMD_NET_PL_CHF DECIMAL(38,2) COMMENT 'Net profit/loss from commodity trading (CHF)',
+    CMD_COMMISSION_CHF DECIMAL(38,2) COMMENT 'Total commodity trading commissions (CHF)',
+    CMD_RETURN_PERCENTAGE DECIMAL(20,4) COMMENT 'Commodity return percentage',
     
     -- Portfolio Allocation
-    CURRENT_CASH_VALUE_CHF COMMENT 'Current cash position value (CHF)',
-    CURRENT_EQUITY_POSITIONS COMMENT 'Number of open equity positions',
-    CURRENT_EQUITY_VALUE_CHF COMMENT 'Current value of equity positions (at cost, CHF)',
-    CURRENT_FI_POSITIONS COMMENT 'Number of open fixed income positions',
-    CURRENT_FI_VALUE_CHF COMMENT 'Current value of fixed income positions (at cost, CHF)',
-    CURRENT_CMD_POSITIONS COMMENT 'Number of open commodity positions',
-    CURRENT_CMD_VALUE_CHF COMMENT 'Current value of commodity positions (at cost, CHF)',
-    TOTAL_PORTFOLIO_VALUE_CHF COMMENT 'Total portfolio value (cash + all asset classes at cost)',
-    CASH_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in cash',
-    EQUITY_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in equities',
-    FI_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in fixed income',
-    CMD_ALLOCATION_PERCENTAGE COMMENT 'Percentage of portfolio in commodities',
+    CURRENT_CASH_VALUE_CHF DECIMAL(38,2) COMMENT 'Current cash position value (CHF)',
+    CURRENT_EQUITY_POSITIONS NUMBER(10,0) COMMENT 'Number of open equity positions',
+    CURRENT_EQUITY_VALUE_CHF DECIMAL(38,2) COMMENT 'Current value of equity positions (at cost, CHF)',
+    CURRENT_FI_POSITIONS NUMBER(10,0) COMMENT 'Number of open fixed income positions',
+    CURRENT_FI_VALUE_CHF DECIMAL(38,2) COMMENT 'Current value of fixed income positions (at cost, CHF)',
+    CURRENT_CMD_POSITIONS NUMBER(10,0) COMMENT 'Number of open commodity positions',
+    CURRENT_CMD_VALUE_CHF DECIMAL(38,2) COMMENT 'Current value of commodity positions (at cost, CHF)',
+    TOTAL_PORTFOLIO_VALUE_CHF DECIMAL(38,2) COMMENT 'Total portfolio value (cash + all asset classes at cost)',
+    CASH_ALLOCATION_PERCENTAGE DECIMAL(20,4) COMMENT 'Percentage of portfolio in cash',
+    EQUITY_ALLOCATION_PERCENTAGE DECIMAL(20,4) COMMENT 'Percentage of portfolio in equities',
+    FI_ALLOCATION_PERCENTAGE DECIMAL(20,4) COMMENT 'Percentage of portfolio in fixed income',
+    CMD_ALLOCATION_PERCENTAGE DECIMAL(20,4) COMMENT 'Percentage of portfolio in commodities',
     
     -- Integrated Performance Metrics
-    TOTAL_PORTFOLIO_TWR_PERCENTAGE COMMENT 'Combined Time Weighted Return for entire portfolio (%)',
-    TOTAL_RETURN_CHF COMMENT 'Total portfolio return in CHF',
-    ANNUALIZED_PORTFOLIO_TWR COMMENT 'Annualized portfolio TWR (%)',
+    TOTAL_PORTFOLIO_TWR_PERCENTAGE DECIMAL(20,4) COMMENT 'Combined Time Weighted Return for entire portfolio (%)',
+    TOTAL_RETURN_CHF DECIMAL(38,2) COMMENT 'Total portfolio return in CHF',
+    ANNUALIZED_PORTFOLIO_TWR DECIMAL(20,4) COMMENT 'Annualized portfolio TWR (%)',
     
     -- Risk Metrics
-    PORTFOLIO_VOLATILITY COMMENT 'Portfolio volatility (standard deviation of returns)',
-    SHARPE_RATIO COMMENT 'Risk-adjusted return (Sharpe Ratio)',
-    RISK_FREE_RATE_ANNUAL_PCT COMMENT 'Annual risk-free rate used in Sharpe calculation',
-    MAX_DRAWDOWN_PERCENTAGE COMMENT 'Maximum peak-to-trough decline (%)',
+    PORTFOLIO_VOLATILITY DECIMAL(20,4) COMMENT 'Portfolio volatility (standard deviation of returns)',
+    SHARPE_RATIO DECIMAL(20,4) COMMENT 'Risk-adjusted return (Sharpe Ratio)',
+    RISK_FREE_RATE_ANNUAL_PCT DECIMAL(8,2) COMMENT 'Annual risk-free rate used in Sharpe calculation',
+    MAX_DRAWDOWN_PERCENTAGE DECIMAL(20,4) COMMENT 'Maximum peak-to-trough decline (%)',
     
     -- Activity Metrics
-    TOTAL_TRANSACTIONS COMMENT 'Total transactions (cash + equity)',
-    TRANSACTION_FREQUENCY COMMENT 'Average transactions per month',
-    TRADING_DAYS COMMENT 'Number of days with trading activity',
+    TOTAL_TRANSACTIONS NUMBER(10,0) COMMENT 'Total transactions (cash + equity)',
+    TRANSACTION_FREQUENCY DECIMAL(20,4) COMMENT 'Average transactions per month',
+    TRADING_DAYS NUMBER(10,0) COMMENT 'Number of days with trading activity',
     
     -- Performance Classification
-    PERFORMANCE_CATEGORY COMMENT 'Performance classification (EXCELLENT/GOOD/NEUTRAL/POOR/NEGATIVE)',
-    RISK_CATEGORY COMMENT 'Risk classification (LOW/MODERATE/HIGH/VERY_HIGH)',
-    PORTFOLIO_TYPE COMMENT 'Portfolio composition type (CASH_ONLY/EQUITY_FOCUSED/FI_FOCUSED/COMMODITY_FOCUSED/BALANCED/MULTI_ASSET)',
+    PERFORMANCE_CATEGORY VARCHAR(30) COMMENT 'Performance classification (EXCELLENT/GOOD/NEUTRAL/POOR/NEGATIVE)',
+    RISK_CATEGORY VARCHAR(20) COMMENT 'Risk classification (LOW/MODERATE/HIGH/VERY_HIGH)',
+    PORTFOLIO_TYPE VARCHAR(30) COMMENT 'Portfolio composition type (CASH_ONLY/EQUITY_FOCUSED/FI_FOCUSED/COMMODITY_FOCUSED/BALANCED/MULTI_ASSET)',
     
     -- Metadata
-    CALCULATION_TIMESTAMP COMMENT 'Integrated Multi-Asset Portfolio Measurement: To deliver a single, comprehensive performance report that combines all asset classes (cash, equity, fixed income, commodities) into a single portfolio view. Calculates the Time Weighted Return (TWR).                                       
+    CALCULATION_TIMESTAMP TIMESTAMP_NTZ COMMENT 'Integrated Multi-Asset Portfolio Measurement: To deliver a single, comprehensive performance report that combines all asset classes (cash, equity, fixed income, commodities) into a single portfolio view. Calculates the Time Weighted Return (TWR).                                       
     Wealth Management / Client Reporting: Provides crucial metrics for investment advisors to present to clients, including TWR (the industry standard for external reporting), asset allocation percentages, total value, and risk categories.'
 ) COMMENT = 'Integrated Multi-Asset Portfolio Performance: Comprehensive portfolio analytics combining cash, equity, fixed income, and commodity trading performance with Time Weighted Return (TWR) calculations for wealth management and client reporting.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH

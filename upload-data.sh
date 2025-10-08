@@ -322,6 +322,7 @@ else
     echo "1. Monitor task execution: SHOW TASKS IN DATABASE AAA_DEV_SYNTHETIC_BANK;"
     echo "2. Check data loading: SELECT COUNT(*) FROM [schema].[table];"
     echo "3. Verify stage contents: LIST @[stage_name];"
+    echo "4. Check which streams have data: SHOW STREAMS IN DATABASE AAA_DEV_SYNTHETIC_BANK;"
     echo ""
     echo "Data is now ready for automated processing by Snowflake tasks!"
 fi

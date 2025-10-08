@@ -63,17 +63,17 @@ CREATE OR REPLACE TABLE FIII_TRADES (
     SIDE VARCHAR(1) COMMENT '1=Buy/Pay, 2=Sell/Receive (FIX standard)',
     
     -- Financial Details
-    NOTIONAL FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Notional amount (face value)',
+    NOTIONAL FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Notional amount (face value)',
     PRICE FLOAT COMMENT 'Clean price (as % of par for bonds, rate for swaps)',
-    ACCRUED_INTEREST FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Accrued interest amount (bonds only)',
-    GROSS_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed gross amount: price * notional + accrued',
-    COMMISSION FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Trading commission',
-    NET_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed net amount: gross_amount +/- commission',
+    ACCRUED_INTEREST FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Accrued interest amount (bonds only)',
+    GROSS_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed gross amount: price * notional + accrued',
+    COMMISSION FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Trading commission',
+    NET_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed net amount: gross_amount +/- commission',
     
     -- Base Currency (CHF)
     BASE_CURRENCY VARCHAR(3) COMMENT 'Base reporting currency (CHF)',
-    BASE_GROSS_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Gross amount in CHF',
-    BASE_NET_AMOUNT FLOAT WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Net amount in CHF',
+    BASE_GROSS_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Gross amount in CHF',
+    BASE_NET_AMOUNT FLOAT WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Net amount in CHF',
     FX_RATE FLOAT COMMENT 'Exchange rate used for conversion to CHF',
     
     -- Swap-Specific Fields
@@ -100,15 +100,6 @@ CREATE OR REPLACE TABLE FIII_TRADES (
 ) COMMENT = 'Raw fixed income trades (bonds and swaps) with FRTB risk metrics';
 
 -- ============================================================
--- FIII_TRADES_STREAM - File Detection Stream
--- ============================================================
--- Monitors FIII_TRADES stage for new fixed income trade CSV files
-
-CREATE OR REPLACE STREAM FIII_TRADES_STREAM 
-ON STAGE FIII_TRADES
-COMMENT = 'Monitors FIII_TRADES stage for new fixed income trade CSV files';
-
--- ============================================================
 -- FIII_TRADES - Internal Stage for CSV Ingestion
 -- ============================================================
 -- Internal stage for loading CSV files from fixed_income_generator.py
@@ -128,6 +119,15 @@ COMMENT = 'Internal stage for fixed income trade CSV files';
 
 -- Enable directory table for file tracking and metadata
 ALTER STAGE FIII_TRADES REFRESH;
+
+-- ============================================================
+-- FIII_TRADES_STREAM - File Detection Stream
+-- ============================================================
+-- Monitors FIII_TRADES stage for new fixed income trade CSV files
+
+CREATE OR REPLACE STREAM FIII_TRADES_STREAM 
+ON STAGE FIII_TRADES
+COMMENT = 'Monitors FIII_TRADES stage for new fixed income trade CSV files';
 
 -- ============================================================
 -- FIII_LOAD_TRADES_TASK - Automated CSV Loading

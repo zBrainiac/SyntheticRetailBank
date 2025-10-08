@@ -137,13 +137,13 @@ CREATE OR REPLACE FILE FORMAT CRMI_FF_EXPOSED_PERSON_CSV
 -- detection flags for compliance and risk management scenarios.
 
 CREATE OR REPLACE TABLE CRMI_PARTY (
-    CUSTOMER_ID VARCHAR(20) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='top_secret') COMMENT 'Unique customer identifier (CUST_XXXXX format)',
-    FIRST_NAME VARCHAR(100) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Customer first name (localized to country)',
-    FAMILY_NAME VARCHAR(100) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Customer family/last name (localized to country)',
-    DATE_OF_BIRTH DATE NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Date of birth (YYYY-MM-DD format)',
+    CUSTOMER_ID VARCHAR(20) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Unique customer identifier (CUST_XXXXX format)',
+    FIRST_NAME VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer first name (localized to country)',
+    FAMILY_NAME VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer family/last name (localized to country)',
+    DATE_OF_BIRTH DATE NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Date of birth (YYYY-MM-DD format)',
     ONBOARDING_DATE DATE NOT NULL COMMENT 'Customer onboarding date (YYYY-MM-DD)',
     REPORTING_CURRENCY VARCHAR(3) NOT NULL COMMENT 'Customer reporting currency based on country (EUR, GBP, USD, CHF, NOK, SEK, DKK, PLN)',
-    HAS_ANOMALY BOOLEAN NOT NULL DEFAULT FALSE WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Flag indicating customer has anomalous transaction patterns for compliance testing',
+    HAS_ANOMALY BOOLEAN NOT NULL DEFAULT FALSE WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Flag indicating customer has anomalous transaction patterns for compliance testing',
 
     -- Constraints
     CONSTRAINT PK_CRMI_PARTY PRIMARY KEY (CUSTOMER_ID)
@@ -162,10 +162,10 @@ COMMENT = 'Customer master data table with normalized structure. Address data st
 
 CREATE OR REPLACE TABLE CRMI_ADDRESSES (
     CUSTOMER_ID VARCHAR(20) NOT NULL COMMENT 'Reference to customer (foreign key to CRMI_PARTY)',
-    STREET_ADDRESS VARCHAR(200) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='top_secret') COMMENT 'Street address (localized format)',
-    CITY VARCHAR(100) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'City name (localized to country)',
+    STREET_ADDRESS VARCHAR(200) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Street address (localized format)',
+    CITY VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'City name (localized to country)',
     STATE VARCHAR(100) COMMENT 'State/Region (where applicable for the country)',
-    ZIPCODE VARCHAR(20) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Postal code (country-specific format)',
+    ZIPCODE VARCHAR(20) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Postal code (country-specific format)',
     COUNTRY VARCHAR(50) NOT NULL COMMENT 'Customer''s country (12 EMEA countries supported)',
     INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL COMMENT 'UTC timestamp when this address record was inserted',
     
@@ -182,16 +182,16 @@ COMMENT = 'Customer address base table with append-only structure. Each address 
 
 CREATE OR REPLACE TABLE CRMI_EXPOSED_PERSON (
     EXPOSED_PERSON_ID VARCHAR(50) NOT NULL COMMENT 'Unique PEP identifier',
-    FULL_NAME VARCHAR(200) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='top_secret') COMMENT 'Full name of the politically exposed person',
-    FIRST_NAME VARCHAR(100) WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='top_secret') COMMENT 'First name',
-    LAST_NAME VARCHAR(100) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='top_secret') COMMENT 'Last name/family name',
-    DATE_OF_BIRTH DATE WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Date of birth (YYYY-MM-DD)',
+    FULL_NAME VARCHAR(200) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Full name of the politically exposed person',
+    FIRST_NAME VARCHAR(100) WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'First name',
+    LAST_NAME VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Last name/family name',
+    DATE_OF_BIRTH DATE WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Date of birth (YYYY-MM-DD)',
     NATIONALITY VARCHAR(50) COMMENT 'Nationality/citizenship',
     POSITION_TITLE VARCHAR(200) NOT NULL COMMENT 'Political position or title held',
     ORGANIZATION VARCHAR(200) COMMENT 'Government organization or political party',
     COUNTRY VARCHAR(50) NOT NULL COMMENT 'Country where political position is/was held',
-    EXPOSED_PERSON_CATEGORY VARCHAR(50) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'PEP category: DOMESTIC, FOREIGN, INTERNATIONAL_ORG, FAMILY_MEMBER, CLOSE_ASSOCIATE',
-    RISK_LEVEL VARCHAR(20) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Risk assessment level: LOW, MEDIUM, HIGH, CRITICAL',
+    EXPOSED_PERSON_CATEGORY VARCHAR(50) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'PEP category: DOMESTIC, FOREIGN, INTERNATIONAL_ORG, FAMILY_MEMBER, CLOSE_ASSOCIATE',
+    RISK_LEVEL VARCHAR(20) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Risk assessment level: LOW, MEDIUM, HIGH, CRITICAL',
     STATUS VARCHAR(20) NOT NULL COMMENT 'Current status: ACTIVE, INACTIVE, DECEASED',
     START_DATE DATE COMMENT 'Date when PEP status began (YYYY-MM-DD)',
     END_DATE DATE COMMENT 'Date when PEP status ended (YYYY-MM-DD), NULL if still active',

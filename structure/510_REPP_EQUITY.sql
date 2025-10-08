@@ -50,19 +50,19 @@ USE SCHEMA REP_AGG_001;
 
 -- Equity trading summary by customer
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_SUMMARY(
-    CUSTOMER_ID COMMENT 'Customer identifier for portfolio analysis',
-    ACCOUNT_ID COMMENT 'Account identifier for position tracking',
-    BASE_CURRENCY COMMENT 'Account base currency for reporting',
-    TOTAL_TRADES COMMENT 'Total number of equity transactions',
-    BUY_TRADES COMMENT 'Number of buy transactions',
-    SELL_TRADES COMMENT 'Number of sell transactions',
-    UNIQUE_SYMBOLS COMMENT 'Number of different securities traded',
-    TOTAL_CHF_VOLUME COMMENT 'Total trading volume in CHF',
-    NET_CHF_POSITION COMMENT 'Net position (positive = net buyer, negative = net seller)',
-    TOTAL_COMMISSION_CHF COMMENT 'Total commission fees paid',
-    AVG_TRADE_SIZE_CHF COMMENT 'Average trade size for customer profiling',
-    FIRST_TRADE_DATE COMMENT 'First trading activity date',
-    LAST_TRADE_DATE COMMENT 'Most recent trading activity date'
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for portfolio analysis',
+    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for position tracking',
+    BASE_CURRENCY VARCHAR(3) COMMENT 'Account base currency for reporting',
+    TOTAL_TRADES NUMBER(10,0) COMMENT 'Total number of equity transactions',
+    BUY_TRADES NUMBER(10,0) COMMENT 'Number of buy transactions',
+    SELL_TRADES NUMBER(10,0) COMMENT 'Number of sell transactions',
+    UNIQUE_SYMBOLS NUMBER(10,0) COMMENT 'Number of different securities traded',
+    TOTAL_CHF_VOLUME DECIMAL(28,2) COMMENT 'Total trading volume in CHF',
+    NET_CHF_POSITION DECIMAL(28,2) COMMENT 'Net position (positive = net buyer, negative = net seller)',
+    TOTAL_COMMISSION_CHF DECIMAL(28,2) COMMENT 'Total commission fees paid',
+    AVG_TRADE_SIZE_CHF DECIMAL(28,2) COMMENT 'Average trade size for customer profiling',
+    FIRST_TRADE_DATE DATE COMMENT 'First trading activity date',
+    LAST_TRADE_DATE DATE COMMENT 'Most recent trading activity date'
 ) COMMENT = 'Customer Equity Trading Performance: To summarize the trading activity and profitability (via net position and commissions) for each customer and account.	
 Brokerage/CRM: Measures customer engagement and revenue generation (commissions). 
 Risk: Monitors net market position (buyer/seller) for risk exposure at the client level.'
@@ -88,18 +88,18 @@ GROUP BY t.CUSTOMER_ID, t.ACCOUNT_ID, a.BASE_CURRENCY;
 
 -- Equity position summary by symbol
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_POSITIONS(
-    SYMBOL COMMENT 'Security symbol for position tracking',
-    ISIN COMMENT 'International Securities Identification Number',
-    UNIQUE_CUSTOMERS COMMENT 'Number of customers holding this security',
-    NET_POSITION COMMENT 'Net position across all customers (positive = long, negative = short)',
-    TOTAL_BOUGHT COMMENT 'Total quantity purchased',
-    TOTAL_SOLD COMMENT 'Total quantity sold',
-    TOTAL_TRADES COMMENT 'Total number of trades in this security',
-    TOTAL_CHF_VOLUME COMMENT 'Total trading volume in CHF',
-    AVG_PRICE COMMENT 'Average trading price',
-    MIN_PRICE COMMENT 'Lowest trading price observed',
-    MAX_PRICE COMMENT 'Highest trading price observed',
-    LAST_TRADE_DATE COMMENT 'Most recent trading date for this security'
+    SYMBOL VARCHAR(20) COMMENT 'Security symbol for position tracking',
+    ISIN VARCHAR(12) COMMENT 'International Securities Identification Number',
+    UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of customers holding this security',
+    NET_POSITION DECIMAL(28,2) COMMENT 'Net position across all customers (positive = long, negative = short)',
+    TOTAL_BOUGHT DECIMAL(28,2) COMMENT 'Total quantity purchased',
+    TOTAL_SOLD DECIMAL(28,2) COMMENT 'Total quantity sold',
+    TOTAL_TRADES NUMBER(10,0) COMMENT 'Total number of trades in this security',
+    TOTAL_CHF_VOLUME DECIMAL(28,2) COMMENT 'Total trading volume in CHF',
+    AVG_PRICE DECIMAL(15,4) COMMENT 'Average trading price',
+    MIN_PRICE DECIMAL(15,4) COMMENT 'Lowest trading price observed',
+    MAX_PRICE DECIMAL(15,4) COMMENT 'Highest trading price observed',
+    LAST_TRADE_DATE DATE COMMENT 'Most recent trading date for this security'
 ) COMMENT = 'Concentration Risk and Market Exposure by Security: To track the aggregate net position (long/short) for every traded security across all customers.
 Market Risk: Identifies securities where the banks customers have high volume or concentrated positions, which could impact liquidity and require capital provisioning.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -122,15 +122,15 @@ GROUP BY SYMBOL, ISIN;
 
 -- Equity currency exposure (similar to FX exposure for trades)
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE(
-    CURRENCY COMMENT 'Trading currency for FX exposure analysis',
-    TRADE_COUNT COMMENT 'Number of equity trades in this currency',
-    TOTAL_ORIGINAL_VOLUME COMMENT 'Total trading volume in original currency',
-    TOTAL_CHF_VOLUME COMMENT 'Total trading volume converted to CHF',
-    AVG_FX_RATE COMMENT 'Average FX rate used for currency conversion',
-    MIN_FX_RATE COMMENT 'Minimum FX rate observed',
-    MAX_FX_RATE COMMENT 'Maximum FX rate observed',
-    UNIQUE_CUSTOMERS COMMENT 'Number of customers trading in this currency',
-    UNIQUE_SYMBOLS COMMENT 'Number of different securities traded in this currency'
+    CURRENCY VARCHAR(3) COMMENT 'Trading currency for FX exposure analysis',
+    TRADE_COUNT NUMBER(10,0) COMMENT 'Number of equity trades in this currency',
+    TOTAL_ORIGINAL_VOLUME DECIMAL(28,2) COMMENT 'Total trading volume in original currency',
+    TOTAL_CHF_VOLUME DECIMAL(28,2) COMMENT 'Total trading volume converted to CHF',
+    AVG_FX_RATE DECIMAL(15,6) COMMENT 'Average FX rate used for currency conversion',
+    MIN_FX_RATE DECIMAL(15,6) COMMENT 'Minimum FX rate observed',
+    MAX_FX_RATE DECIMAL(15,6) COMMENT 'Maximum FX rate observed',
+    UNIQUE_CUSTOMERS NUMBER(10,0) COMMENT 'Number of customers trading in this currency',
+    UNIQUE_SYMBOLS NUMBER(10,0) COMMENT 'Number of different securities traded in this currency'
 ) COMMENT = 'FX Risk from Foreign Equity Trading: To measure the currency exposure generated specifically by trading securities denominated in non-base currencies.	
 Market Risk/Treasury: Isolates the FX risk component of the trading book, ensuring accurate currency hedging and compliance with non-base currency exposure limits.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
@@ -151,17 +151,17 @@ GROUP BY CURRENCY;
 
 -- High-value equity trades (potential compliance monitoring)
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES(
-    TRADE_DATE COMMENT 'Trade execution date for compliance tracking',
-    CUSTOMER_ID COMMENT 'Customer identifier for large trade monitoring',
-    ACCOUNT_ID COMMENT 'Account identifier for position tracking',
-    TRADE_ID COMMENT 'Unique trade identifier for audit trail',
-    SYMBOL COMMENT 'Security symbol for concentration risk analysis',
-    SIDE COMMENT 'Trade direction (1=Buy, 2=Sell)',
-    QUANTITY COMMENT 'Number of shares/units traded',
-    PRICE COMMENT 'Execution price per unit',
-    CHF_VALUE COMMENT 'Trade value in CHF for threshold monitoring',
-    MARKET COMMENT 'Market/exchange where trade was executed',
-    VENUE COMMENT 'Trading venue for best execution analysis'
+    TRADE_DATE DATE COMMENT 'Trade execution date for compliance tracking',
+    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for large trade monitoring',
+    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for position tracking',
+    TRADE_ID VARCHAR(50) COMMENT 'Unique trade identifier for audit trail',
+    SYMBOL VARCHAR(20) COMMENT 'Security symbol for concentration risk analysis',
+    SIDE VARCHAR(1) COMMENT 'Trade direction (1=Buy, 2=Sell)',
+    QUANTITY DECIMAL(28,2) COMMENT 'Number of shares/units traded',
+    PRICE DECIMAL(15,4) COMMENT 'Execution price per unit',
+    CHF_VALUE DECIMAL(28,2) COMMENT 'Trade value in CHF for threshold monitoring',
+    MARKET VARCHAR(20) COMMENT 'Market/exchange where trade was executed',
+    VENUE VARCHAR(20) COMMENT 'Trading venue for best execution analysis'
 ) COMMENT = 'Large Trade Compliance Monitoring: To filter and track all equity trades exceeding a significant value threshold (e.g., 100k CHF).	
 Compliance/Audit: Essential for compliance monitoring to detect potential market manipulation, front-running, or unauthorized large trading activity that requires immediate review and audit trail maintenance.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH

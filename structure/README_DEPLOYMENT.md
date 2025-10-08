@@ -31,6 +31,7 @@ structure/
 ├── 520_REPP_CREDIT_RISK.sql   # REP Agg: Credit Risk & IRB Reporting
 ├── 525_REPP_FRTB.sql          # REP Agg: FRTB Market Risk Reporting (NEW)
 ├── 530_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
+├── 700_semantic_view.sql      # Business-friendly semantic view
 └── README_DEPLOYMENT.md       # This deployment guide
 ```
 
@@ -477,6 +478,28 @@ Execute after all raw layer schemas are deployed:
 -- Execute: FRTB market risk capital calculations
 @525_REPP_FRTB.sql
 ```
+
+### 20. Business Semantic View
+```sql
+-- Execute: Unified business-friendly data access
+@550_semantic_view.sql
+```
+
+**Objects Created:**
+- **Semantic View** (1 view):
+  - `REPP_SEMANTIC_VIEW` - Unified business-friendly interface to all reporting tables
+
+**Key Features:**
+- **Unified Access**: Single view across all reporting domains
+- **Business-Friendly**: Simplified column names and descriptions
+- **Cross-Domain Analytics**: Combines core, equity, credit risk, FRTB, and portfolio data
+- **BI Integration**: Optimized for business intelligence tools
+- **Consistent Patterns**: Standardized data access across all business areas
+
+**Prerequisites:**
+- All reporting schemas must be deployed first (500-530 series)
+- All dynamic tables must be created and refreshed
+- This view is deployed last in the sequence
 
 **Objects Created:**
 - **Schema**: `REP_AGG_001`
