@@ -42,6 +42,7 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Regulatory Reporting**: GDPR, MiFID II, Basel III, and PSD2 compliant data structures and processes
 - **Risk Appetite Monitoring**: Configurable thresholds and escalation procedures for risk limit breaches
 - **Management Information**: Executive dashboards and regulatory reporting with drill-down capabilities
+- **Data Sensitivity Classification**: Automated PII protection using Snowflake sensitivity tags and masking policies
 
 ### **Credit Risk & Capital Management Framework**
 - **IRB Capital Adequacy**: Basel III/IV compliant Internal Ratings Based approach for regulatory capital
@@ -69,6 +70,49 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Model Risk Management**: Statistical model validation and performance monitoring for anomaly detection
 - **Business Continuity**: Scenario analysis and stress testing capabilities for operational resilience
 - **Third-Party Risk**: Counterparty due diligence and ongoing monitoring of external relationships
+
+## Data Sensitivity Classification
+
+The synthetic bank implements a focused data protection strategy using Snowflake sensitivity tags to automatically protect highly sensitive PII and financial data.
+
+### **Implementation Approach**
+- **Single Tag**: `SENSITIVITY_LEVEL` with key/value pairs
+- **Focus**: Only tag highly sensitive PII and financial data requiring protection
+- **Values**: `'restricted'` and `'top_secret'` only
+- **Non-sensitive data**: Left untagged for business operations
+
+### **Sensitivity Categories**
+
+#### **RESTRICTED** - Highly sensitive PII data
+- Personal Identifiable Information (PII)
+- Financial amounts and balances
+- Risk assessments and credit ratings
+- Transaction descriptions and counterparty data
+- Trading quantities and amounts
+
+#### **TOP_SECRET** - Maximum protection
+- Full customer names and addresses
+- PEP (Politically Exposed Person) data
+- Street addresses and personal identifiers
+- Complete personal information
+
+### **Potencial Role-Based Access Control**
+
+| Role | Untagged | RESTRICTED | TOP_SECRET |
+|------|----------|------------|------------|
+| **PUBLIC_USER** | ✅ | ❌ | ❌ |
+| **BUSINESS_USER** | ✅ | ❌ | ❌ |
+| **ANALYST** | ✅ | ✅ | ❌ |
+| **SENIOR_ANALYST** | ✅ | ✅ | ❌ |
+| **RISK_MANAGER** | ✅ | ✅ | ✅ |
+| **COMPLIANCE_OFFICER** | ✅ | ✅ | ✅ |
+| **DATA_SCIENTIST** | ✅ | ✅ | ✅ |
+
+### **Key Benefits**
+- **Focused Protection**: Only tag highly sensitive PII data that requires protection
+- **Business Efficiency**: Untagged columns remain fully accessible for business operations
+- **Automated Security**: Tagged columns automatically protected by masking policies
+- **Compliance Ready**: GDPR, CCPA, and Basel III compliant data protection
 
 ## What
 
@@ -114,7 +158,7 @@ pip install -r requirements.txt
 Deploy the complete synthetic bank with automatic data upload:
 
 ```bash
-# 1. Generate data FIRST
+# 1. Generate data
 python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 
 # 2. Deploy everything (structure + data upload + task activation)
@@ -130,7 +174,7 @@ python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 If you prefer manual control:
 
 ```bash
-# 1. Generate data FIRST
+# 1. Generate data
 python main.py --customers 1000 --period 30 --generate-swift --generate-pep
 
 # 2. Deploy SQL structure only

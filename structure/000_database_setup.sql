@@ -84,5 +84,15 @@ CREATE SCHEMA IF NOT EXISTS LOA_AGG_v001
     COMMENT = 'Loan aggregation schema for loan analytics and reporting';
 
 -- ============================================================
+-- SENSITIVITY TAGS - Data Classification and Privacy Controls
+-- ============================================================
+-- Create sensitivity tags for column-level data protection and masking policies
+-- These tags enable role-based access control and automated data masking
+
+-- Public data - no restrictions
+CREATE TAG IF NOT EXISTS SENSITIVITY_LEVEL
+    COMMENT = 'Data sensitivity classification for privacy and compliance controls. Valid values: "restricted" (highly sensitive financial/PII data requiring strict access controls) | "top_secret" (maximum protection for personal identifiers and addresses). Used for automated masking policies and role-based access control.';
+
+-- ============================================================
 -- Database and schemas created successfully!
 -- ============================================================

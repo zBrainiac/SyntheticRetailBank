@@ -59,13 +59,13 @@ CREATE OR REPLACE TABLE PAYI_TRANSACTIONS (
     VALUE_DATE DATE NOT NULL COMMENT 'Date when funds are settled/available (YYYY-MM-DD)',
     TRANSACTION_ID VARCHAR(50) NOT NULL COMMENT 'Unique transaction identifier',
     ACCOUNT_ID VARCHAR(50) NOT NULL COMMENT 'Reference to account ID in ACCI_ACCOUNTS',
-    AMOUNT DECIMAL(15,2) NOT NULL COMMENT 'Signed transaction amount in original currency (positive = incoming, negative = outgoing)',
+    AMOUNT DECIMAL(15,2) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed transaction amount in original currency (positive = incoming, negative = outgoing)',
     CURRENCY VARCHAR(3) NOT NULL COMMENT 'Transaction currency (USD, EUR, GBP, JPY, CAD, CHF)',
-    BASE_AMOUNT DECIMAL(15,2) NOT NULL COMMENT 'Signed transaction amount converted to base currency USD (positive = incoming, negative = outgoing)',
+    BASE_AMOUNT DECIMAL(15,2) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Signed transaction amount converted to base currency USD (positive = incoming, negative = outgoing)',
     BASE_CURRENCY VARCHAR(3) NOT NULL COMMENT 'Currency of Account - ISO 4217 currency code',
     FX_RATE DECIMAL(15,6) NOT NULL COMMENT 'Exchange rate used for conversion (from transaction currency to base currency)',
-    COUNTERPARTY_ACCOUNT VARCHAR(100) NOT NULL COMMENT 'Counterparty account identifier',
-    DESCRIPTION VARCHAR(500) NOT NULL COMMENT 'Transaction description (may contain anomaly indicators in [brackets])',
+    COUNTERPARTY_ACCOUNT VARCHAR(100) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Counterparty account identifier',
+    DESCRIPTION VARCHAR(500) NOT NULL WITH TAG (AAA_DEV_SYNTHETIC_BANK.CMD_AGG_001.SENSITIVITY_LEVEL='restricted') COMMENT 'Transaction description (may contain anomaly indicators in [brackets])',
 
     -- GENERATED ALWAYS AS virtual columns not supported - replaced with comments for documentation
     -- BOOKING_DATE_LOCAL: Use DATE(BOOKING_DATE) in queries
