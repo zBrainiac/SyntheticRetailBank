@@ -137,7 +137,7 @@ CREATE OR REPLACE FILE FORMAT CRMI_FF_EXPOSED_PERSON_CSV
 -- detection flags for compliance and risk management scenarios.
 
 CREATE OR REPLACE TABLE CRMI_PARTY (
-    CUSTOMER_ID VARCHAR(20) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Unique customer identifier (CUST_XXXXX format)',
+    CUSTOMER_ID VARCHAR(30) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Unique customer identifier (CUST_XXXXX format)',
     FIRST_NAME VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer first name (localized to country)',
     FAMILY_NAME VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer family/last name (localized to country)',
     DATE_OF_BIRTH DATE NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Date of birth (YYYY-MM-DD format)',
@@ -161,7 +161,7 @@ COMMENT = 'Customer master data table with normalized structure. Address data st
 -- Each address change creates a new record with timestamp for audit trail.
 
 CREATE OR REPLACE TABLE CRMI_ADDRESSES (
-    CUSTOMER_ID VARCHAR(20) NOT NULL COMMENT 'Reference to customer (foreign key to CRMI_PARTY)',
+    CUSTOMER_ID VARCHAR(30) NOT NULL COMMENT 'Reference to customer (foreign key to CRMI_PARTY)',
     STREET_ADDRESS VARCHAR(200) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Street address (localized format)',
     CITY VARCHAR(100) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'City name (localized to country)',
     STATE VARCHAR(100) COMMENT 'State/Region (where applicable for the country)',

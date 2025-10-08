@@ -50,8 +50,8 @@ USE SCHEMA REP_AGG_001;
 
 -- Equity trading summary by customer
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_EQUITY_SUMMARY(
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for portfolio analysis',
-    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for position tracking',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for portfolio analysis',
+    ACCOUNT_ID VARCHAR(30) COMMENT 'Account identifier for position tracking',
     BASE_CURRENCY VARCHAR(3) COMMENT 'Account base currency for reporting',
     TOTAL_TRADES NUMBER(10,0) COMMENT 'Total number of equity transactions',
     BUY_TRADES NUMBER(10,0) COMMENT 'Number of buy transactions',
@@ -152,8 +152,8 @@ GROUP BY CURRENCY;
 -- High-value equity trades (potential compliance monitoring)
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES(
     TRADE_DATE DATE COMMENT 'Trade execution date for compliance tracking',
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for large trade monitoring',
-    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for position tracking',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for large trade monitoring',
+    ACCOUNT_ID VARCHAR(30) COMMENT 'Account identifier for position tracking',
     TRADE_ID VARCHAR(50) COMMENT 'Unique trade identifier for audit trail',
     SYMBOL VARCHAR(20) COMMENT 'Security symbol for concentration risk analysis',
     SIDE VARCHAR(1) COMMENT 'Trade direction (1=Buy, 2=Sell)',

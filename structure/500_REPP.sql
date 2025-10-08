@@ -48,7 +48,7 @@ USE SCHEMA REP_AGG_001;
 
 -- Customer summary with transaction statistics
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY(
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Unique customer identifier for relationship management (CUST_XXXXX format)',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Unique customer identifier for relationship management (CUST_XXXXX format)',
     FULL_NAME VARCHAR(201) COMMENT 'Customer full name (First + Last) for reporting and compliance',
     HAS_ANOMALY BOOLEAN COMMENT 'Flag indicating if customer has anomalous behavior patterns',
     ONBOARDING_DATE DATE COMMENT 'Date when customer relationship was established',
@@ -299,7 +299,7 @@ ORDER BY SETTLEMENT_DATE DESC, SETTLEMENT_TOTAL_AMOUNT DESC;
 
 -- Anomaly detection summary
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_ANOMALY_ANALYSIS(
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for compliance tracking',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for compliance tracking',
     FULL_NAME VARCHAR(201) COMMENT 'Customer name for investigation reports',
     IS_ANOMALOUS_CUSTOMER BOOLEAN COMMENT 'Customer-level anomaly flag from profiling',
     TOTAL_TRANSACTIONS NUMBER(10,0) COMMENT 'Total transaction count for baseline comparison',
@@ -332,7 +332,7 @@ ORDER BY ANOMALY_PERCENTAGE DESC, ANOMALOUS_AMOUNT DESC;
 -- High-risk transaction patterns
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_HIGH_RISK_PATTERNS(
     TRANSACTION_ID VARCHAR(50) COMMENT 'Unique identifier for each transaction',
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for risk profiling',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for risk profiling',
     BOOKING_DATE TIMESTAMP_NTZ COMMENT 'Date when transaction was booked in system',
     VALUE_DATE DATE COMMENT 'Settlement date for the transaction',
     AMOUNT DECIMAL(28,2) COMMENT 'Transaction amount in original currency',

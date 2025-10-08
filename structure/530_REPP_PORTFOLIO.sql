@@ -72,8 +72,8 @@ USE SCHEMA REP_AGG_001;
 -- for true multi-asset portfolio analytics and wealth management reporting.
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE(
-    ACCOUNT_ID VARCHAR(20) COMMENT 'Account identifier for portfolio tracking',
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for relationship management',
+    ACCOUNT_ID VARCHAR(30) COMMENT 'Account identifier for portfolio tracking',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for relationship management',
     ACCOUNT_TYPE VARCHAR(20) COMMENT 'Account type (CHECKING/SAVINGS/BUSINESS/INVESTMENT)',
     BASE_CURRENCY VARCHAR(3) COMMENT 'Base currency for reporting',
     MEASUREMENT_PERIOD_START DATE COMMENT 'Start date of performance measurement period',

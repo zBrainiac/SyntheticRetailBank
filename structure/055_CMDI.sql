@@ -50,8 +50,8 @@ CREATE OR REPLACE TABLE CMDI_TRADES (
     TRADE_DATE TIMESTAMP_NTZ COMMENT 'Trade execution timestamp',
     SETTLEMENT_DATE DATE COMMENT 'Settlement/delivery date',
     TRADE_ID VARCHAR(50) PRIMARY KEY COMMENT 'Unique trade identifier',
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer who executed the trade',
-    ACCOUNT_ID VARCHAR(50) COMMENT 'Investment account used for settlement',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer who executed the trade',
+    ACCOUNT_ID VARCHAR(30) COMMENT 'Investment account used for settlement',
     ORDER_ID VARCHAR(50) COMMENT 'Order reference for trade grouping',
     
     -- Commodity Details

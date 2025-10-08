@@ -58,7 +58,7 @@ CREATE OR REPLACE TABLE PAYI_TRANSACTIONS (
     BOOKING_DATE TIMESTAMP_NTZ NOT NULL COMMENT 'Transaction timestamp when recorded (ISO 8601 UTC format: YYYY-MM-DDTHH:MM:SS.fffffZ)',
     VALUE_DATE DATE NOT NULL COMMENT 'Date when funds are settled/available (YYYY-MM-DD)',
     TRANSACTION_ID VARCHAR(50) NOT NULL COMMENT 'Unique transaction identifier',
-    ACCOUNT_ID VARCHAR(50) NOT NULL COMMENT 'Reference to account ID in ACCI_ACCOUNTS',
+    ACCOUNT_ID VARCHAR(30) NOT NULL COMMENT 'Reference to account ID in ACCI_ACCOUNTS',
     AMOUNT DECIMAL(15,2) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed transaction amount in original currency (positive = incoming, negative = outgoing)',
     CURRENCY VARCHAR(3) NOT NULL COMMENT 'Transaction currency (USD, EUR, GBP, JPY, CAD, CHF)',
     BASE_AMOUNT DECIMAL(15,2) NOT NULL WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Signed transaction amount converted to base currency USD (positive = incoming, negative = outgoing)',

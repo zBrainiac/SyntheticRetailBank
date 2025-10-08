@@ -57,7 +57,7 @@ USE SCHEMA REP_AGG_001;
 
 -- IRB Customer Credit Ratings and Risk Parameters
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_IRB_CUSTOMER_RATINGS(
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for credit risk assessment',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for credit risk assessment',
     FULL_NAME VARCHAR(201) COMMENT 'Customer name for credit reporting',
     ONBOARDING_DATE DATE COMMENT 'Customer relationship start date for vintage analysis',
     CREDIT_RATING VARCHAR(3) COMMENT 'Internal credit rating (AAA to D scale)',
@@ -223,7 +223,7 @@ ORDER BY r.PORTFOLIO_SEGMENT, r.CREDIT_RATING;
 -- real rating migrations and default changes.
 
 CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_RATING_HISTORY(
-    CUSTOMER_ID VARCHAR(20) COMMENT 'Customer identifier for historical tracking',
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for historical tracking',
     EFFECTIVE_DATE DATE COMMENT 'Date when this rating became effective',
     CREDIT_RATING VARCHAR(3) COMMENT 'Credit rating at this point in time',
     PD_1_YEAR DECIMAL(8,2) COMMENT 'Probability of Default (1-year) at this point in time',
