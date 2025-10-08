@@ -80,7 +80,7 @@ CREATE OR REPLACE FILE FORMAT CMDI_FF_TRADES_CSV
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
     REPLACE_INVALID_CHARACTERS = TRUE
     DATE_FORMAT = 'YYYY-MM-DD'
-    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
     COMMENT = 'CSV format for commodity trade data with FRTB risk metrics and currency conversion support';
 
 -- ============================================================

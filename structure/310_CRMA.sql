@@ -291,24 +291,52 @@ SELECT
         ELSE 'NO_EXPOSED_PERSON_RISK'
     END AS OVERALL_EXPOSED_PERSON_RISK,
     
-    -- Sanctions Matching (Global Sanctions Data) - Placeholder for future implementation
-    NULL AS SANCTIONS_EXACT_MATCH_ID,
-    NULL AS SANCTIONS_EXACT_MATCH_NAME,
-    NULL AS SANCTIONS_EXACT_MATCH_TYPE,
-    NULL AS SANCTIONS_EXACT_MATCH_COUNTRY,
+    -- Sanctions Matching (Global Sanctions Data) - Integrated with fuzzy matching
+    sanctions_exact.ENTITY_ID AS SANCTIONS_EXACT_MATCH_ID,
+    sanctions_exact.ENTITY_NAME AS SANCTIONS_EXACT_MATCH_NAME,
+    sanctions_exact.ENTITY_TYPE AS SANCTIONS_EXACT_MATCH_TYPE,
+    sanctions_exact.COUNTRY AS SANCTIONS_EXACT_MATCH_COUNTRY,
     
-    NULL AS SANCTIONS_FUZZY_MATCH_ID,
-    NULL AS SANCTIONS_FUZZY_MATCH_NAME,
-    NULL AS SANCTIONS_FUZZY_MATCH_TYPE,
-    NULL AS SANCTIONS_FUZZY_MATCH_COUNTRY,
+    sanctions_fuzzy.ENTITY_ID AS SANCTIONS_FUZZY_MATCH_ID,
+    sanctions_fuzzy.ENTITY_NAME AS SANCTIONS_FUZZY_MATCH_NAME,
+    sanctions_fuzzy.ENTITY_TYPE AS SANCTIONS_FUZZY_MATCH_TYPE,
+    sanctions_fuzzy.COUNTRY AS SANCTIONS_FUZZY_MATCH_COUNTRY,
     
-    -- Sanctions Match Accuracy Level - Placeholder for future implementation
-    NULL AS SANCTIONS_MATCH_ACCURACY_PERCENT,
+    -- Sanctions Match Accuracy Level
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL THEN 100.0  -- Exact match = 100% accuracy
+        WHEN sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN
+            -- Calculate accuracy based on edit distance for fuzzy matches
+            CASE 
+                -- Full name similarity with edit distance <= 1 (highest fuzzy accuracy)
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 1
+                THEN 95.0
+                -- Full name similarity with edit distance = 2
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 2
+                THEN 90.0
+                -- Full name similarity with edit distance = 3
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 3
+                THEN 85.0
+                -- Full name similarity with edit distance <= 5
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) <= 5
+                THEN GREATEST(70.0, 100.0 - (EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) * 10.0))
+                -- Default fuzzy match accuracy
+                ELSE 75.0
+            END
+        ELSE NULL  -- No match
+    END AS SANCTIONS_MATCH_ACCURACY_PERCENT,
     
-    -- Sanctions Risk Assessment - Placeholder for future implementation
-    'NO_MATCH' AS SANCTIONS_MATCH_TYPE,
+    -- Sanctions Risk Assessment
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL THEN 'EXACT_MATCH'
+        WHEN sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 'FUZZY_MATCH'
+        ELSE 'NO_MATCH'
+    END AS SANCTIONS_MATCH_TYPE,
     
-    'NO_SANCTIONS_RISK' AS OVERALL_SANCTIONS_RISK,
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 'HIGH'
+        ELSE 'NO_SANCTIONS_RISK'
+    END AS OVERALL_SANCTIONS_RISK,
     
     -- Compliance Flags
     CASE 
@@ -316,10 +344,13 @@ SELECT
         ELSE FALSE 
     END AS REQUIRES_EXPOSED_PERSON_REVIEW,
     
-    FALSE AS REQUIRES_SANCTIONS_REVIEW,
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN TRUE 
+        ELSE FALSE 
+    END AS REQUIRES_SANCTIONS_REVIEW,
     
     CASE 
-        WHEN c.HAS_ANOMALY = TRUE AND (pep_exact.EXPOSED_PERSON_ID IS NOT NULL OR pep_fuzzy.EXPOSED_PERSON_ID IS NOT NULL) THEN TRUE
+        WHEN c.HAS_ANOMALY = TRUE AND (pep_exact.EXPOSED_PERSON_ID IS NOT NULL OR pep_fuzzy.EXPOSED_PERSON_ID IS NOT NULL OR sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL) THEN TRUE
         ELSE FALSE
     END AS HIGH_RISK_CUSTOMER,
     
@@ -362,13 +393,27 @@ LEFT JOIN CRM_RAW_001.CRMI_EXPOSED_PERSON pep_fuzzy
         EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(pep_fuzzy.FULL_NAME)) <= 3
     )
 
--- Sanctions matching removed - placeholder for future implementation
+-- Exact Sanctions name matching (Global Sanctions Data)
+LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET.GLOBAL_SANCTIONS_DATA.SANCTIONS_DATAFEED sanctions_exact
+    ON UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)) = UPPER(sanctions_exact.ENTITY_NAME)
+    AND sanctions_exact.ENTITY_TYPE = 'Individual'
+
+-- Fuzzy Sanctions name matching (Global Sanctions Data)
+LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET.GLOBAL_SANCTIONS_DATA.SANCTIONS_DATAFEED sanctions_fuzzy
+    ON sanctions_fuzzy.ENTITY_ID != COALESCE(sanctions_exact.ENTITY_ID, 'NO_EXACT_MATCH')  -- Avoid duplicate matches
+    AND sanctions_fuzzy.ENTITY_TYPE = 'Individual'
+    AND (
+        -- Full name similarity with edit distance <= 5 (fuzzy matching)
+        EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) <= 5
+    )
 
 GROUP BY 
     c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.DATE_OF_BIRTH, c.ONBOARDING_DATE, c.REPORTING_CURRENCY, c.HAS_ANOMALY,
     addr.STREET_ADDRESS, addr.CITY, addr.STATE, addr.ZIPCODE, addr.COUNTRY, addr.CURRENT_FROM,
     pep_exact.EXPOSED_PERSON_ID, pep_exact.FULL_NAME, pep_exact.EXPOSED_PERSON_CATEGORY, pep_exact.RISK_LEVEL, pep_exact.STATUS,
-    pep_fuzzy.EXPOSED_PERSON_ID, pep_fuzzy.FULL_NAME, pep_fuzzy.FIRST_NAME, pep_fuzzy.LAST_NAME, pep_fuzzy.EXPOSED_PERSON_CATEGORY, pep_fuzzy.RISK_LEVEL, pep_fuzzy.STATUS
+    pep_fuzzy.EXPOSED_PERSON_ID, pep_fuzzy.FULL_NAME, pep_fuzzy.FIRST_NAME, pep_fuzzy.LAST_NAME, pep_fuzzy.EXPOSED_PERSON_CATEGORY, pep_fuzzy.RISK_LEVEL, pep_fuzzy.STATUS,
+    sanctions_exact.ENTITY_ID, sanctions_exact.ENTITY_NAME, sanctions_exact.ENTITY_TYPE, sanctions_exact.COUNTRY,
+    sanctions_fuzzy.ENTITY_ID, sanctions_fuzzy.ENTITY_NAME, sanctions_fuzzy.ENTITY_TYPE, sanctions_fuzzy.COUNTRY
 
 ORDER BY c.CUSTOMER_ID;
 
@@ -380,7 +425,7 @@ ORDER BY c.CUSTOMER_ID;
 -- All three dynamic tables will automatically refresh based on changes to the
 -- source tables with a 1-hour target lag. The 360° view depends on multiple
 -- source tables: CRMI_PARTY, CRMI_ADDRESSES, ACCI_ACCOUNTS, CRMI_EXPOSED_PERSON,
--- and Global Sanctions Data from Snowflake Data Exchange.
+-- and Global Sanctions Data from Snowflake Data Exchange with comprehensive fuzzy matching.
 --
 -- USAGE EXAMPLES:
 --
@@ -404,9 +449,25 @@ ORDER BY c.CUSTOMER_ID;
 --    WHERE CUSTOMER_ID = 'CUST_00001'
 --    ORDER BY VALID_FROM;
 --
--- 5. Comprehensive customer view with Exposed Person screening:
+-- 5. Comprehensive customer view with Exposed Person and Sanctions screening:
 --    SELECT * FROM CRMA_AGG_DT_CUSTOMER 
 --    WHERE CUSTOMER_ID = 'CUST_00001';
+--
+-- 6. Find customers with sanctions matches:
+--    SELECT CUSTOMER_ID, FULL_NAME, SANCTIONS_MATCH_TYPE, SANCTIONS_MATCH_ACCURACY_PERCENT,
+--           SANCTIONS_EXACT_MATCH_NAME, SANCTIONS_FUZZY_MATCH_NAME
+--    FROM CRMA_AGG_DT_CUSTOMER 
+--    WHERE SANCTIONS_MATCH_TYPE != 'NO_MATCH';
+--
+-- 7. High-risk customers (anomalies + PEP + sanctions):
+--    SELECT CUSTOMER_ID, FULL_NAME, HIGH_RISK_CUSTOMER, OVERALL_EXPOSED_PERSON_RISK, OVERALL_SANCTIONS_RISK
+--    FROM CRMA_AGG_DT_CUSTOMER 
+--    WHERE HIGH_RISK_CUSTOMER = TRUE;
+--
+-- 8. Compliance review queue:
+--    SELECT CUSTOMER_ID, FULL_NAME, REQUIRES_EXPOSED_PERSON_REVIEW, REQUIRES_SANCTIONS_REVIEW
+--    FROM CRMA_AGG_DT_CUSTOMER 
+--    WHERE REQUIRES_EXPOSED_PERSON_REVIEW = TRUE OR REQUIRES_SANCTIONS_REVIEW = TRUE;
 --
 -- 6. Find customers with Exposed Person matches (with accuracy):
 --    SELECT CUSTOMER_ID, FULL_NAME, EXPOSED_PERSON_MATCH_TYPE, OVERALL_EXPOSED_PERSON_RISK, EXPOSED_PERSON_MATCH_ACCURACY_PERCENT
