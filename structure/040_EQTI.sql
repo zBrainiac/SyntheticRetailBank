@@ -3,34 +3,80 @@
 -- Generated on: 2025-09-22 15:50:17
 -- ============================================================
 --
+-- OVERVIEW:
 -- This schema contains equity trading data following FIX protocol standards
 -- for the synthetic EMEA retail bank data generator.
 --
--- Objects created:
--- - Stages: EQTI_TRADES
--- - File Formats: EQTI_FF_TRADES_CSV  
--- - Tables: EQTI_TRADES
--- - Streams: EQTI_STREAM_TRADES_FILES
--- - Tasks: EQTI_TASK_LOAD_TRADES
+-- BUSINESS PURPOSE:
+-- - Equity trading operations for retail banking customers
+-- - FIX protocol compliance for institutional trading standards
+-- - Multi-currency support with CHF as base currency
+-- - Investment account integration for settlement
+-- - Automated data ingestion and processing
+--
+-- SUPPORTED CURRENCIES:
+-- EUR (Euro), GBP (British Pound), USD (US Dollar), CHF (Swiss Franc),
+-- NOK (Norwegian Krone), SEK (Swedish Krona), DKK (Danish Krone)
+--
+-- OBJECTS CREATED:
+-- ┌─ STAGES (1):
+-- │  └─ EQTI_TRADES      - Equity trade files
+-- │
+-- ├─ FILE FORMATS (1):
+-- │  └─ EQTI_FF_TRADES_CSV - Equity trade CSV format
+-- │
+-- ├─ TABLES (1):
+-- │  └─ EQTI_TRADES - Equity trades with FIX protocol compliance
+-- │
+-- ├─ STREAMS (1):
+-- │  └─ EQTI_STREAM_TRADES_FILES - Detects new trade files
+-- │
+-- └─ TASKS (1):
+--    └─ EQTI_TASK_LOAD_TRADES - Automated trade loading
+--
+-- DATA ARCHITECTURE:
+-- File Upload → Stage → Stream Detection → Task Processing → Table
+--
+-- REFRESH STRATEGY:
+-- - Tasks: 1-hour schedule with stream-based triggering
+-- - Error Handling: ON_ERROR = CONTINUE for resilient processing
+-- - Pattern Matching: *trades*.csv for flexible file naming
+--
+-- RELATED SCHEMAS:
+-- - CRM_RAW_001: Customer and account master data (foreign key relationships)
+-- - REF_RAW_001: FX rates for currency conversion
+-- - PAY_RAW_001: Payment transactions (account references)
 -- ============================================================
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 USE SCHEMA EQT_RAW_001;
 
 -- ============================================================
--- INTERNAL STAGES
+-- INTERNAL STAGES - File Landing Areas
 -- ============================================================
+-- Internal stages for CSV file ingestion with directory listing enabled
+-- for automated file detection via streams. All stages support PUT/GET
+-- operations for manual file uploads and downloads.
 
--- Stage for equity trades files
+-- Equity trade data stage
 CREATE OR REPLACE STAGE EQTI_TRADES
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Internal stage for equity trades CSV files';
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
+    COMMENT = 'Internal stage for equity trade CSV files. Expected pattern: *trades*.csv with fields: trade_date, trade_id, customer_id, account_id, symbol, side, quantity, price, etc.';
+
+-- Enable directory table for file tracking and metadata
+ALTER STAGE EQTI_TRADES REFRESH;
 
 -- ============================================================
--- FILE FORMATS
+-- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================
+-- Standardized CSV file formats for consistent data ingestion across
+-- all equity trade data sources. All formats handle quoted fields,
+-- trim whitespace, and use flexible column count matching.
 
--- Equity Trades CSV file format
+-- Equity trade CSV format
 CREATE OR REPLACE FILE FORMAT EQTI_FF_TRADES_CSV
     TYPE = 'CSV'
     FIELD_DELIMITER = ','
@@ -39,21 +85,20 @@ CREATE OR REPLACE FILE FORMAT EQTI_FF_TRADES_CSV
     FIELD_OPTIONALLY_ENCLOSED_BY = '"'
     TRIM_SPACE = TRUE
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
-    ESCAPE = 'NONE'
-    ESCAPE_UNENCLOSED_FIELD = '\134'
+    REPLACE_INVALID_CHARACTERS = TRUE
     DATE_FORMAT = 'YYYY-MM-DD'
-    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"';
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
+    COMMENT = 'CSV format for equity trade data with FIX protocol compliance and currency conversion support';
 
 -- ============================================================
--- TABLES
+-- MASTER DATA TABLES - Equity Trade Information
 -- ============================================================
 
 -- ============================================================
--- EQTI_TRADES TABLE (FIX PROTOCOL)
+-- EQTI_TRADES - Equity Trades with FIX Protocol Compliance
 -- ============================================================
 -- Equity trading data via FIX protocol with CHF as base currency
--- Located in EQT schema for equity trading data
--- Uses ACCOUNT_ID from ACCI_ACCOUNTS where ACCOUNT_TYPE = 'INVESTMENT'
+-- for retail banking investment operations
 
 CREATE OR REPLACE TABLE EQTI_TRADES (
     TRADE_DATE TIMESTAMP_NTZ NOT NULL COMMENT 'Trade execution timestamp (ISO 8601 UTC format)',
@@ -104,19 +149,25 @@ CREATE OR REPLACE TABLE EQTI_TRADES (
 COMMENT = 'Equity trades via FIX protocol with CHF as base currency. Uses INVESTMENT accounts from ACCI_ACCOUNTS. Signed amounts: positive for purchases, negative for sales.';
 
 -- ============================================================
--- STREAMS ON STAGES
+-- CHANGE DETECTION STREAMS - File Monitoring
 -- ============================================================
+-- Streams monitor stages for new files and trigger automated processing
+-- tasks. Each stream detects specific file patterns and maintains change
+-- tracking for reliable data pipeline processing.
 
--- Stream to detect new equity trades files
+-- Equity trade file detection stream
 CREATE OR REPLACE STREAM EQTI_STREAM_TRADES_FILES
     ON STAGE EQTI_TRADES
-    COMMENT = 'Stream to detect new equity trades files on stage';
+    COMMENT = 'Monitors EQTI_TRADES stage for new equity trade CSV files. Triggers EQTI_TASK_LOAD_TRADES when files matching *trades*.csv pattern are detected';
 
 -- ============================================================
--- AUTOMATED LOADING TASKS
+-- AUTOMATED PROCESSING TASKS - Data Pipeline Orchestration
 -- ============================================================
+-- Automated tasks triggered by stream data availability. All tasks run
+-- on 1-hour schedule with stream-based triggering for efficient resource
+-- usage. Error handling continues processing despite individual record failures.
 
--- Task to load equity trades files when new files arrive
+-- Equity trade loading task
 CREATE OR REPLACE TASK EQTI_TASK_LOAD_TRADES
     USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
     SCHEDULE = '60 MINUTE'
@@ -129,12 +180,51 @@ AS
     ON_ERROR = CONTINUE;
 
 -- ============================================================
--- TASK ACTIVATION
+-- TASK ACTIVATION - Enable Automated Processing
 -- ============================================================
--- Activate all tasks to enable automated loading
+-- Tasks must be explicitly resumed to begin processing. This allows for
+-- controlled deployment and testing before enabling automated data flows.
 
+-- Enable equity trade data loading
 ALTER TASK EQTI_TASK_LOAD_TRADES RESUME;
 
 -- ============================================================
--- EQTI_RAW_001 Schema setup completed!
+-- SCHEMA COMPLETION STATUS
+-- ============================================================
+-- ✅ EQT_RAW_001 Schema Deployment Complete
+--
+-- OBJECTS CREATED:
+-- • 1 Stage: EQTI_TRADES
+-- • 1 File Format: EQTI_FF_TRADES_CSV
+-- • 1 Table: EQTI_TRADES
+-- • 1 Stream: EQTI_STREAM_TRADES_FILES
+-- • 1 Task: EQTI_TASK_LOAD_TRADES (ACTIVE)
+--
+-- NEXT STEPS:
+-- 1. ✅ EQT_RAW_001 schema deployed successfully
+-- 2. Upload equity trade CSV files to EQTI_TRADES stage
+-- 3. Monitor task execution: SHOW TASKS IN SCHEMA EQT_RAW_001;
+-- 4. Verify data loading: SELECT COUNT(*) FROM EQTI_TRADES;
+-- 5. Check for processing errors in task history
+-- 6. Proceed to deploy dependent schemas (FIII, CMDI)
+--
+-- USAGE EXAMPLES:
+-- -- Upload files
+-- PUT file://trades.csv @EQTI_TRADES;
+-- 
+-- -- Check trade distribution
+-- SELECT SYMBOL, COUNT(*) as trade_count,
+--        SUM(BASE_GROSS_AMOUNT) as total_value_chf
+-- FROM EQTI_TRADES 
+-- GROUP BY SYMBOL;
+--
+-- -- Monitor stream for new data
+-- SELECT * FROM EQTI_STREAM_TRADES_FILES;
+--
+-- -- Check task execution history
+-- SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY())
+-- WHERE NAME = 'EQTI_TASK_LOAD_TRADES'
+-- ORDER BY SCHEDULED_TIME DESC;
+-- ============================================================
+-- EQT_RAW_001 Schema Setup Complete!
 -- ============================================================

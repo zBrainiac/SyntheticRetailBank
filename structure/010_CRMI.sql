@@ -63,17 +63,26 @@ USE SCHEMA CRM_RAW_001;
 
 -- Customer master data stage
 CREATE OR REPLACE STAGE CRMI_CUSTOMERS
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Internal stage for customer master data CSV files. Expected pattern: *customers*.csv with fields: customer_id, first_name, family_name, date_of_birth, onboarding_date, reporting_currency, has_anomaly';
 
 -- Customer address data stage (SCD Type 2)
 CREATE OR REPLACE STAGE CRMI_ADDRESSES
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Internal stage for customer address CSV files with SCD Type 2 support. Expected pattern: *customer_addresses*.csv with insert_timestamp_utc for change tracking';
 
 -- Exposed Person compliance data stage
 CREATE OR REPLACE STAGE CRMI_EXPOSED_PERSON
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Internal stage for PEP (Politically Exposed Persons) compliance CSV files. Expected pattern: *exposed_person*.csv with risk levels and reference links for regulatory compliance';
 
 -- ============================================================

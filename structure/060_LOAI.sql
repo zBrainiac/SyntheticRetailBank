@@ -72,12 +72,18 @@ USE SCHEMA LOA_RAW_v001;
 
 -- Stage for inbound email files (DocAI processing)
 CREATE OR REPLACE STAGE LOAI_RAW_EMAIL_INBOUND
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Staging area for loan-related email files awaiting DocAI processing and analysis. Supports various email formats (.eml, .msg, .mbox) for document intelligence extraction, content analysis, and automated loan application processing workflows. Directory listing enabled for batch processing and monitoring of email document ingestion.';
 
 -- Stage for inbound PDF documents (DocAI processing)
 CREATE OR REPLACE STAGE LOAI_RAW_PDF_INBOUND
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Staging area for loan-related PDF documents awaiting DocAI processing and intelligent document analysis. Handles mortgage applications, loan agreements, contracts, financial statements, and regulatory filings for automated content extraction, classification, and data mining. Directory listing enabled for batch processing and document workflow management.';
 
 -- ============================================================

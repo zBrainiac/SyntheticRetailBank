@@ -16,14 +16,17 @@
 -- - Maintain audit trail for regulatory compliance
 --
 -- OBJECTS CREATED:
--- ┌─ TABLES (1):
+-- ┌─ STAGES (1):
+-- │  └─ CMDI_TRADES      - Commodity trade files
+-- │
+-- ├─ FILE FORMATS (1):
+-- │  └─ CMDI_FF_TRADES_CSV - Commodity trade CSV format
+-- │
+-- ├─ TABLES (1):
 -- │  └─ CMDI_TRADES - Main table for all commodity trades
 -- │
 -- ├─ STREAMS (1):
 -- │  └─ CMDI_TRADES_STREAM - Change data capture for incremental processing
--- │
--- ├─ STAGES (1):
--- │  └─ CMDI_TRADES - Internal stage for CSV file ingestion
 -- │
 -- └─ TASKS (1):
 --    └─ CMDI_LOAD_TRADES_TASK - Serverless task for automated CSV loading
@@ -39,6 +42,50 @@
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 USE SCHEMA CMD_RAW_001;
+
+
+-- ============================================================
+-- INTERNAL STAGES - File Landing Areas
+-- ============================================================
+-- Internal stages for CSV file ingestion with directory listing enabled
+-- for automated file detection via streams. All stages support PUT/GET
+-- operations for manual file uploads and downloads.
+
+-- Commodity trade data stage
+CREATE OR REPLACE STAGE CMDI_TRADES
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
+    COMMENT = 'Internal stage for commodity trade CSV files. Expected pattern: *commodity_trades*.csv with fields: trade_date, trade_id, customer_id, account_id, commodity_type, quantity, price, etc.';
+
+-- Enable directory table for file tracking and metadata
+ALTER STAGE CMDI_TRADES REFRESH;
+
+-- ============================================================
+-- FILE FORMATS - CSV Parsing Configurations
+-- ============================================================
+-- Standardized CSV file formats for consistent data ingestion across
+-- all commodity trade data sources. All formats handle quoted fields,
+-- trim whitespace, and use flexible column count matching.
+
+-- Commodity trade CSV format
+CREATE OR REPLACE FILE FORMAT CMDI_FF_TRADES_CSV
+    TYPE = 'CSV'
+    FIELD_DELIMITER = ','
+    RECORD_DELIMITER = '\n'
+    SKIP_HEADER = 1
+    FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+    TRIM_SPACE = TRUE
+    ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
+    REPLACE_INVALID_CHARACTERS = TRUE
+    DATE_FORMAT = 'YYYY-MM-DD'
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
+    COMMENT = 'CSV format for commodity trade data with FRTB risk metrics and currency conversion support';
+
+-- ============================================================
+-- MASTER DATA TABLES - Commodity Trade Information
+-- ============================================================
 
 -- ============================================================
 -- CMDI_TRADES - Main Commodity Trades Table
@@ -102,47 +149,30 @@ CREATE OR REPLACE TABLE CMDI_TRADES (
 ) COMMENT = 'Raw commodity trades (energy, metals, agricultural) with FRTB risk metrics';
 
 -- ============================================================
--- CMDI_TRADES - Internal Stage for CSV Ingestion
+-- CHANGE DETECTION STREAMS - File Monitoring
 -- ============================================================
--- Internal stage for loading CSV files from commodity_generator.py
+-- Streams monitor stages for new files and trigger automated processing
+-- tasks. Each stream detects specific file patterns and maintains change
+-- tracking for reliable data pipeline processing.
 
-CREATE OR REPLACE STAGE CMDI_TRADES
-    FILE_FORMAT = (
-        TYPE = CSV
-        FIELD_DELIMITER = ','
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        TRIM_SPACE = TRUE
-        ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
-        NULL_IF = ('NULL', 'null', '')
-    )
-    DIRECTORY = (ENABLE = TRUE)
-COMMENT = 'Internal stage for commodity trade CSV files';
-
--- Enable directory table for file tracking and metadata
-ALTER STAGE CMDI_TRADES REFRESH;
+-- Commodity trade file detection stream
+CREATE OR REPLACE STREAM CMDI_TRADES_STREAM
+    ON STAGE CMDI_TRADES
+    COMMENT = 'Monitors CMDI_TRADES stage for new commodity trade CSV files. Triggers CMDI_LOAD_TRADES_TASK when files matching *commodity_trades*.csv pattern are detected';
 
 -- ============================================================
--- CMDI_TRADES_STREAM - File Detection Stream
+-- AUTOMATED PROCESSING TASKS - Data Pipeline Orchestration
 -- ============================================================
--- Monitors CMDI_TRADES stage for new commodity trade CSV files
+-- Automated tasks triggered by stream data availability. All tasks run
+-- on 1-hour schedule with stream-based triggering for efficient resource
+-- usage. Error handling continues processing despite individual record failures.
 
-CREATE OR REPLACE STREAM CMDI_TRADES_STREAM 
-ON STAGE CMDI_TRADES
-COMMENT = 'Monitors CMDI_TRADES stage for new commodity trade CSV files';
-
--- ============================================================
--- CMDI_LOAD_TRADES_TASK - Automated CSV Loading
--- ============================================================
--- Serverless task that runs every 60 minutes to load new CSV files
-
+-- Commodity trade loading task
 CREATE OR REPLACE TASK CMDI_LOAD_TRADES_TASK
     USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
     SCHEDULE = '60 MINUTE'
-WHEN
-    SYSTEM$STREAM_HAS_DATA('CMDI_TRADES_STREAM')
+    WHEN SYSTEM$STREAM_HAS_DATA('CMDI_TRADES_STREAM')
 AS
-    -- Copy new files from stage to table
     COPY INTO CMDI_TRADES (
         TRADE_DATE, SETTLEMENT_DATE, TRADE_ID, CUSTOMER_ID, ACCOUNT_ID, ORDER_ID,
         COMMODITY_TYPE, COMMODITY_NAME, COMMODITY_CODE, CONTRACT_TYPE, SIDE, QUANTITY, UNIT, PRICE, CURRENCY,
@@ -151,19 +181,17 @@ AS
         EXCHANGE, BROKER_ID, VENUE, LIQUIDITY_SCORE
     )
     FROM @CMDI_TRADES
-    FILE_FORMAT = (
-        TYPE = CSV
-        FIELD_DELIMITER = ','
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        TRIM_SPACE = TRUE
-        ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
-        NULL_IF = ('NULL', 'null', '')
-    )
-    ON_ERROR = CONTINUE
-    PURGE = FALSE;  -- Keep files for audit trail
+    PATTERN = '.*commodity_trades.*\.csv'
+    FILE_FORMAT = CMDI_FF_TRADES_CSV
+    ON_ERROR = CONTINUE;
 
--- Resume the task to enable automated loading
+-- ============================================================
+-- TASK ACTIVATION - Enable Automated Processing
+-- ============================================================
+-- Tasks must be explicitly resumed to begin processing. This allows for
+-- controlled deployment and testing before enabling automated data flows.
+
+-- Enable commodity trade data loading
 ALTER TASK CMDI_LOAD_TRADES_TASK RESUME;
 
 -- ============================================================
@@ -224,6 +252,56 @@ ALTER TASK CMDI_LOAD_TRADES_TASK RESUME;
 --     FROM DIRECTORY(@CMDI_TRADES)
 --     ORDER BY LAST_MODIFIED DESC;
 --
+-- ============================================================
+-- SCHEMA COMPLETION STATUS
+-- ============================================================
+-- ✅ CMD_RAW_001 Schema Deployment Complete
+--
+-- OBJECTS CREATED:
+-- • 1 Stage: CMDI_TRADES
+-- • 1 File Format: CMDI_FF_TRADES_CSV
+-- • 1 Table: CMDI_TRADES
+-- • 1 Stream: CMDI_TRADES_STREAM
+-- • 1 Task: CMDI_LOAD_TRADES_TASK (ACTIVE)
+--
+-- NEXT STEPS:
+-- 1. ✅ CMD_RAW_001 schema deployed successfully
+-- 2. Upload commodity trade CSV files to CMDI_TRADES stage
+-- 3. Monitor task execution: SHOW TASKS IN SCHEMA CMD_RAW_001;
+-- 4. Verify data loading: SELECT COUNT(*) FROM CMDI_TRADES;
+-- 5. Check for processing errors in task history
+-- 6. Deploy CMD_AGG_001 schema for delta risk and volatility analytics
+--
+-- USAGE EXAMPLES:
+-- -- Upload files
+-- PUT file://commodity_trades.csv @CMDI_TRADES;
+-- 
+-- -- Check trade distribution by commodity type
+-- SELECT COMMODITY_TYPE, COUNT(*) as trade_count, 
+--        SUM(BASE_GROSS_AMOUNT) as total_value_chf
+-- FROM CMDI_TRADES
+-- GROUP BY COMMODITY_TYPE;
+--
+-- -- Analyze FRTB risk metrics
+-- SELECT COMMODITY_TYPE, AVG(DELTA) as avg_delta, AVG(VOLATILITY) as avg_volatility
+-- FROM CMDI_TRADES
+-- WHERE DELTA IS NOT NULL
+-- GROUP BY COMMODITY_TYPE
+-- ORDER BY COMMODITY_TYPE;
+--
+-- -- Find high-risk illiquid positions (NMRF)
+-- SELECT COMMODITY_NAME, CUSTOMER_ID, QUANTITY, BASE_GROSS_AMOUNT
+-- FROM CMDI_TRADES
+-- WHERE LIQUIDITY_SCORE < 5
+-- ORDER BY BASE_GROSS_AMOUNT DESC;
+--
+-- -- Monitor stream for new data
+-- SELECT * FROM CMDI_TRADES_STREAM;
+--
+-- -- Check task execution history
+-- SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY())
+-- WHERE NAME = 'CMDI_LOAD_TRADES_TASK'
+-- ORDER BY SCHEDULED_TIME DESC;
 -- ============================================================
 -- CMD_RAW_001 Schema Setup Complete!
 -- ============================================================

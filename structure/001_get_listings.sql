@@ -8,7 +8,7 @@
 -- Data Exchange marketplace. This provides real-time sanctions and watchlist
 -- data for compliance screening and regulatory reporting.
 --
--- PURPOSE:
+-- BUSINESS PURPOSE:
 -- - Import global sanctions data for PEP (Politically Exposed Persons) screening
 -- - Enable compliance checking against international sanctions lists
 -- - Support regulatory reporting and risk management
@@ -24,14 +24,36 @@
 -- - Legal terms acceptance for data usage
 -- - Email verification for listing access
 --
--- USAGE:
--- 1. Run this script to set up the sanctions data database
--- 2. Use the data for compliance screening in customer onboarding
--- 3. Integrate with PEP screening and risk assessment processes
--- 4. Support regulatory reporting and audit requirements
+-- OBJECTS CREATED:
+-- ┌─ DATABASES (1):
+-- │  └─ REF_DAP_GLOBAL_SANCTIONS_DATA_SET - Global sanctions data database
+-- │
+-- ├─ SCHEMAS (1):
+-- │  └─ GLOBAL_SANCTIONS_DATA - Sanctions data schema
+-- │
+-- ├─ TABLES (1):
+-- │  └─ SANCTIONS_DATAFEED - Global sanctions and watchlist data
+-- │
+-- └─ ACCESS (1):
+--    └─ Data Exchange listing access for real-time updates
 --
+-- DATA ARCHITECTURE:
+-- Data Exchange → Database Creation → Schema Access → Table Usage
+--
+-- REFRESH STRATEGY:
+-- - Automatic updates from Data Exchange provider
+-- - Real-time access to latest sanctions information
+-- - No manual refresh required
+--
+-- RELATED SCHEMAS:
+-- - CRM_RAW_001: Customer data for sanctions screening
+-- - PAY_RAW_001: Transaction monitoring for compliance
+-- - EQT_RAW_001: Investment screening for sanctions
 -- ============================================================
 
+-- ============================================================
+-- DATA EXCHANGE SETUP - Global Sanctions Data Access
+-- ============================================================
 -- Step 1: Discover available listings (commented out - run manually if needed)
 -- Get the global name and title of listings and filter on the title
 -- SELECT "global_name", "title"
@@ -47,22 +69,23 @@ CALL SYSTEM$REQUEST_LISTING_AND_WAIT('GZT1ZVEJH9');
 -- Email verification is required to create the database from listing
 CALL SYSTEM$ACCEPT_LEGAL_TERMS('DATA_EXCHANGE_LISTING', 'GZT1ZVEJH9');
 
+-- ============================================================
+-- DATABASE CREATION - Global Sanctions Data Import
+-- ============================================================
 -- Step 4: Create database from the Data Exchange listing
 -- This creates a new database with the sanctions data
-CREATE DATABASE REF_DAP_GLOBAL_SANCTIONS_DATA_SET
+-- Note: If database already exists, this will show an error but deployment continues
+-- The error "Importing more than once is not supported" is expected and OK
+
+DROP DATABASE if exists REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
+
+CREATE Database if not exists REF_DAP_GLOBAL_SANCTIONS_DATA_SET
   FROM LISTING 'GZT1ZVEJH9';
-
--- Step 5: Switch to the new database context
--- Use the new database for sanctions data access
-USE DATABASE AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
-
--- Step 6: Access the sanctions data schema
--- Switch to the schema containing the sanctions data
-USE SCHEMA GLOBAL_SANCTIONS_DATA;
 
 -- ============================================================
 -- DATA EXPLORATION AND USAGE
 -- ============================================================
+-- USE SCHEMA GLOBAL_SANCTIONS_DATA;
 -- Once the database is created, you can explore the sanctions data:
 --
 -- -- Query the 'SANCTIONS_DATAFEED' table and limit the results to 10 rows
@@ -82,30 +105,40 @@ USE SCHEMA GLOBAL_SANCTIONS_DATA;
 -- LIMIT 10;
 --
 -- ============================================================
--- INTEGRATION WITH SYNTHETIC BANK DATA
+-- SETUP COMPLETION STATUS
 -- ============================================================
--- This sanctions data can be integrated with the synthetic bank data for:
+-- ✅ Global Sanctions Data Setup Complete
 --
--- 1. Customer Onboarding Screening:
---    - Check new customers against sanctions lists
---    - Flag potential matches for manual review
---    - Support KYC/AML compliance processes
+-- OBJECTS CREATED:
+-- • 1 Database: REF_DAP_GLOBAL_SANCTIONS_DATA_SET
+-- • 1 Schema: GLOBAL_SANCTIONS_DATA
+-- • 1 Table: SANCTIONS_DATAFEED
+-- • 1 Access: Data Exchange listing access
 --
--- 2. PEP (Politically Exposed Persons) Screening:
---    - Cross-reference with CRMI_EXPOSED_PERSON data
---    - Enhance compliance data with external sources
---    - Support regulatory reporting requirements
+-- NEXT STEPS:
+-- 1. ✅ Global Sanctions Data setup completed successfully
+-- 2. Verify database access: USE DATABASE REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
+-- 3. Check data availability: SELECT COUNT(*) FROM SANCTIONS_DATAFEED;
+-- 4. Test sanctions screening in CRM_RAW_001 schema
+-- 5. Integrate with compliance workflows
 --
--- 3. Transaction Monitoring:
---    - Screen counterparties against sanctions lists
---    - Flag suspicious transactions for investigation
---    - Support real-time compliance checking
+-- USAGE EXAMPLES:
+-- -- Access the sanctions database
+-- USE DATABASE REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
+-- USE SCHEMA GLOBAL_SANCTIONS_DATA;
+-- 
+-- -- Query sanctions data
+-- SELECT * FROM SANCTIONS_DATAFEED LIMIT 10;
 --
--- 4. Regulatory Reporting:
---    - Generate compliance reports
---    - Support audit requirements
---    - Provide evidence of due diligence
+-- -- Check data freshness
+-- SELECT MAX(LAST_UPDATED) as LATEST_UPDATE FROM SANCTIONS_DATAFEED;
 --
+-- -- Sample sanctions by country
+-- SELECT COUNTRY, COUNT(*) as SANCTIONS_COUNT 
+-- FROM SANCTIONS_DATAFEED 
+-- GROUP BY COUNTRY 
+-- ORDER BY SANCTIONS_COUNT DESC 
+-- LIMIT 10;
 -- ============================================================
--- SANCTIONS DATA SETUP COMPLETED
+-- Global Sanctions Data Setup Complete!
 -- ============================================================

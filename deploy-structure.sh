@@ -9,6 +9,9 @@
 # 2. Automatically uploads generated data to appropriate stages
 # 3. Activates processing tasks for immediate operation
 #
+# Note: 001_get_listings.sql is excluded as it's a special setup script
+# that should be run separately for Data Exchange access
+#
 # Features:
 # - Complete dependency-aware SQL deployment
 # - Automatic data upload to correct stages
@@ -95,8 +98,8 @@ if [[ -n "$SINGLE_FILE" ]]; then
     exit 1
   fi
 else
-  # Find all SQL files
-  SQL_FILES=$(find "$SQL_DIR" -type f -name "*.sql" | sort)
+  # Find all SQL files except 001_get_listings.sql (special setup script)
+  SQL_FILES=$(find "$SQL_DIR" -type f -name "*.sql" | grep -v "001_get_listings.sql" | sort)
   
   if [[ -z "$SQL_FILES" ]]; then
     echo "❌ No SQL files found in $SQL_DIR"
@@ -205,10 +208,12 @@ else
         echo ""
         echo "✅ DATA UPLOAD COMPLETED SUCCESSFULLY!"
         echo ""
+        echo ""
         echo "🎯 END-TO-END DEPLOYMENT SUMMARY:"
         echo "   ✅ Database & schemas created"
         echo "   ✅ All SQL objects deployed"
         echo "   ✅ Generated data uploaded to stages"
+        echo "   ✅ Streams recreated to detect uploaded files"
         echo "   ✅ Tasks activated and ready for processing"
         echo ""
         echo "🚀 Your synthetic bank is now fully operational!"
@@ -217,6 +222,7 @@ else
         echo "1. Monitor task execution: SHOW TASKS IN DATABASE $DATABASE;"
         echo "2. Check data loading: SELECT COUNT(*) FROM [schema].[table];"
         echo "3. Verify stage contents: LIST @[stage_name];"
+        echo "4. Check stream status: SHOW STREAMS IN DATABASE $DATABASE;"
       else
         echo ""
         echo "❌ Data upload failed! Please check the upload script output above."

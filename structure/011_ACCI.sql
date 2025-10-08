@@ -66,7 +66,10 @@ USE SCHEMA CRM_RAW_001;
 
 -- Account master data stage
 CREATE OR REPLACE STAGE ACCI_ACCOUNTS
-    DIRECTORY = (ENABLE = TRUE)
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
     COMMENT = 'Internal stage for account master data CSV files. Expected pattern: *accounts*.csv with multi-currency support (EUR, GBP, USD, CHF, etc.)';
 
 -- ============================================================

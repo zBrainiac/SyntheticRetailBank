@@ -61,11 +61,25 @@
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 
--- ============================================================
--- PAY_RAW_001 SCHEMA - Raw SWIFT Messages
--- ============================================================
-
 USE SCHEMA PAY_RAW_001;
+
+-- ============================================================
+-- INTERNAL STAGES - File Landing Areas
+-- ============================================================
+-- Internal stages for XML file ingestion with directory listing enabled
+-- for automated file detection via streams. All stages support PUT/GET
+-- operations for manual file uploads and downloads.
+
+-- SWIFT XML message data stage
+CREATE OR REPLACE STAGE ICGI_RAW_SWIFT_INBOUND
+    DIRECTORY = (
+        ENABLE = TRUE
+        AUTO_REFRESH = TRUE
+    )
+    COMMENT = 'Internal stage for SWIFT ISO20022 XML message files. Expected pattern: *.xml with PACS.008 and PACS.002 message types for interbank clearing operations';
+
+-- Enable directory table for file tracking and metadata
+ALTER STAGE ICGI_RAW_SWIFT_INBOUND REFRESH;
 
 -- ============================================================
 -- FILE FORMATS - XML Processing Configuration
@@ -80,28 +94,14 @@ CREATE OR REPLACE FILE FORMAT ICGI_XML_FILE_FORMAT
     COMMENT = 'Optimized XML file format for SWIFT ISO20022 message processing. Strips outer XML envelope for efficient VARIANT parsing of PACS.008 credit transfers and PACS.002 status reports. Supports multi-message files and preserves all ISO20022 schema elements for compliance and downstream analytics.';
 
 -- ============================================================
--- INTERNAL STAGES - Message Landing Area
+-- MASTER DATA TABLES - SWIFT Message Information
 -- ============================================================
--- Secure internal stage for SWIFT ISO20022 XML message ingestion with
--- directory listing enabled for automated file discovery and processing workflows.
-
--- Stage for inbound SWIFT messages (production)
-CREATE OR REPLACE STAGE ICGI_RAW_SWIFT_INBOUND
-    FILE_FORMAT = ICGI_XML_FILE_FORMAT
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Production staging area for inbound SWIFT ISO20022 XML messages. Handles PACS.008 customer credit transfers, PACS.002 payment status reports, and future message types. Directory listing enabled for automated file discovery and stream-based processing triggers. Supports high-volume interbank clearing operations with secure file handling.';
 
 -- ============================================================
--- TABLES - Raw Message Storage
--- ============================================================
--- Persistent storage for raw SWIFT ISO20022 XML messages with metadata
--- for audit trails, compliance, and downstream processing requirements.
-
--- ============================================================
--- ICGI_RAW_SWIFT_MESSAGES TABLE - Raw XML Message Repository
+-- ICGI_RAW_SWIFT_MESSAGES - Raw XML Message Repository
 -- ============================================================
 -- Central repository for all inbound SWIFT ISO20022 XML messages with
--- comprehensive metadata capture for operational monitoring and compliance.
+-- comprehensive metadata capture for operational monitoring and compliance
 
 CREATE OR REPLACE TABLE ICGI_RAW_SWIFT_MESSAGES (
     FILE_NAME   STRING COMMENT 'Original source file name for audit trail, correlation with external systems, and operational troubleshooting. Enables traceability back to source systems and message routing verification.',
@@ -111,31 +111,29 @@ CREATE OR REPLACE TABLE ICGI_RAW_SWIFT_MESSAGES (
 COMMENT = 'Master repository for raw SWIFT ISO20022 XML messages supporting interbank clearing and settlement operations. Stores PACS.008 customer credit transfer instructions, PACS.002 payment status reports, and future message types in native XML format. Provides foundation for downstream business logic processing, regulatory compliance analysis, operational monitoring, and audit trail maintenance. Optimized for high-volume message ingestion with comprehensive metadata capture.';
 
 -- ============================================================
--- STREAMS - File Arrival Detection
+-- CHANGE DETECTION STREAMS - File Monitoring
 -- ============================================================
--- Change data capture streams for automated detection of new SWIFT message
--- arrivals, enabling near real-time processing and operational efficiency.
+-- Streams monitor stages for new files and trigger automated processing
+-- tasks. Each stream detects specific file patterns and maintains change
+-- tracking for reliable data pipeline processing.
 
--- Stream to detect new SWIFT XML files arriving on the stage
+-- SWIFT XML file detection stream
 CREATE OR REPLACE STREAM ICGI_STREAM_SWIFT_FILES
-ON STAGE ICGI_RAW_SWIFT_INBOUND
-COMMENT = 'Change data capture stream for automated detection of new SWIFT ISO20022 XML files arriving on the inbound stage. Triggers downstream processing tasks for near real-time message ingestion and business logic execution. Essential for operational SLA compliance and timely payment processing in high-volume interbank clearing environments.';
+    ON STAGE ICGI_RAW_SWIFT_INBOUND
+    COMMENT = 'Monitors ICGI_RAW_SWIFT_INBOUND stage for new SWIFT ISO20022 XML files. Triggers ICGI_TASK_LOAD_SWIFT_MESSAGES when files matching *.xml pattern are detected';
 
 -- ============================================================
--- TASKS - Automated Message Processing
+-- AUTOMATED PROCESSING TASKS - Data Pipeline Orchestration
 -- ============================================================
--- Scheduled tasks for automated SWIFT message ingestion with stream-based
--- triggering for efficient resource utilization and near real-time processing.
+-- Automated tasks triggered by stream data availability. All tasks run
+-- on 1-hour schedule with stream-based triggering for efficient resource
+-- usage. Error handling continues processing despite individual record failures.
 
--- Task to automatically load new SWIFT XML files
+-- SWIFT XML message loading task
 CREATE OR REPLACE TASK ICGI_TASK_LOAD_SWIFT_MESSAGES
     USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
     SCHEDULE = '60 MINUTE'
     WHEN SYSTEM$STREAM_HAS_DATA('ICGI_STREAM_SWIFT_FILES')
-    -- Automated SWIFT ISO20022 XML message ingestion task with stream-based triggering
-    -- for efficient processing of PACS.008 and PACS.002 messages. Executes every 60 minutes
-    -- with serverless compute and conditional execution based on file arrival detection for
-    -- optimal resource utilization and operational cost management.
 AS
     COPY INTO ICGI_RAW_SWIFT_MESSAGES (FILE_NAME, RAW_XML)
     FROM (
@@ -148,7 +146,13 @@ AS
     FILE_FORMAT = ICGI_XML_FILE_FORMAT               -- Use optimized XML format for ISO20022 messages
     ON_ERROR = CONTINUE;                             -- Continue processing on individual file errors for resilience
 
--- Activate the task for production operations
+-- ============================================================
+-- TASK ACTIVATION - Enable Automated Processing
+-- ============================================================
+-- Tasks must be explicitly resumed to begin processing. This allows for
+-- controlled deployment and testing before enabling automated data flows.
+
+-- Enable SWIFT XML message data loading
 ALTER TASK ICGI_TASK_LOAD_SWIFT_MESSAGES RESUME;
 
 -- ============================================================
