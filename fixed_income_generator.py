@@ -15,10 +15,11 @@ import random
 import uuid
 from dataclasses import dataclass, asdict, fields
 from datetime import datetime, timedelta, date
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 
 from faker import Faker
+from base_generator import BaseGenerator
 
 
 @dataclass
@@ -74,7 +75,7 @@ class FixedIncomeTrade:
     created_at: str
 
 
-class FixedIncomeTradeGenerator:
+class FixedIncomeTradeGenerator(BaseGenerator):
     """Generator for synthetic fixed income trades"""
     
     # Government bond issuers by currency
@@ -123,18 +124,20 @@ class FixedIncomeTradeGenerator:
         'GBP': ['LSE', 'OTC'],
     }
     
-    def __init__(self, customers: List[str], accounts: List[Dict], 
+    def __init__(self, config, customers: List[str], accounts: List[Dict], 
                  fx_rates: Dict[str, float], start_date: date, end_date: date):
         """
         Initialize the generator
         
         Args:
+            config: GeneratorConfig instance
             customers: List of customer IDs
             accounts: List of account dictionaries with account_id, customer_id, base_currency
             fx_rates: Dictionary of FX rates to CHF
             start_date: Start date for trade generation
             end_date: End date for trade generation
         """
+        super().__init__(config)
         self.customers = customers
         self.accounts = accounts
         self.fx_rates = fx_rates
@@ -329,7 +332,7 @@ class FixedIncomeTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue=market,
             liquidity_score=round(liquidity_score, 2),
-            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            created_at=self.get_utc_timestamp()
         )
     
     def generate_swap_trade(self, customer_id: str, account: Dict, 
@@ -421,7 +424,7 @@ class FixedIncomeTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue='OTC',
             liquidity_score=round(random.uniform(5, 8), 2),
-            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            created_at=self.get_utc_timestamp()
         )
     
     def generate_trades(self, num_trades: int = 1000, 
@@ -541,6 +544,16 @@ class FixedIncomeTradeGenerator:
         
         print(f"\n✓ Saved {len(trades)} trades across {len(files_created)} files in {output_dir}")
         return files_created
+    
+    def generate(self) -> Dict[str, Any]:
+        """Generate fixed income trades - implementation of abstract method"""
+        trades = self.generate_trades()
+        return {
+            'trades': trades,
+            'total_trades': len(trades),
+            'bonds': len([t for t in trades if t.instrument_type == 'BOND']),
+            'swaps': len([t for t in trades if t.instrument_type == 'IRS'])
+        }
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from faker import Faker
 
 from config import GeneratorConfig
+from base_generator import BaseGenerator
 
 
 @dataclass
@@ -35,11 +36,11 @@ class CustomerAddress:
     insert_timestamp_utc: str  # UTC timestamp when record was inserted
 
 
-class CustomerGenerator:
+class CustomerGenerator(BaseGenerator):
     """Generates realistic EMEA customer data with localized information"""
     
     def __init__(self, config: GeneratorConfig):
-        self.config = config
+        super().__init__(config)
         # EMEA locales for realistic customer data
         self.emea_locales = [
             'en_GB',  # United Kingdom
@@ -314,7 +315,7 @@ class CustomerGenerator:
         test_last_name = "TOPCHEV"  # Keep last name identical for testing
         
         # Generate a customer ID that's clearly marked as a test customer
-        test_customer_id = f"CUST_{self.config.num_customers + 1:05d}_FUZZY_TEST"
+        test_customer_id = f"CUST_{self.config.num_customers + 1:05d}"
         
         # Use a realistic onboarding date
         onboarding_date = self._generate_onboarding_date()
@@ -351,7 +352,7 @@ class CustomerGenerator:
         }
         
         # Use current timestamp for insert
-        insert_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        insert_timestamp = self.get_utc_timestamp()
         
         test_address = CustomerAddress(
             customer_id=customer_id,
@@ -382,5 +383,15 @@ class CustomerGenerator:
         self.customer_addresses.append(test_address)
         
         return test_customer, test_address
+    
+    def generate(self) -> Dict[str, Any]:
+        """Generate customer data - implementation of abstract method"""
+        customers, addresses = self.generate_customers()
+        return {
+            'customers': customers,
+            'addresses': addresses,
+            'total_customers': len(customers),
+            'anomalous_customers': len([c for c in customers if c.has_anomaly])
+        }
 
 

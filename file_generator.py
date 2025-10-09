@@ -50,7 +50,7 @@ class FileGenerator:
         print(f"   • {self.reports_dir.name}/ - Summary reports and documentation")
         print()
         
-    def generate_all_files(self) -> dict:
+    def generate_all_files(self, additional_results: dict = None) -> dict:
         """Generate all customer and transaction files"""
         # Create output directory structure
         self._create_directory_structure()
@@ -64,18 +64,18 @@ class FileGenerator:
         customer_generator = CustomerGenerator(self.config)
         customers, customer_addresses = customer_generator.generate_customers()
         
-        # Save customer master data
+        # Add fuzzy matching test customer for PEP screening testing
+        print("Adding fuzzy matching test customer for PEP screening...")
+        test_customer, test_address = customer_generator.add_fuzzy_matching_test_customer()
+        print(f"Added test customer: {test_customer.first_name} {test_customer.family_name} (ID: {test_customer.customer_id})")
+        
+        # Save customer master data (including fuzzy matching test customer)
         customer_file = self.master_data_dir / "customers.csv"
         customer_generator.save_customers_to_csv(str(customer_file))
         
         # Save customer address data (SCD Type 2)
         address_file = self.master_data_dir / "customer_addresses.csv"
         customer_generator.save_addresses_to_csv(str(address_file))
-        
-        # Add fuzzy matching test customer for PEP screening testing
-        print("Adding fuzzy matching test customer for PEP screening...")
-        test_customer, test_address = customer_generator.add_fuzzy_matching_test_customer()
-        print(f"Added test customer: {test_customer.first_name} {test_customer.family_name} (ID: {test_customer.customer_id})")
         
         anomalous_customers = customer_generator.get_anomalous_customers()
         print(f"Generated {len(customers)} customers ({len(anomalous_customers)} anomalous)")
@@ -173,7 +173,7 @@ class FileGenerator:
         
         # Generate summary report
         summary_file = self._generate_summary_report(
-            customers, anomalous_customers, all_transactions, daily_files, accounts, fx_rates, equity_summary
+            customers, anomalous_customers, all_transactions, daily_files, accounts, fx_rates, equity_summary, additional_results
         )
         
         return {
@@ -194,7 +194,7 @@ class FileGenerator:
     
     def _generate_summary_report(self, customers: List, anomalous_customers: List, 
                                transactions: List, daily_files: List[str], accounts: List, fx_rates: List,
-                               equity_summary: dict) -> str:
+                               equity_summary: dict, additional_results: dict = None) -> str:
         """Generate a summary report of the generated data"""
         summary_file = self.reports_dir / "generation_summary.txt"
         
@@ -296,6 +296,53 @@ class FileGenerator:
             
             f.write(f"\n📁 Reports (reports/):\n")
             f.write(f"  generation_summary.txt\n")
+            
+            # Add additional generator results if provided
+            if additional_results:
+                f.write(f"\nADDITIONAL GENERATORS:\n")
+                
+                if 'swift' in additional_results and additional_results['swift']:
+                    swift = additional_results['swift']
+                    f.write(f"\n📁 SWIFT Messages (swift_messages/):\n")
+                    f.write(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
+                    f.write(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
+                    f.write(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
+                
+                if 'pep' in additional_results and additional_results['pep']:
+                    pep = additional_results['pep']
+                    f.write(f"\n📁 PEP Data (master_data/):\n")
+                    f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
+                    f.write(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
+                    f.write(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
+                
+                if 'mortgage' in additional_results and additional_results['mortgage']:
+                    mortgage = additional_results['mortgage']
+                    f.write(f"\n📁 Mortgage Emails (emails/):\n")
+                    f.write(f"  Customers: {mortgage.get('customers', 0)}\n")
+                    f.write(f"  Total emails: {mortgage.get('total_emails', 0)} (3 types per customer)\n")
+                
+                if 'address_updates' in additional_results and additional_results['address_updates']:
+                    address = additional_results['address_updates']
+                    f.write(f"\n📁 Address Updates (master_data/address_updates/):\n")
+                    f.write(f"  Update files: {address.get('files_generated', 0)}\n")
+                    f.write(f"  For SCD Type 2 processing\n")
+                
+                if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                    fixed_income = additional_results['fixed_income']
+                    f.write(f"\n📁 Fixed Income Trades (fixed_income_trades/):\n")
+                    f.write(f"  Total trades: {fixed_income.get('total_trades', 0)}\n")
+                    f.write(f"  Bonds: {fixed_income.get('bonds', 0)}, Swaps: {fixed_income.get('swaps', 0)}\n")
+                    f.write(f"  Total Notional: CHF {fixed_income.get('total_notional_chf', 0):,.2f}\n")
+                    f.write(f"  Files created: {fixed_income.get('files_created', 0)} (one per trade date)\n")
+                
+                if 'commodity' in additional_results and additional_results['commodity']:
+                    commodity = additional_results['commodity']
+                    f.write(f"\n📁 Commodity Trades (commodity_trades/):\n")
+                    f.write(f"  Total trades: {commodity.get('total_trades', 0)}\n")
+                    commodity_summary = ', '.join([f"{k}:{v}" for k, v in commodity.get('commodity_types', {}).items()])
+                    f.write(f"  Types: {commodity_summary}\n")
+                    f.write(f"  Total Value: CHF {commodity.get('total_value_chf', 0):,.2f}\n")
+                    f.write(f"  Files created: {commodity.get('files_created', 0)} (one per trade date)\n")
             
             f.write(f"\n📁 Database Setup:\n")
             f.write(f"  Database schema definitions are managed in the structure/ directory\n")

@@ -51,7 +51,7 @@ The `deploy-structure.sh` script provides **complete end-to-end deployment** wit
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen
+  --CONNECTION_NAME=<my-sf-connection>
 ```
 **Result**: Deploys structure + uploads data + activates tasks = fully operational bank!
 
@@ -59,7 +59,7 @@ The `deploy-structure.sh` script provides **complete end-to-end deployment** wit
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen \
+  --CONNECTION_NAME=<my-sf-connection> \
   --DRY_RUN
 ```
 **Result**: Shows what would be deployed and uploaded without making changes
@@ -68,7 +68,7 @@ The `deploy-structure.sh` script provides **complete end-to-end deployment** wit
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen \
+  --CONNECTION_NAME=<my-sf-connection> \
   --FILE=031_ICGI.sql
 ```
 **Result**: Tests only the specified SQL file for debugging
@@ -77,7 +77,7 @@ The `deploy-structure.sh` script provides **complete end-to-end deployment** wit
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen \
+  --CONNECTION_NAME=<my-sf-connection> \
   --SQL_DIR=/path/to/custom/structure
 ```
 
@@ -127,7 +127,7 @@ Use `--DRY_RUN` to preview everything without making changes:
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen \
+  --CONNECTION_NAME=<my-sf-connection> \
   --DRY_RUN
 ```
 
@@ -138,7 +138,7 @@ Debug specific SQL files:
 ```bash
 ./deploy-structure.sh \
   --DATABASE=AAA_DEV_SYNTHETIC_BANK \
-  --CONNECTION_NAME=sfseeurope-mdaeppen \
+  --CONNECTION_NAME=<my-sf-connection> \
   --FILE=031_ICGI.sql
 ```
 

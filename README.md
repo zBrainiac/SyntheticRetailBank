@@ -153,11 +153,21 @@ This repository delivers a complete data generation and ingestion framework, org
 
 ## Installation
 
-1. Clone or download this repository
-2. Install required dependencies:
+1. Clone this repository:
+```bash
+git clone https://github.com/mdaeppen/AAA_synthetic_bank.git
+cd AAA_synthetic_bank
+```
+
+2. Setup Snowflake CLI:
+   - Follow the official [Snowflake CLI installation guide](https://docs.snowflake.com/en/developer-guide/snowflake-cli/install)
+   - Configure your connection: `snow connection add <my-sf-connection>`
+
+3. Install required dependencies:
 
 ```bash
-pip install -r requirements.txt
+# Install dependencies in virtual environment
+./venv/bin/pip install -r requirements.txt
 ```
 
 ## 🚀 Quick Start
@@ -167,8 +177,12 @@ pip install -r requirements.txt
 Deploy the complete synthetic bank with automatic data upload:
 
 ```bash
-# 1. Generate data
-python main.py --customers 1000 --period 30 --generate-swift --generate-pep
+# 1. Generate comprehensive data (3 months, 1000 customers, all generators)
+./venv/bin/python main.py --customers 1000 --period 3 \
+  --generate-swift --generate-pep --generate-mortgage-emails \
+  --generate-address-updates --generate-fixed-income --generate-commodities \
+  --swift-percentage 75 --pep-records 500 --mortgage-customers 150 \
+  --address-update-files 15 --fixed-income-trades 50 --commodity-trades 25
 
 # 2. Deploy everything (structure + data upload + task activation)
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
@@ -184,7 +198,7 @@ If you prefer manual control:
 
 ```bash
 # 1. Generate data
-python main.py --customers 1000 --period 30 --generate-swift --generate-pep
+./venv/bin/python main.py --customers 1000 --period 3 --generate-swift --generate-pep
 
 # 2. Deploy SQL structure only
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
@@ -659,6 +673,74 @@ generated_data/
 - Generates approximately 1000 transactions per second
 - Memory usage scales linearly with customer count
 - Optimized for datasets up to 10,000 customers
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### **Data Generation Issues**
+```bash
+# Error: "ModuleNotFoundError: No module named 'faker'"
+# Solution: Use the full path to virtual environment Python
+./venv/bin/python main.py --customers 100 --period 3 --generate-swift --generate-pep
+
+# Error: "Customer file not found"
+# Solution: Ensure you run data generation before deployment
+./venv/bin/python main.py --customers 100 --period 3 --generate-swift --generate-pep
+
+# Error: "Invalid arguments: Number of customers must be positive"
+# Solution: Use valid parameters
+./venv/bin/python main.py --customers 1000 --period 3  # ✅ Valid
+./venv/bin/python main.py --customers -5 --period 3    # ❌ Invalid
+```
+
+#### **Snowflake Connection Issues**
+```bash
+# Error: "Connection not found"
+# Solution: Add your connection first
+snow connection add <my-sf-connection>
+
+# Error: "Database does not exist"
+# Solution: Create database first
+snow sql -c <my-sf-connection> -q "CREATE DATABASE AAA_DEV_SYNTHETIC_BANK;"
+```
+
+#### **Deployment Issues**
+```bash
+# Error: "SQL compilation error: Tag 'SENSITIVITY_LEVEL' does not exist"
+# Solution: Create the tag first
+snow sql -c <my-sf-connection> -q "CREATE TAG SENSITIVITY_LEVEL;"
+
+# Error: "Stream has no data"
+# Solution: Check if data was uploaded successfully
+./upload-data.sh --CONNECTION_NAME=<my-sf-connection>
+```
+
+#### **Performance Issues**
+```bash
+# For large datasets (1000+ customers), consider:
+# 1. Increase Snowflake warehouse size
+# 2. Use parallel processing
+python main.py --customers 1000 --period 3 --swift-workers 8
+
+# 3. Generate in smaller batches
+python main.py --customers 500 --period 3  # Generate half, then merge
+```
+
+### **Data Quality Validation**
+```sql
+-- Check customer data quality
+SELECT COUNT(*) as customer_count FROM CRMI_CUSTOMER;
+SELECT COUNT(*) as account_count FROM ACCI_ACCOUNT;
+SELECT COUNT(*) as transaction_count FROM PAYI_TRANSACTION;
+
+-- Check for data completeness
+SELECT 
+    COUNT(*) as total_customers,
+    COUNT(CASE WHEN has_anomaly = true THEN 1 END) as anomalous_customers,
+    ROUND(COUNT(CASE WHEN has_anomaly = true THEN 1 END) * 100.0 / COUNT(*), 2) as anomaly_percentage
+FROM CRMI_CUSTOMER;
+```
 
 ## Contributing
 

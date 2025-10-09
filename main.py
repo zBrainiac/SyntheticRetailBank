@@ -385,35 +385,9 @@ def main():
         print("\nStarting data generation...")
         start_time = datetime.now()
         
+        # Generate basic files first (customers, accounts, transactions, etc.)
+        print("\nGenerating basic files...")
         results = file_generator.generate_all_files()
-        
-        end_time = datetime.now()
-        duration = end_time - start_time
-        
-        # Print banking data results
-        print("\n" + "=" * 80)
-        print("SYNTHETIC BANK DATA GENERATION COMPLETE")
-        print("=" * 80)
-        print(f"Generation time: {duration.total_seconds():.2f} seconds")
-        print(f"Total customers: {results['total_customers']}")
-        print(f"Total accounts: {results['total_accounts']}")
-        print(f"Anomalous customers: {results['anomalous_customers']}")
-        print(f"Total transactions: {results['total_transactions']}")
-        print(f"FX rate records: {results['total_fx_rates']}")
-        print(f"Daily files: {results['daily_file_count']}")
-        print(f"\nFiles saved to: {Path(config.output_directory).absolute()}")
-        print(f"\nSummary report: {results['summary_file']}")
-        
-        if args.verbose:
-            print("\nGenerated files:")
-            print(f"  {results['customer_file']}")
-            print(f"  {results['address_file']}")
-            print(f"  {results['account_file']}")
-            print(f"  FX rates: {results['fx_file_count']} files (one per date)")
-            for daily_file in results['daily_files'][:5]:  # Show first 5 files
-                print(f"  {daily_file}")
-            if len(results['daily_files']) > 5:
-                print(f"  ... and {len(results['daily_files']) - 5} more daily files")
         
         # Generate SWIFT messages if requested
         swift_results = None
@@ -622,6 +596,7 @@ def main():
                 
                 # Initialize fixed income generator
                 fi_generator = FixedIncomeTradeGenerator(
+                    config=config,
                     customers=customer_ids,
                     accounts=investment_accounts,
                     fx_rates=fx_rates_dict,
@@ -721,6 +696,7 @@ def main():
                 
                 # Initialize commodity generator
                 commodity_generator = CommodityTradeGenerator(
+                    config=config,
                     customers=customer_ids,
                     accounts=investment_accounts,
                     fx_rates=fx_rates_dict,
@@ -765,6 +741,71 @@ def main():
                 if args.verbose:
                     import traceback
                     traceback.print_exc()
+        
+        # Collect additional results for summary
+        additional_results = {
+            'swift': swift_results,
+            'pep': pep_results,
+            'mortgage': mortgage_results,
+            'address_updates': address_update_results,
+            'fixed_income': fixed_income_results,
+            'commodity': commodity_results
+        }
+        
+        # Update summary report with additional results
+        if additional_results and any(additional_results.values()):
+            print("\nUpdating summary report with additional generator results...")
+            # Read the existing summary and append additional results
+            summary_file = Path(config.output_directory) / "reports" / "generation_summary.txt"
+            if summary_file.exists():
+                with open(summary_file, 'a', encoding='utf-8') as f:
+                    f.write(f"\nADDITIONAL GENERATORS:\n")
+                    
+                    if 'swift' in additional_results and additional_results['swift']:
+                        swift = additional_results['swift']
+                        f.write(f"\n📁 SWIFT Messages (swift_messages/):\n")
+                        f.write(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
+                        f.write(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
+                        f.write(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
+                    
+                    if 'pep' in additional_results and additional_results['pep']:
+                        pep = additional_results['pep']
+                        f.write(f"\n📁 PEP Data (master_data/):\n")
+                        f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
+                        f.write(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
+                        f.write(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
+                    
+                    if 'mortgage' in additional_results and additional_results['mortgage']:
+                        mortgage = additional_results['mortgage']
+                        f.write(f"\n📁 Mortgage Emails (emails/):\n")
+                        f.write(f"  Customers: {mortgage.get('customers', 0)}\n")
+                        f.write(f"  Total emails: {mortgage.get('total_emails', 0)} (3 types per customer)\n")
+                    
+                    if 'address_updates' in additional_results and additional_results['address_updates']:
+                        address = additional_results['address_updates']
+                        f.write(f"\n📁 Address Updates (master_data/address_updates/):\n")
+                        f.write(f"  Update files: {address.get('files_generated', 0)}\n")
+                        f.write(f"  For SCD Type 2 processing\n")
+                    
+                    if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                        fixed_income = additional_results['fixed_income']
+                        f.write(f"\n📁 Fixed Income Trades (fixed_income_trades/):\n")
+                        f.write(f"  Total trades: {fixed_income.get('total_trades', 0)}\n")
+                        f.write(f"  Bonds: {fixed_income.get('bonds', 0)}, Swaps: {fixed_income.get('swaps', 0)}\n")
+                        f.write(f"  Total Notional: CHF {fixed_income.get('total_notional_chf', 0):,.2f}\n")
+                        f.write(f"  Files created: {fixed_income.get('files_created', 0)} (one per trade date)\n")
+                    
+                    if 'commodity' in additional_results and additional_results['commodity']:
+                        commodity = additional_results['commodity']
+                        f.write(f"\n📁 Commodity Trades (commodity_trades/):\n")
+                        f.write(f"  Total trades: {commodity.get('total_trades', 0)}\n")
+                        commodity_summary = ', '.join([f"{k}:{v}" for k, v in commodity.get('commodity_types', {}).items()])
+                        f.write(f"  Types: {commodity_summary}\n")
+                        f.write(f"  Total Value: CHF {commodity.get('total_value_chf', 0):,.2f}\n")
+                        f.write(f"  Files created: {commodity.get('files_created', 0)} (one per trade date)\n")
+        
+        end_time = datetime.now()
+        duration = end_time - start_time
         
         # Final summary
         print("\n" + "=" * 80)

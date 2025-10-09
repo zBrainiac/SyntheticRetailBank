@@ -16,10 +16,11 @@ import random
 import uuid
 from dataclasses import dataclass, asdict, fields
 from datetime import datetime, timedelta, date
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 
 from faker import Faker
+from base_generator import BaseGenerator
 
 
 @dataclass
@@ -77,7 +78,7 @@ class CommodityTrade:
     created_at: str
 
 
-class CommodityTradeGenerator:
+class CommodityTradeGenerator(BaseGenerator):
     """Generator for synthetic commodity trades"""
     
     # Commodity definitions with typical price ranges and units
@@ -245,18 +246,20 @@ class CommodityTradeGenerator:
         },
     }
     
-    def __init__(self, customers: List[str], accounts: List[Dict], 
+    def __init__(self, config, customers: List[str], accounts: List[Dict], 
                  fx_rates: Dict[str, float], start_date: date, end_date: date):
         """
         Initialize the generator
         
         Args:
+            config: GeneratorConfig instance
             customers: List of customer IDs
             accounts: List of account dictionaries
             fx_rates: Dictionary of FX rates to CHF
             start_date: Start date for trade generation
             end_date: End date for trade generation
         """
+        super().__init__(config)
         self.customers = customers
         self.accounts = accounts
         self.fx_rates = fx_rates
@@ -428,7 +431,7 @@ class CommodityTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue=commodity_spec['exchange'],
             liquidity_score=round(liquidity_score, 2),
-            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            created_at=self.get_utc_timestamp()
         )
     
     def generate_trades(self, num_trades: int = 1000) -> List[CommodityTrade]:
@@ -538,6 +541,15 @@ class CommodityTradeGenerator:
         
         print(f"\n✓ Saved {len(trades)} trades across {len(files_created)} files in {output_dir}")
         return files_created
+    
+    def generate(self) -> Dict[str, Any]:
+        """Generate commodity trades - implementation of abstract method"""
+        trades = self.generate_trades()
+        return {
+            'trades': trades,
+            'total_trades': len(trades),
+            'commodity_types': {}
+        }
 
 
 if __name__ == "__main__":

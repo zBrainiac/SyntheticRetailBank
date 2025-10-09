@@ -15,11 +15,11 @@
 # - Comprehensive file counting and status reporting
 #
 # Usage:
-#   ./upload-data.sh --CONNECTION_NAME=sfseeurope-mdaeppen [--DRY_RUN]
+#   ./upload-data.sh --CONNECTION_NAME=<my-sf-connection> [--DRY_RUN]
 #
 # Example:
-#   ./upload-data.sh --CONNECTION_NAME=sfseeurope-mdaeppen
-#   ./upload-data.sh --CONNECTION_NAME=sfseeurope-mdaeppen --DRY_RUN
+#   ./upload-data.sh --CONNECTION_NAME=<my-sf-connection>
+#   ./upload-data.sh --CONNECTION_NAME=<my-sf-connection> --DRY_RUN
 # =============================================================================
 
 set -e
@@ -27,8 +27,13 @@ set -e
 # --- Default values ---
 CONNECTION_NAME=""
 DRY_RUN=false
-BASE_DIR="/Users/mdaeppen/workspace/AAA_synthetic_bank"
-GENERATED_DATA_DIR="$BASE_DIR/generated_data"
+
+# --- Dynamic path detection ---
+# Get the directory where this script is located (works from any location)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Generated data is always in the 'generated_data' subdirectory relative to the script
+# This makes the script portable and works regardless of where it's executed from
+GENERATED_DATA_DIR="$SCRIPT_DIR/generated_data"
 
 # --- Parse arguments ---
 for ARG in "$@"; do
@@ -58,6 +63,7 @@ fi
 if [[ ! -d "$GENERATED_DATA_DIR" ]]; then
     echo "❌ Generated data directory not found: $GENERATED_DATA_DIR"
     echo "Please run the data generation first: python main.py --help"
+    echo "Expected location: $GENERATED_DATA_DIR"
     exit 1
 fi
 
