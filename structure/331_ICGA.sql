@@ -76,7 +76,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS008(
     CREATION_DATETIME TIMESTAMP_NTZ COMMENT 'Message creation timestamp for SLA monitoring and processing analysis',
     NUMBER_OF_TRANSACTIONS NUMBER(10,0) COMMENT 'Number of transactions in message batch for volume analysis',
     GROUP_SETTLEMENT_CURRENCY VARCHAR(3) COMMENT 'Settlement currency for the entire message group',
-    GROUP_SETTLEMENT_AMOUNT DECIMAL(18,2) COMMENT 'Total settlement amount for liquidity management',
+    GROUP_SETTLEMENT_AMOUNT DECIMAL(28,2) COMMENT 'Total settlement amount for liquidity management',
     SETTLEMENT_METHOD VARCHAR(20) COMMENT 'Settlement method code for routing and clearing decisions',
     CLEARING_SYSTEM_CODE VARCHAR(20) COMMENT 'Clearing system identifier (TARGET2/SEPA/etc.) for operational routing',
     INSTRUCTION_ID VARCHAR(50) COMMENT 'Bank internal instruction identifier for operational tracking',
@@ -86,7 +86,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PACS008(
     SERVICE_LEVEL_CODE VARCHAR(20) COMMENT 'Service level agreement code for processing rules',
     LOCAL_INSTRUMENT_CODE VARCHAR(20) COMMENT 'Local payment instrument code for domestic routing',
     TRANSACTION_CURRENCY VARCHAR(3) COMMENT 'Payment currency for FX and treasury management',
-    TRANSACTION_AMOUNT DECIMAL(18,2) COMMENT 'Payment amount for limit monitoring and settlement',
+    TRANSACTION_AMOUNT DECIMAL(28,2) COMMENT 'Payment amount for limit monitoring and settlement',
     INTERBANK_SETTLEMENT_DATE DATE COMMENT 'Requested settlement date for liquidity planning',
     CHARGES_BEARER VARCHAR(10) COMMENT 'Charges allocation (OUR/BEN/SHA) for fee management',
     INSTRUCTING_AGENT_BIC VARCHAR(20) COMMENT 'BIC of instructing bank for routing and correspondence',
@@ -127,7 +127,7 @@ SELECT
     
     -- Group Header Settlement Information - Liquidity management
     GET_PATH(PARSE_XML(RAW_XML::STRING), '$[0]."$"[3]."@Ccy"')::STRING AS group_settlement_currency,
-    GET_PATH(PARSE_XML(RAW_XML::STRING), '$[0]."$"[3]."$"')::DECIMAL(18,2) AS group_settlement_amount,
+    GET_PATH(PARSE_XML(RAW_XML::STRING), '$[0]."$"[3]."$"')::DECIMAL(28,2) AS group_settlement_amount,
     
     -- Settlement Information - Routing and clearing
     GET_PATH(PARSE_XML(RAW_XML::STRING), '$[0]."$"[4]."$"[0]."$"')::STRING AS settlement_method,
@@ -145,7 +145,7 @@ SELECT
     
     -- Transaction Amount - Financial data
     GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[2]."@Ccy"')::STRING AS transaction_currency,
-    GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[2]."$"')::DECIMAL(18,2) AS transaction_amount,
+    GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[2]."$"')::DECIMAL(28,2) AS transaction_amount,
     
     -- Settlement Date and Charges - Operational controls
     GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[3]."$"')::DATE AS interbank_settlement_date,
@@ -178,7 +178,7 @@ SELECT
     
     -- Analytics Fields - Business intelligence and monitoring
     CASE 
-        WHEN GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[2]."$"')::DECIMAL(18,2) >= 100000 THEN TRUE
+        WHEN GET_PATH(PARSE_XML(RAW_XML::STRING), '$[1]."$"[2]."$"')::DECIMAL(28,2) >= 100000 THEN TRUE
         ELSE FALSE
     END AS is_high_value_payment,
     
@@ -344,7 +344,7 @@ CREATE OR REPLACE DYNAMIC TABLE ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE(
     IS_REJECTION BOOLEAN COMMENT 'Boolean flag for failed payments requiring exception handling workflows',
     IS_POSITIVE_RESPONSE BOOLEAN COMMENT 'Boolean flag for successful payments (SLA and performance reporting)',
     TRANSACTION_CURRENCY VARCHAR(3) COMMENT 'Payment currency for FX exposure analysis and treasury management',
-    TRANSACTION_AMOUNT DECIMAL(18,2) COMMENT 'Payment value for limit monitoring, settlement planning, and risk assessment',
+    TRANSACTION_AMOUNT DECIMAL(28,2) COMMENT 'Payment value for limit monitoring, settlement planning, and risk assessment',
     DEBTOR_NAME VARCHAR(200) COMMENT 'Payer identification for compliance screening and customer service',
     CREDITOR_NAME VARCHAR(200) COMMENT 'Beneficiary identification for delivery confirmation and compliance',
     PAYMENT_CORRIDOR VARCHAR(50) COMMENT 'Geographic payment flow (Country -> Country) for correspondent banking analysis',

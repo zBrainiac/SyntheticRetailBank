@@ -393,7 +393,7 @@ class CommodityTradeGenerator:
             liquidity_score = random.uniform(4, 8)
         
         return CommodityTrade(
-            trade_date=trade_date.strftime('%Y-%m-%d %H:%M:%S'),
+            trade_date=trade_date.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             settlement_date=settlement_date.strftime('%Y-%m-%d'),
             trade_id=f"CMD_{uuid.uuid4().hex[:12].upper()}",
             customer_id=customer_id,
@@ -428,7 +428,7 @@ class CommodityTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue=commodity_spec['exchange'],
             liquidity_score=round(liquidity_score, 2),
-            created_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         )
     
     def generate_trades(self, num_trades: int = 1000) -> List[CommodityTrade]:

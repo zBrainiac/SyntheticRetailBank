@@ -294,7 +294,7 @@ class FixedIncomeTradeGenerator:
             liquidity_score = random.uniform(3, 8)
         
         return FixedIncomeTrade(
-            trade_date=trade_date.strftime('%Y-%m-%d %H:%M:%S'),
+            trade_date=trade_date.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             settlement_date=settlement_date.strftime('%Y-%m-%d'),
             trade_id=f"FI_{uuid.uuid4().hex[:12].upper()}",
             customer_id=customer_id,
@@ -329,7 +329,7 @@ class FixedIncomeTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue=market,
             liquidity_score=round(liquidity_score, 2),
-            created_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         )
     
     def generate_swap_trade(self, customer_id: str, account: Dict, 
@@ -386,7 +386,7 @@ class FixedIncomeTradeGenerator:
         swap_id = f"IRS_{currency}_{uuid.uuid4().hex[:8].upper()}"
         
         return FixedIncomeTrade(
-            trade_date=trade_date.strftime('%Y-%m-%d %H:%M:%S'),
+            trade_date=trade_date.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             settlement_date=settlement_date.strftime('%Y-%m-%d'),
             trade_id=f"FI_{uuid.uuid4().hex[:12].upper()}",
             customer_id=customer_id,
@@ -421,7 +421,7 @@ class FixedIncomeTradeGenerator:
             broker_id=f"BRK_{random.randint(100, 999)}",
             venue='OTC',
             liquidity_score=round(random.uniform(5, 8), 2),
-            created_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            created_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         )
     
     def generate_trades(self, num_trades: int = 1000, 

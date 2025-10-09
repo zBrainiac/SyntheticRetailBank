@@ -29,11 +29,14 @@ CALL SYSTEM$ACCEPT_LEGAL_TERMS('DATA_EXCHANGE_LISTING', 'GZT1ZVEJH9');
 -- ============================================================
 -- DATABASE CREATION - Global Sanctions Data Import
 -- ============================================================
+ALTER USER DEMO_USER SET first_name='John', last_name='Doe', email='john@company.com';
 
 DROP DATABASE if exists AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
 
 CREATE Database if not exists AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET
   FROM LISTING 'GZT1ZVEJH9';
+
+USE DATABASE AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET;
 
 -- ============================================================
 -- DATA EXPLORATION AND USAGE

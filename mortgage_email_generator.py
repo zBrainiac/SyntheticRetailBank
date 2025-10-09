@@ -387,7 +387,7 @@ AAA Synthetic Bank
 Mortgage Division
 
 ---
-This email was generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+This email was generated on {datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')} UTC
 Application Reference: {mortgage.application_id}
 Customer ID: {mortgage.customer.customer_id}
 
@@ -462,7 +462,7 @@ From: system@aaasyntheticbank.com
 MORTGAGE APPLICATION REVIEW
 ============================
 Application ID: {mortgage.application_id}
-Review Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+Review Date: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')} UTC
 Risk Level: {risk_level}
 Risk Score: {risk_score}/10
 
@@ -567,7 +567,7 @@ COMPLIANCE NOTES
 
 SYSTEM INFORMATION
 ==================
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+Generated: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')} UTC
 Source: Automated Underwriting System v2.1
 Processor: MTGPROC-{random.randint(100,999)}
 
@@ -704,7 +704,7 @@ AAA Synthetic Bank
 Mortgage Division
 
 ---
-Assignment Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+Assignment Date: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')} UTC
 Priority: {complexity}
 Follow-up Required By: {(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}
 """

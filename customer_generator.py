@@ -221,7 +221,7 @@ class CustomerGenerator:
                     state=address_data['state'],
                     zipcode=address_data['zipcode'],
                     country=country,
-                    insert_timestamp_utc=insert_date.strftime("%Y-%m-%d %H:%M:%S")
+                    insert_timestamp_utc=insert_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                 )
                 addresses.append(address)
         else:
@@ -233,7 +233,7 @@ class CustomerGenerator:
                 state=initial_address_data['state'],
                 zipcode=initial_address_data['zipcode'],
                 country=country,
-                insert_timestamp_utc=onboarding_date.strftime("%Y-%m-%d %H:%M:%S")
+                insert_timestamp_utc=onboarding_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             )
             addresses.append(address)
         
@@ -351,7 +351,7 @@ class CustomerGenerator:
         }
         
         # Use current timestamp for insert
-        insert_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        insert_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         
         test_address = CustomerAddress(
             customer_id=customer_id,

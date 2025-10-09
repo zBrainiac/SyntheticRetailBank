@@ -228,7 +228,7 @@ class FileGenerator:
             f.write("Synthetic banking Data Generator - Summary Report\n")
             f.write("=" * 60 + "\n\n")
             
-            f.write(f"Generation Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Generation Date: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')}\n")
             f.write(f"Period: {self.config.start_date.strftime('%Y-%m-%d')} to {self.config.end_date.strftime('%Y-%m-%d')}\n\n")
             
             f.write("CONFIGURATION:\n")

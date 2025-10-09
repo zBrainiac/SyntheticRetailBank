@@ -144,7 +144,7 @@ class AddressUpdateGenerator:
         second = random.randint(0, 59)
         
         timestamp = date.replace(hour=hour, minute=minute, second=second)
-        return timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        return timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     
     def _generate_emea_address(self, fake_local: Faker, country: str) -> Dict[str, Any]:
         """Generate EMEA-specific address components"""

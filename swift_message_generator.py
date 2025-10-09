@@ -365,7 +365,7 @@ class MessageIdentification:
         # Convert to milliseconds precision
         milliseconds = int(timestamp.microsecond / 1000)
         timestamp_ms = timestamp.replace(microsecond=milliseconds * 1000)
-        return timestamp_ms.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]  # Remove last 3 digits to get milliseconds
+        return timestamp_ms.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-3]  # Remove last 3 digits to get milliseconds
 
 
 @dataclass
