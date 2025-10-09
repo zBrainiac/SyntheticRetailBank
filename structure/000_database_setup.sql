@@ -2,10 +2,15 @@
 -- Synthetic Banking - Database Setup
 -- Generated on: 2025-09-22 15:50:17
 -- Updated: 2025-10-04 (Schema consolidation and serverless tasks)
+-- Updated: 2025-01-22 (Added MD_TEST_WH warehouse for development)
 -- ============================================================
 --
--- This script creates the database and schemas for the
+-- This script creates the database, warehouse, and schemas for the
 -- synthetic EMEA retail bank data generator.
+--
+-- INFRASTRUCTURE CREATED:
+--   • Database: AAA_DEV_SYNTHETIC_BANK - Main development database
+--   • Warehouse: MD_TEST_WH - X-SMALL warehouse for development and testing
 --
 -- SCHEMAS CREATED:
 -- RAW Layer (Data Ingestion):
@@ -83,6 +88,23 @@ CREATE SCHEMA IF NOT EXISTS LOA_RAW_v001
 CREATE SCHEMA IF NOT EXISTS LOA_AGG_v001
     COMMENT = 'Loan aggregation schema for loan analytics and reporting';
 
+
+
+-- ============================================================
+-- WAREHOUSE CREATION - Compute Resources for Development
+-- ============================================================
+-- Create X-SMALL warehouse optimized for development and testing
+-- Features: Auto-suspend after 5 minutes, auto-resume on demand
+-- Resource constraint: STANDARD_GEN_2 for optimal performance/cost balance
+
+CREATE WAREHOUSE IF NOT EXISTS MD_TEST_WH
+    WAREHOUSE_SIZE = 'X-SMALL'
+    WAREHOUSE_TYPE = 'STANDARD'
+    RESOURCE_CONSTRAINT = 'STANDARD_GEN_2'
+    AUTO_SUSPEND = 5
+    AUTO_RESUME = true
+    COMMENT = 'Development and testing warehouse - X-SMALL size with auto-suspend for cost optimization';
+
 -- ============================================================
 -- SENSITIVITY TAGS - Data Classification and Privacy Controls
 -- ============================================================
@@ -95,5 +117,16 @@ CREATE TAG IF NOT EXISTS SENSITIVITY_LEVEL
     COMMENT = 'Data sensitivity classification for privacy and compliance controls. Valid values: "restricted" (highly sensitive financial/PII data requiring strict access controls) | "top_secret" (maximum protection for personal identifiers and addresses). Used for automated masking policies and role-based access control.';
 
 -- ============================================================
--- Database and schemas created successfully!
+-- SETUP COMPLETION SUMMARY
+-- ============================================================
+-- Infrastructure created:
+--   ✓ Database: AAA_DEV_SYNTHETIC_BANK
+--   ✓ Warehouse: MD_TEST_WH (X-SMALL, auto-suspend 5min)
+--   ✓ 14 Schemas across RAW, AGGREGATION, and REPORTING layers
+--   ✓ Sensitivity tags for data classification and privacy controls
+--
+-- Next steps:
+--   1. Run subsequent SQL files to create tables and objects
+--   2. Configure data masking policies using sensitivity tags
+--   3. Set up role-based access control
 -- ============================================================
