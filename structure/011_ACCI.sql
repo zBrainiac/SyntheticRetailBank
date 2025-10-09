@@ -89,7 +89,7 @@ CREATE OR REPLACE FILE FORMAT ACCI_FF_ACCOUNT_CSV
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
     REPLACE_INVALID_CHARACTERS = TRUE
     DATE_FORMAT = 'YYYY-MM-DD'
-    TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
     COMMENT = 'CSV format for account master data files with multi-currency support. Expected columns: account_id, account_type, base_currency, customer_id, status';
 
 -- ============================================================

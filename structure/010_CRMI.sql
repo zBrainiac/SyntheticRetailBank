@@ -117,7 +117,7 @@ CREATE OR REPLACE FILE FORMAT CRMI_FF_ADDRESS_CSV
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
     REPLACE_INVALID_CHARACTERS = TRUE
     DATE_FORMAT = 'YYYY-MM-DD'
-    TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
     COMMENT = 'CSV format for customer address data with SCD Type 2 support via INSERT_TIMESTAMP_UTC field';
 
 -- Exposed Person compliance data CSV format
@@ -131,7 +131,7 @@ CREATE OR REPLACE FILE FORMAT CRMI_FF_EXPOSED_PERSON_CSV
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
     REPLACE_INVALID_CHARACTERS = TRUE
     DATE_FORMAT = 'YYYY-MM-DD'
-    TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+    TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'
     COMMENT = 'CSV format for PEP (Politically Exposed Persons) compliance data with risk levels and reference documentation';
 
 -- ============================================================
