@@ -78,9 +78,6 @@ CREATE OR REPLACE STAGE ICGI_RAW_SWIFT_INBOUND
     )
     COMMENT = 'Internal stage for SWIFT ISO20022 XML message files. Expected pattern: *.xml with PACS.008 and PACS.002 message types for interbank clearing operations';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE ICGI_RAW_SWIFT_INBOUND REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - XML Processing Configuration
 -- ============================================================

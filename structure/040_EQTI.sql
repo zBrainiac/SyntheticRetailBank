@@ -66,9 +66,6 @@ CREATE OR REPLACE STAGE EQTI_TRADES
     )
     COMMENT = 'Internal stage for equity trade CSV files. Expected pattern: *trades*.csv with fields: trade_date, trade_id, customer_id, account_id, symbol, side, quantity, price, etc.';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE EQTI_TRADES REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================

@@ -65,9 +65,6 @@ CREATE OR REPLACE STAGE PAYI_TRANSACTIONS
     )
     COMMENT = 'Internal stage for payment transaction CSV files. Expected pattern: *pay_transactions*.csv with fields: booking_date, value_date, transaction_id, account_id, amount, currency, etc.';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE PAYI_TRANSACTIONS REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================

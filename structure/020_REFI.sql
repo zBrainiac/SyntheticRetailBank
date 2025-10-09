@@ -65,9 +65,6 @@ CREATE OR REPLACE STAGE REFI_FX_RATES
     )
     COMMENT = 'Internal stage for FX rates CSV files. Expected pattern: *fx_rates*.csv with fields: date, from_currency, to_currency, mid_rate, bid_rate, ask_rate';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE REFI_FX_RATES REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================

@@ -59,9 +59,6 @@ CREATE OR REPLACE STAGE CMDI_TRADES
     )
     COMMENT = 'Internal stage for commodity trade CSV files. Expected pattern: *commodity_trades*.csv with fields: trade_date, trade_id, customer_id, account_id, commodity_type, quantity, price, etc.';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE CMDI_TRADES REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================

@@ -1,3 +1,5 @@
 /.idea/
 /generated_data/
 /venv/
+/deploy-with-stream-fix.sh
+/fix-streams-after-upload.sql

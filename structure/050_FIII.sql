@@ -59,9 +59,6 @@ CREATE OR REPLACE STAGE FIII_TRADES
     )
     COMMENT = 'Internal stage for fixed income trade CSV files. Expected pattern: *fixed_income_trades*.csv with fields: trade_date, trade_id, customer_id, account_id, instrument_type, notional, price, etc.';
 
--- Enable directory table for file tracking and metadata
-ALTER STAGE FIII_TRADES REFRESH;
-
 -- ============================================================
 -- FILE FORMATS - CSV Parsing Configurations
 -- ============================================================
