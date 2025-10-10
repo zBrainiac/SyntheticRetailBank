@@ -1,6 +1,6 @@
 -- ============================================================
 -- REP_AGG_001 Schema - Portfolio Performance Reporting
--- Created on: 2025-10-05 (Split from 500_REPP.sql)
+-- Created on: 2025-01-09 (Renamed from 530_REPP_PORTFOLIO.sql)
 -- ============================================================
 --
 -- OVERVIEW:
@@ -59,6 +59,7 @@
 -- - 510_REPP_EQUITY.sql: Equity trading reporting
 -- - 520_REPP_CREDIT_RISK.sql: Credit risk reporting
 -- - 525_REPP_FRTB.sql: FRTB market risk reporting
+-- - 540_REPP_BCBS239.sql: BCBS 239 risk data aggregation
 -- ============================================================
 
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
@@ -726,5 +727,5 @@ ORDER BY TOTAL_PORTFOLIO_VALUE_CHF DESC;
 -- ALTER DYNAMIC TABLE REPP_AGG_DT_PORTFOLIO_PERFORMANCE REFRESH;
 --
 -- ============================================================
--- 530_REPP_PORTFOLIO.sql - Portfolio Performance Reporting completed!
+-- 600_REPP_PORTFOLIO.sql - Portfolio Performance Reporting completed!
 -- ============================================================

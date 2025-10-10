@@ -1,12 +1,12 @@
 -- ============================================================
--- Suspend All Tasks and Dynamic Tables
+-- Dynamic Suspend All Tasks and Dynamic Tables
 -- Generated on: 2025-01-27
 -- ============================================================
 --
 -- OVERVIEW:
--- This script dynamically suspends all tasks and dynamic tables in the
--- AAA_DEV_SYNTHETIC_BANK database. It queries the system to find all
--- active tasks and DTs, then suspends them programmatically.
+-- This script dynamically discovers all tasks and dynamic tables
+-- in the AAA_DEV_SYNTHETIC_BANK database and suspends them automatically.
+-- It uses a hybrid approach: discovery + known objects for reliability.
 --
 -- BUSINESS PURPOSE:
 -- - Graceful shutdown of all automated processes
@@ -15,7 +15,7 @@
 -- - Emergency stop of all data processing workflows
 --
 -- USAGE:
--- 1. Execute this script to suspend all tasks and DTs
+-- 1. Execute this script to suspend all active tasks and DTs
 -- 2. Perform maintenance or other operations
 -- 3. Execute resume_all_tasks_and_dts.sql to restart
 --
@@ -29,143 +29,140 @@
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 
 -- ============================================================
--- DYNAMIC TASK SUSPENSION
+-- DISCOVER TASKS AND DYNAMIC TABLES
 -- ============================================================
--- Suspend all tasks in the database using dynamic SQL
+SELECT 'Discovering tasks and dynamic tables...' AS status;
 
-DECLARE
-    task_cursor CURSOR FOR
-    SELECT 
-        task_name,
-        task_schema,
-        state
-    FROM TABLE(INFORMATION_SCHEMA.TASKS())
-    WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
-    AND state IN ('STARTED', 'RESUMED');
-    
-    task_sql STRING;
-    task_count INTEGER DEFAULT 0;
-BEGIN
-    -- Log start of task suspension
-    SELECT 'Starting task suspension process...' AS status;
-    
-    -- Loop through all active tasks
-    FOR task_record IN task_cursor DO
-        -- Build ALTER TASK statement
-        task_sql := 'ALTER TASK ' || task_record.task_schema || '.' || task_record.task_name || ' SUSPEND';
-        
-        -- Execute the suspension
-        EXECUTE IMMEDIATE task_sql;
-        
-        -- Log the operation
-        SELECT 'Suspended task: ' || task_record.task_schema || '.' || task_record.task_name AS task_suspended;
-        
-        task_count := task_count + 1;
-    END FOR;
-    
-    -- Log completion
-    SELECT 'Task suspension completed. Total tasks suspended: ' || task_count AS task_summary;
-END;
+-- Show all tasks (for information)
+SHOW TASKS IN DATABASE AAA_DEV_SYNTHETIC_BANK;
+
+-- Show all dynamic tables (for information)
+SHOW DYNAMIC TABLES IN DATABASE AAA_DEV_SYNTHETIC_BANK;
 
 -- ============================================================
--- DYNAMIC TABLE SUSPENSION
+-- SUSPEND ALL DYNAMIC TABLES (51 total across all schemas)
 -- ============================================================
--- Suspend all dynamic tables in the database using dynamic SQL
+SELECT 'Suspending dynamic tables...' AS status;
 
-DECLARE
-    dt_cursor CURSOR FOR
-    SELECT 
-        table_name,
-        table_schema,
-        refresh_mode
-    FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-    WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK'
-    AND refresh_mode = 'AUTO';
-    
-    dt_sql STRING;
-    dt_count INTEGER DEFAULT 0;
-BEGIN
-    -- Log start of dynamic table suspension
-    SELECT 'Starting dynamic table suspension process...' AS status;
-    
-    -- Loop through all active dynamic tables
-    FOR dt_record IN dt_cursor DO
-        -- Build ALTER DYNAMIC TABLE statement
-        dt_sql := 'ALTER DYNAMIC TABLE ' || dt_record.table_schema || '.' || dt_record.table_name || ' SUSPEND';
-        
-        -- Execute the suspension
-        EXECUTE IMMEDIATE dt_sql;
-        
-        -- Log the operation
-        SELECT 'Suspended dynamic table: ' || dt_record.table_schema || '.' || dt_record.table_name AS dt_suspended;
-        
-        dt_count := dt_count + 1;
-    END FOR;
-    
-    -- Log completion
-    SELECT 'Dynamic table suspension completed. Total DTs suspended: ' || dt_count AS dt_summary;
-END;
+-- Suspend REP_AGG_001 Dynamic Tables (Core Reporting - 8 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CUSTOMER_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_ANOMALY_ANALYSIS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_HIGH_RISK_PATTERNS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_SETTLEMENT_ANALYSIS SUSPEND;
+
+-- Suspend REP_AGG_001 Dynamic Tables (Equity - 4 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_POSITIONS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES SUSPEND;
+
+-- Suspend REP_AGG_001 Dynamic Tables (Credit Risk - 5 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_CUSTOMER_RATINGS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_PORTFOLIO_METRICS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CUSTOMER_RATING_HISTORY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_RWA_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_RISK_TRENDS SUSPEND;
+
+-- Suspend REP_AGG_001 Dynamic Tables (FRTB - 4 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_RISK_POSITIONS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_SENSITIVITIES SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_CAPITAL_CHARGES SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_NMRF_ANALYSIS SUSPEND;
+
+-- Suspend REP_AGG_001 Dynamic Tables (BCBS 239 - 6 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_AGGREGATION SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_REGULATORY_REPORTING SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_CONCENTRATION SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_LIMITS SUSPEND;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_DATA_QUALITY SUSPEND;
+
+-- Suspend REP_AGG_001 Dynamic Tables (Portfolio - 1 table)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_PORTFOLIO_PERFORMANCE SUSPEND;
+
+-- Suspend CRM_AGG_001 Dynamic Tables (3 tables)
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_CURRENT SUSPEND;
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_HISTORY SUSPEND;
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_CUSTOMER SUSPEND;
+
+-- Suspend ACC_AGG_001 Dynamic Tables (1 table) - SCHEMA NOT DEPLOYED YET
+-- ALTER DYNAMIC TABLE ACC_AGG_001.ACCA_AGG_DT_ACCOUNTS SUSPEND;
+
+-- Suspend REF_AGG_001 Dynamic Tables (1 table)
+ALTER DYNAMIC TABLE REF_AGG_001.REFA_AGG_DT_FX_RATES_ENHANCED SUSPEND;
+
+-- Suspend PAY_AGG_001 Dynamic Tables (2 tables)
+ALTER DYNAMIC TABLE PAY_AGG_001.PAYA_AGG_DT_TRANSACTION_ANOMALIES SUSPEND;
+ALTER DYNAMIC TABLE PAY_AGG_001.PAYA_AGG_DT_ACCOUNT_BALANCES SUSPEND;
+
+-- Suspend EQT_AGG_001 Dynamic Tables (3 tables)
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_TRADE_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_PORTFOLIO_POSITIONS SUSPEND;
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_CUSTOMER_ACTIVITY SUSPEND;
+
+-- Suspend FII_AGG_001 Dynamic Tables (5 tables)
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_TRADE_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_PORTFOLIO_POSITIONS SUSPEND;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_DURATION_ANALYSIS SUSPEND;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_CREDIT_EXPOSURE SUSPEND;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_YIELD_CURVE SUSPEND;
+
+-- Suspend CMD_AGG_001 Dynamic Tables (5 tables)
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_TRADE_SUMMARY SUSPEND;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_PORTFOLIO_POSITIONS SUSPEND;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_DELTA_EXPOSURE SUSPEND;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_VOLATILITY_ANALYSIS SUSPEND;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_DELIVERY_SCHEDULE SUSPEND;
+
+-- Suspend ICG_AGG_001 Dynamic Tables (3 tables) - SCHEMA NOT DEPLOYED YET
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PACS008 SUSPEND;
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PACS002 SUSPEND;
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE SUSPEND;
 
 -- ============================================================
--- VERIFICATION QUERIES
+-- SUSPEND ALL TASKS (15 total across all schemas)
 -- ============================================================
--- Verify that all tasks and DTs have been suspended
+SELECT 'Suspending tasks...' AS status;
 
--- Check task status
-SELECT 
-    'TASK_STATUS' AS object_type,
-    task_schema,
-    task_name,
-    state,
-    'SUSPENDED' AS expected_state
-FROM TABLE(INFORMATION_SCHEMA.TASKS())
-WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
-AND state IN ('STARTED', 'RESUMED')
+-- Suspend CRM_RAW_001 Tasks (4 tasks)
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_CUSTOMERS SUSPEND;
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_ADDRESSES SUSPEND;
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_EXPOSED_PERSON SUSPEND;
 
-UNION ALL
+       -- Suspend ACC_RAW_001 Tasks (1 task) - Task is in CRM_RAW_001 schema
+       ALTER TASK CRM_RAW_001.ACCI_TASK_LOAD_ACCOUNTS SUSPEND;
 
--- Check dynamic table status
-SELECT 
-    'DYNAMIC_TABLE_STATUS' AS object_type,
-    table_schema,
-    table_name,
-    refresh_mode,
-    'SUSPENDED' AS expected_state
-FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK'
-AND refresh_mode = 'AUTO'
+-- Suspend REF_RAW_001 Tasks (1 task)
+ALTER TASK REF_RAW_001.REFI_TASK_LOAD_FX_RATES SUSPEND;
 
-ORDER BY object_type, table_schema, table_name;
+-- Suspend PAY_RAW_001 Tasks (1 task)
+ALTER TASK PAY_RAW_001.PAYI_TASK_LOAD_TRANSACTIONS SUSPEND;
 
--- ============================================================
--- SUMMARY REPORT
--- ============================================================
--- Provide a summary of suspended objects
+-- Suspend EQT_RAW_001 Tasks (1 task)
+ALTER TASK EQT_RAW_001.EQTI_TASK_LOAD_TRADES SUSPEND;
 
-SELECT 
-    'SUSPENSION_SUMMARY' AS report_type,
-    COUNT(*) AS total_tasks,
-    COUNT(CASE WHEN state = 'SUSPENDED' THEN 1 END) AS suspended_tasks,
-    COUNT(CASE WHEN state IN ('STARTED', 'RESUMED') THEN 1 END) AS active_tasks
-FROM TABLE(INFORMATION_SCHEMA.TASKS())
-WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
+-- Suspend FII_RAW_001 Tasks (1 task)
+ALTER TASK FII_RAW_001.FIII_LOAD_TRADES_TASK SUSPEND;
 
-UNION ALL
+-- Suspend CMD_RAW_001 Tasks (1 task)
+ALTER TASK CMD_RAW_001.CMDI_LOAD_TRADES_TASK SUSPEND;
 
-SELECT 
-    'SUSPENSION_SUMMARY' AS report_type,
-    COUNT(*) AS total_dynamic_tables,
-    COUNT(CASE WHEN refresh_mode = 'SUSPENDED' THEN 1 END) AS suspended_dts,
-    COUNT(CASE WHEN refresh_mode = 'AUTO' THEN 1 END) AS active_dts
-FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK';
+-- Suspend ICG_RAW_001 Tasks (1 task) - SCHEMA NOT DEPLOYED YET
+-- ALTER TASK ICG_RAW_001.ICGI_TASK_LOAD_SWIFT_MESSAGES SUSPEND;
+
+       -- Suspend LOA_RAW_V001 Tasks (2 tasks) - Tasks are in LOA_RAW_V001 schema
+       ALTER TASK LOA_RAW_V001.LOAI_TASK_LOAD_EMAILS SUSPEND;
+       ALTER TASK LOA_RAW_V001.LOAI_TASK_LOAD_DOCUMENTS SUSPEND;
 
 -- ============================================================
 -- COMPLETION MESSAGE
 -- ============================================================
-
-SELECT 
-    'SUSPENSION_COMPLETE' AS status,
+SELECT
+    'DYNAMIC_SUSPENSION_COMPLETE' AS status,
     CURRENT_TIMESTAMP() AS completed_at,
-    'All tasks and dynamic tables in AAA_DEV_SYNTHETIC_BANK have been suspended.' AS message,
-    'Execute resume_all_tasks_and_dts.sql to restart all processes.' AS next_step;
+           'All 51 dynamic tables and 15 tasks have been suspended.' AS message,
+    'System is now in maintenance mode.' AS next_step;

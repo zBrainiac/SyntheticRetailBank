@@ -31,7 +31,8 @@ structure/
 ├── 510_REPP_EQUITY.sql        # REP Agg: Equity Trading Reporting
 ├── 520_REPP_CREDIT_RISK.sql   # REP Agg: Credit Risk & IRB Reporting
 ├── 525_REPP_FRTB.sql          # REP Agg: FRTB Market Risk Reporting (NEW)
-├── 530_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
+├── 540_REPP_BCBS239.sql       # REP Agg: BCBS 239 Risk Data Aggregation & Reporting
+├── 600_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
 ├── 700_semantic_view.sql      # Business-friendly semantic view
 └── README_DEPLOYMENT.md       # This deployment guide
 ```
@@ -491,10 +492,10 @@ Execute after all raw layer schemas are deployed:
 - **Rating Migrations**: Historical tracking of rating changes and defaults
 - **Model Validation**: Backtesting and performance monitoring
 
-### 16. Portfolio Performance Reporting
+### 22. Portfolio Performance Reporting
 ```sql
 -- Execute: Portfolio performance analytics
-@530_REPP_PORTFOLIO.sql
+@600_REPP_PORTFOLIO.sql
 ```
 
 **Objects Created:**
@@ -516,7 +517,45 @@ Execute after all raw layer schemas are deployed:
 @525_REPP_FRTB.sql
 ```
 
-### 20. Business Semantic View
+### 20. BCBS 239 Risk Data Aggregation & Reporting
+```sql
+-- Execute: BCBS 239 compliance reporting
+@540_REPP_BCBS239.sql
+```
+
+**Objects Created:**
+- **Schema**: `REP_AGG_001`
+- **Dynamic Tables** (6 tables):
+  - `REPP_AGG_DT_BCBS239_RISK_AGGREGATION` - Comprehensive risk aggregation across all risk types
+  - `REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD` - Executive risk dashboard with key risk indicators
+  - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING` - BCBS 239 compliant regulatory reporting
+  - `REPP_AGG_DT_BCBS239_RISK_CONCENTRATION` - Real-time risk concentration analysis
+  - `REPP_AGG_DT_BCBS239_RISK_LIMITS` - Automated risk limit monitoring
+  - `REPP_AGG_DT_BCBS239_DATA_QUALITY` - Comprehensive data quality monitoring
+
+**Key Features:**
+- **BCBS 239 Compliance**: Full implementation of Basel Committee principles for risk data aggregation
+- **Executive Risk Management**: Comprehensive risk dashboards for senior management
+- **Risk Concentration Analysis**: Real-time monitoring of risk concentrations and portfolio diversification
+- **Regulatory Reporting**: BCBS 239 compliant regulatory reporting capabilities
+- **Data Quality Governance**: Comprehensive data quality monitoring with completeness, accuracy, and timeliness metrics
+- **Risk Limit Monitoring**: Automated risk limit monitoring with utilization tracking and alert management
+- **IT Infrastructure Monitoring**: System performance, data processing times, and infrastructure health metrics
+
+**BCBS 239 Principles Implemented:**
+- **Governance**: Risk data aggregation and reporting governance
+- **Data Architecture**: IT infrastructure for risk data aggregation
+- **Accuracy & Integrity**: Risk data accuracy and integrity
+- **Completeness**: Risk data completeness
+- **Timeliness**: Risk data aggregation and reporting timeliness
+- **Adaptability**: Risk data aggregation and reporting adaptability
+- **Comprehensiveness**: Risk data aggregation and reporting comprehensiveness
+- **Clarity**: Risk data aggregation and reporting clarity
+- **Frequency**: Risk data aggregation and reporting frequency
+- **Distribution**: Risk data aggregation and reporting distribution
+- **Review**: Risk data aggregation and reporting review
+
+### 21. Business Semantic View
 ```sql
 -- Execute: Unified business-friendly data access
 @550_semantic_view.sql
@@ -583,7 +622,7 @@ Execute after all raw layer schemas are deployed:
 | `EQT_AGG_001`  | Equity Trading Analytics | Portfolio positions, Trade summary, Customer activity  | 1-hour dynamic tables |
 | `FII_AGG_001`  | Fixed Income Analytics   | Duration/DV01, Credit exposure, Yield curve            | 1-hour dynamic tables |
 | `CMD_AGG_001`  | Commodity Analytics      | Delta exposure, Volatility, Delivery schedule          | 1-hour dynamic tables |
-| `REP_AGG_001`  | Reporting & FRTB         | Cross-domain reporting, FRTB capital calculations      | 1-hour dynamic tables |
+| `REP_AGG_001`  | Reporting & FRTB & BCBS239| Cross-domain reporting, FRTB capital calculations, BCBS 239 compliance | 1-hour dynamic tables |
 
 ##  Advanced Features
 
@@ -710,6 +749,37 @@ SELECT * FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_CURRENT L
 -- Address history for specific customer
 SELECT * FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_HISTORY 
 WHERE CUSTOMER_ID = 'CUST_00001' ORDER BY VALID_FROM;
+
+-- BCBS 239 Executive Risk Dashboard
+SELECT 
+    TOTAL_EXPOSURE_CHF,
+    TOTAL_CAPITAL_REQUIREMENT_CHF,
+    CAPITAL_RATIO_PERCENT,
+    BASEL_III_COMPLIANCE_STATUS,
+    DATA_COMPLETENESS_PERCENT
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD;
+
+-- BCBS 239 Risk Concentration Analysis
+SELECT 
+    CUSTOMER_ID,
+    RISK_TYPE,
+    TOTAL_EXPOSURE_CHF,
+    EXPOSURE_PERCENT_OF_PORTFOLIO,
+    RISK_CONCENTRATION_FLAG
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_CONCENTRATION
+WHERE RISK_CONCENTRATION_FLAG != 'LOW_CONCENTRATION'
+ORDER BY EXPOSURE_PERCENT_OF_PORTFOLIO DESC;
+
+-- BCBS 239 Data Quality Metrics
+SELECT 
+    DATA_SOURCE,
+    DATA_TYPE,
+    COMPLETENESS_PERCENT,
+    ACCURACY_SCORE,
+    OVERALL_QUALITY_SCORE,
+    QUALITY_GRADE
+FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_DATA_QUALITY
+ORDER BY OVERALL_QUALITY_SCORE DESC;
 ```
 
 ## Data Loading

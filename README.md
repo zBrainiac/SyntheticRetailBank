@@ -54,6 +54,16 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Portfolio Risk Management**: Credit concentration analysis, vintage tracking, and collateral coverage monitoring
 - **Model Validation**: IRB model backtesting, performance monitoring with actual vs. predicted default rates, and stress testing capabilities
 
+### **BCBS 239 Risk Data Aggregation & Reporting**
+- **Comprehensive Risk Aggregation**: Multi-dimensional risk data aggregation across all business lines and risk types
+- **Executive Risk Dashboards**: Real-time executive risk monitoring with key risk indicators and portfolio metrics
+- **Regulatory Reporting**: BCBS 239 compliant regulatory reporting capabilities with data quality metrics
+- **Risk Concentration Analysis**: Real-time risk concentration monitoring and breach detection
+- **Risk Limit Monitoring**: Automated risk limit monitoring with utilization tracking and alert management
+- **Data Quality Governance**: Comprehensive data quality monitoring with completeness, accuracy, and timeliness metrics
+- **Regulatory Compliance**: Basel III/IV compliance reporting with capital adequacy and risk coverage analysis
+- **IT Infrastructure Monitoring**: System performance, data processing times, and infrastructure health metrics
+
 ### **FRTB Market Risk Framework**
 - **Multi-Asset Coverage**: Equity, FX, interest rate, commodity, and credit spread risk classes
 - **Interest Rate Risk**: Government and corporate bonds with duration, DV01, and credit spread calculations
@@ -155,15 +165,27 @@ This repository delivers a complete data generation and ingestion framework, org
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/mdaeppen/AAA_synthetic_bank.git
-cd AAA_synthetic_bank
+git clone https://github.com/zBrainiac/SyntheticRetailBank.git
+cd SyntheticRetailBank
 ```
 
 2. Setup Snowflake CLI:
    - Follow the official [Snowflake CLI installation guide](https://docs.snowflake.com/en/developer-guide/snowflake-cli/install)
    - Configure your connection: `snow connection add <my-sf-connection>`
 
-3. Install required dependencies:
+3. Setup Python virtual environment:
+
+```bash
+# Create virtual environment (if it doesn't exist)
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # On macOS/Linux
+# or
+venv\Scripts\activate     # On Windows
+```
+
+4. Install required dependencies:
 
 ```bash
 # Install dependencies in virtual environment
@@ -661,6 +683,28 @@ generated_data/
     - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
     - `REPP_AGG_DT_EQUITY_SUMMARY`
+
+### **BCBS 239 Risk Data Aggregation & Reporting Demonstration**
+- **Executive Risk Management**: Comprehensive risk dashboards for senior management and board reporting
+  - *Key Reports*:
+    - `REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD`
+    - `REPP_AGG_DT_BCBS239_RISK_AGGREGATION`
+    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
+- **Risk Concentration Analysis**: Real-time monitoring of risk concentrations and portfolio diversification
+  - *Key Reports*:
+    - `REPP_AGG_DT_BCBS239_RISK_CONCENTRATION`
+    - `REPP_AGG_DT_BCBS239_RISK_LIMITS`
+    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
+- **Regulatory Compliance Reporting**: BCBS 239 compliant risk data aggregation and reporting capabilities
+  - *Key Reports*:
+    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
+    - `REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD`
+    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
+- **Data Quality & Governance**: Comprehensive data quality monitoring and governance metrics
+  - *Key Reports*:
+    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
+    - `REPP_AGG_DT_BCBS239_RISK_AGGREGATION`
+    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
 
 ## Technical Details
 

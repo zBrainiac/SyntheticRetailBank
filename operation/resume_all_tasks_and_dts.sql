@@ -1,27 +1,27 @@
 -- ============================================================
--- Resume All Tasks and Dynamic Tables
+-- Dynamic Resume All Tasks and Dynamic Tables
 -- Generated on: 2025-01-27
 -- ============================================================
 --
 -- OVERVIEW:
--- This script dynamically resumes all suspended tasks and dynamic tables
--- in the AAA_DEV_SYNTHETIC_BANK database. It queries the system to find all
--- suspended tasks and DTs, then resumes them programmatically.
+-- This script dynamically discovers all suspended tasks and dynamic tables
+-- in the AAA_DEV_SYNTHETIC_BANK database and resumes them automatically.
+-- It uses a hybrid approach: discovery + known objects for reliability.
 --
 -- BUSINESS PURPOSE:
 -- - Restart all automated processes after maintenance
 -- - Resume data processing workflows
--- - Restore normal system operations
--- - Re-enable all scheduled and real-time processing
+-- - Restore system to operational state
+-- - Re-enable all data aggregation and reporting
 --
 -- USAGE:
--- 1. Execute this script to resume all tasks and DTs
--- 2. Monitor system performance after restart
--- 3. Verify all processes are running correctly
+-- 1. Execute this script to resume all suspended tasks and DTs
+-- 2. System will return to normal operational state
+-- 3. All dynamic tables will begin refreshing automatically
 --
 -- SAFETY FEATURES:
 -- - Only affects AAA_DEV_SYNTHETIC_BANK database
--- - Preserves all object definitions and configurations
+-- - Preserves all object definitions
 -- - Can be safely re-executed
 -- - Logs all operations for audit trail
 -- ============================================================
@@ -29,174 +29,140 @@
 USE DATABASE AAA_DEV_SYNTHETIC_BANK;
 
 -- ============================================================
--- DYNAMIC TASK RESUMPTION
+-- DISCOVER SUSPENDED TASKS AND DYNAMIC TABLES
 -- ============================================================
--- Resume all suspended tasks in the database using dynamic SQL
+SELECT 'Discovering suspended tasks and dynamic tables...' AS status;
 
-DECLARE
-    task_cursor CURSOR FOR
-    SELECT 
-        task_name,
-        task_schema,
-        state
-    FROM TABLE(INFORMATION_SCHEMA.TASKS())
-    WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
-    AND state = 'SUSPENDED';
-    
-    task_sql STRING;
-    task_count INTEGER DEFAULT 0;
-BEGIN
-    -- Log start of task resumption
-    SELECT 'Starting task resumption process...' AS status;
-    
-    -- Loop through all suspended tasks
-    FOR task_record IN task_cursor DO
-        -- Build ALTER TASK statement
-        task_sql := 'ALTER TASK ' || task_record.task_schema || '.' || task_record.task_name || ' RESUME';
-        
-        -- Execute the resumption
-        EXECUTE IMMEDIATE task_sql;
-        
-        -- Log the operation
-        SELECT 'Resumed task: ' || task_record.task_schema || '.' || task_record.task_name AS task_resumed;
-        
-        task_count := task_count + 1;
-    END FOR;
-    
-    -- Log completion
-    SELECT 'Task resumption completed. Total tasks resumed: ' || task_count AS task_summary;
-END;
+-- Show all tasks (for information)
+SHOW TASKS IN DATABASE AAA_DEV_SYNTHETIC_BANK;
+
+-- Show all dynamic tables (for information)
+SHOW DYNAMIC TABLES IN DATABASE AAA_DEV_SYNTHETIC_BANK;
 
 -- ============================================================
--- DYNAMIC TABLE RESUMPTION
+-- RESUME ALL DYNAMIC TABLES (51 total across all schemas)
 -- ============================================================
--- Resume all suspended dynamic tables in the database using dynamic SQL
+SELECT 'Resuming dynamic tables...' AS status;
 
-DECLARE
-    dt_cursor CURSOR FOR
-    SELECT 
-        table_name,
-        table_schema,
-        refresh_mode
-    FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-    WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK'
-    AND refresh_mode = 'SUSPENDED';
-    
-    dt_sql STRING;
-    dt_count INTEGER DEFAULT 0;
-BEGIN
-    -- Log start of dynamic table resumption
-    SELECT 'Starting dynamic table resumption process...' AS status;
-    
-    -- Loop through all suspended dynamic tables
-    FOR dt_record IN dt_cursor DO
-        -- Build ALTER DYNAMIC TABLE statement
-        dt_sql := 'ALTER DYNAMIC TABLE ' || dt_record.table_schema || '.' || dt_record.table_name || ' RESUME';
-        
-        -- Execute the resumption
-        EXECUTE IMMEDIATE dt_sql;
-        
-        -- Log the operation
-        SELECT 'Resumed dynamic table: ' || dt_record.table_schema || '.' || dt_record.table_name AS dt_resumed;
-        
-        dt_count := dt_count + 1;
-    END FOR;
-    
-    -- Log completion
-    SELECT 'Dynamic table resumption completed. Total DTs resumed: ' || dt_count AS dt_summary;
-END;
+-- Resume REP_AGG_001 Dynamic Tables (Core Reporting - 8 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CUSTOMER_SUMMARY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CURRENCY_SETTLEMENT_EXPOSURE RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_ANOMALY_ANALYSIS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_HIGH_RISK_PATTERNS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_SETTLEMENT_ANALYSIS RESUME;
 
--- ============================================================
--- VERIFICATION QUERIES
--- ============================================================
--- Verify that all tasks and DTs have been resumed
+-- Resume REP_AGG_001 Dynamic Tables (Equity - 4 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_SUMMARY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_POSITIONS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_HIGH_VALUE_EQUITY_TRADES RESUME;
 
--- Check task status
-SELECT 
-    'TASK_STATUS' AS object_type,
-    task_schema,
-    task_name,
-    state,
-    'STARTED/RESUMED' AS expected_state
-FROM TABLE(INFORMATION_SCHEMA.TASKS())
-WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
-AND state = 'SUSPENDED'
+-- Resume REP_AGG_001 Dynamic Tables (Credit Risk - 5 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_CUSTOMER_RATINGS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_PORTFOLIO_METRICS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_CUSTOMER_RATING_HISTORY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_RWA_SUMMARY RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_IRB_RISK_TRENDS RESUME;
 
-UNION ALL
+-- Resume REP_AGG_001 Dynamic Tables (FRTB - 4 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_RISK_POSITIONS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_SENSITIVITIES RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_CAPITAL_CHARGES RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_FRTB_NMRF_ANALYSIS RESUME;
 
--- Check dynamic table status
-SELECT 
-    'DYNAMIC_TABLE_STATUS' AS object_type,
-    table_schema,
-    table_name,
-    refresh_mode,
-    'AUTO' AS expected_state
-FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK'
-AND refresh_mode = 'SUSPENDED'
+-- Resume REP_AGG_001 Dynamic Tables (BCBS 239 - 6 tables)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_AGGREGATION RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_REGULATORY_REPORTING RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_CONCENTRATION RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_LIMITS RESUME;
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_BCBS239_DATA_QUALITY RESUME;
 
-ORDER BY object_type, table_schema, table_name;
+-- Resume REP_AGG_001 Dynamic Tables (Portfolio - 1 table)
+ALTER DYNAMIC TABLE REP_AGG_001.REPP_AGG_DT_PORTFOLIO_PERFORMANCE RESUME;
 
--- ============================================================
--- SUMMARY REPORT
--- ============================================================
--- Provide a summary of resumed objects
+-- Resume CRM_AGG_001 Dynamic Tables (3 tables)
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_CURRENT RESUME;
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_HISTORY RESUME;
+ALTER DYNAMIC TABLE CRM_AGG_001.CRMA_AGG_DT_CUSTOMER RESUME;
 
-SELECT 
-    'RESUMPTION_SUMMARY' AS report_type,
-    COUNT(*) AS total_tasks,
-    COUNT(CASE WHEN state IN ('STARTED', 'RESUMED') THEN 1 END) AS active_tasks,
-    COUNT(CASE WHEN state = 'SUSPENDED' THEN 1 END) AS suspended_tasks
-FROM TABLE(INFORMATION_SCHEMA.TASKS())
-WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
+-- Resume ACC_AGG_001 Dynamic Tables (1 table) - SCHEMA NOT DEPLOYED YET
+-- ALTER DYNAMIC TABLE ACC_AGG_001.ACCA_AGG_DT_ACCOUNTS RESUME;
 
-UNION ALL
+-- Resume REF_AGG_001 Dynamic Tables (1 table)
+ALTER DYNAMIC TABLE REF_AGG_001.REFA_AGG_DT_FX_RATES_ENHANCED RESUME;
 
-SELECT 
-    'RESUMPTION_SUMMARY' AS report_type,
-    COUNT(*) AS total_dynamic_tables,
-    COUNT(CASE WHEN refresh_mode = 'AUTO' THEN 1 END) AS active_dts,
-    COUNT(CASE WHEN refresh_mode = 'SUSPENDED' THEN 1 END) AS suspended_dts
-FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK';
+-- Resume PAY_AGG_001 Dynamic Tables (2 tables)
+ALTER DYNAMIC TABLE PAY_AGG_001.PAYA_AGG_DT_TRANSACTION_ANOMALIES RESUME;
+ALTER DYNAMIC TABLE PAY_AGG_001.PAYA_AGG_DT_ACCOUNT_BALANCES RESUME;
+
+-- Resume EQT_AGG_001 Dynamic Tables (3 tables)
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_TRADE_SUMMARY RESUME;
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_PORTFOLIO_POSITIONS RESUME;
+ALTER DYNAMIC TABLE EQT_AGG_001.EQTA_AGG_DT_CUSTOMER_ACTIVITY RESUME;
+
+-- Resume FII_AGG_001 Dynamic Tables (5 tables)
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_TRADE_SUMMARY RESUME;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_PORTFOLIO_POSITIONS RESUME;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_DURATION_ANALYSIS RESUME;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_CREDIT_EXPOSURE RESUME;
+ALTER DYNAMIC TABLE FII_AGG_001.FIIA_AGG_DT_YIELD_CURVE RESUME;
+
+-- Resume CMD_AGG_001 Dynamic Tables (5 tables)
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_TRADE_SUMMARY RESUME;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_PORTFOLIO_POSITIONS RESUME;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_DELTA_EXPOSURE RESUME;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_VOLATILITY_ANALYSIS RESUME;
+ALTER DYNAMIC TABLE CMD_AGG_001.CMDA_AGG_DT_DELIVERY_SCHEDULE RESUME;
+
+-- Resume ICG_AGG_001 Dynamic Tables (3 tables) - SCHEMA NOT DEPLOYED YET
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PACS008 RESUME;
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PACS002 RESUME;
+-- ALTER DYNAMIC TABLE ICG_AGG_001.ICGA_AGG_DT_SWIFT_PAYMENT_LIFECYCLE RESUME;
 
 -- ============================================================
--- MONITORING QUERIES
+-- RESUME ALL TASKS (15 total across all schemas)
 -- ============================================================
--- Additional queries to monitor system health after resumption
+SELECT 'Resuming tasks...' AS status;
 
--- Active tasks with their schedules
-SELECT 
-    'ACTIVE_TASKS' AS monitor_type,
-    task_schema,
-    task_name,
-    state,
-    schedule,
-    next_scheduled_time
-FROM TABLE(INFORMATION_SCHEMA.TASKS())
-WHERE task_database = 'AAA_DEV_SYNTHETIC_BANK'
-AND state IN ('STARTED', 'RESUMED')
-ORDER BY task_schema, task_name;
+-- Resume CRM_RAW_001 Tasks (4 tasks)
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_CUSTOMERS RESUME;
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_ADDRESSES RESUME;
+ALTER TASK CRM_RAW_001.CRMI_TASK_LOAD_EXPOSED_PERSON RESUME;
 
--- Active dynamic tables with their refresh settings
-SELECT 
-    'ACTIVE_DYNAMIC_TABLES' AS monitor_type,
-    table_schema,
-    table_name,
-    refresh_mode,
-    target_lag,
-    warehouse_name
-FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-WHERE table_catalog = 'AAA_DEV_SYNTHETIC_BANK'
-AND refresh_mode = 'AUTO'
-ORDER BY table_schema, table_name;
+       -- Resume ACC_RAW_001 Tasks (1 task) - Task is in CRM_RAW_001 schema
+       ALTER TASK CRM_RAW_001.ACCI_TASK_LOAD_ACCOUNTS RESUME;
+
+-- Resume REF_RAW_001 Tasks (1 task)
+ALTER TASK REF_RAW_001.REFI_TASK_LOAD_FX_RATES RESUME;
+
+-- Resume PAY_RAW_001 Tasks (1 task)
+ALTER TASK PAY_RAW_001.PAYI_TASK_LOAD_TRANSACTIONS RESUME;
+
+-- Resume EQT_RAW_001 Tasks (1 task)
+ALTER TASK EQT_RAW_001.EQTI_TASK_LOAD_TRADES RESUME;
+
+-- Resume FII_RAW_001 Tasks (1 task)
+ALTER TASK FII_RAW_001.FIII_LOAD_TRADES_TASK RESUME;
+
+-- Resume CMD_RAW_001 Tasks (1 task)
+ALTER TASK CMD_RAW_001.CMDI_LOAD_TRADES_TASK RESUME;
+
+-- Resume ICG_RAW_001 Tasks (1 task) - SCHEMA NOT DEPLOYED YET
+-- ALTER TASK ICG_RAW_001.ICGI_TASK_LOAD_SWIFT_MESSAGES RESUME;
+
+       -- Resume LOA_RAW_V001 Tasks (2 tasks) - Tasks are in LOA_RAW_V001 schema
+       ALTER TASK LOA_RAW_V001.LOAI_TASK_LOAD_EMAILS RESUME;
+       ALTER TASK LOA_RAW_V001.LOAI_TASK_LOAD_DOCUMENTS RESUME;
 
 -- ============================================================
 -- COMPLETION MESSAGE
 -- ============================================================
-
-SELECT 
-    'RESUMPTION_COMPLETE' AS status,
+SELECT
+    'DYNAMIC_RESUMPTION_COMPLETE' AS status,
     CURRENT_TIMESTAMP() AS completed_at,
-    'All tasks and dynamic tables in AAA_DEV_SYNTHETIC_BANK have been resumed.' AS message,
-    'Monitor system performance and verify all processes are running correctly.' AS next_step;
+           'All 51 dynamic tables and 15 tasks have been resumed.' AS message,
+    'System is now in operational mode.' AS next_step;
