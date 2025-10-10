@@ -59,6 +59,7 @@ USE SCHEMA CRM_AGG_001;
 -- from the append-only base table. These tables refresh every 5 minutes based on
 -- source data changes, providing near real-time dimensional processing.
 
+
 -- ============================================================
 -- CRMA_AGG_DT_ADDRESSES_CURRENT - Current Address Lookup (Operational)
 -- ============================================================
@@ -149,9 +150,10 @@ ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
 -- CRMA_AGG_DT_CUSTOMER - Comprehensive Customer View with PEP Matching & Accuracy Scoring
 -- ============================================================
 -- 360-degree customer view combining master data, current address, accounts,
--- and Exposed Person compliance fuzzy matching with accuracy percentage scoring. Used for 
--- comprehensive customer analysis, compliance screening, and risk assessment 
--- across all customer touchpoints with quantified match confidence levels.
+-- Exposed Person compliance fuzzy matching, and Global Sanctions Data fuzzy matching 
+-- with accuracy percentage scoring. Used for comprehensive customer analysis, 
+-- compliance screening, and risk assessment across all customer touchpoints 
+-- with quantified match confidence levels for both PEP and sanctions screening.
 
 CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     CUSTOMER_ID VARCHAR(30) COMMENT 'Unique customer identifier for relationship management',
@@ -199,11 +201,13 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     SANCTIONS_MATCH_TYPE VARCHAR(15) COMMENT 'Type of sanctions match (EXACT_MATCH/FUZZY_MATCH/NO_MATCH)',
     OVERALL_EXPOSED_PERSON_RISK VARCHAR(30) COMMENT 'Overall PEP risk assessment (CRITICAL/HIGH/MEDIUM/LOW/NO_EXPOSED_PERSON_RISK)',
     OVERALL_SANCTIONS_RISK VARCHAR(30) COMMENT 'Overall sanctions risk assessment (CRITICAL/HIGH/MEDIUM/LOW/NO_SANCTIONS_RISK)',
+    OVERALL_RISK_RATING VARCHAR(20) COMMENT 'Comprehensive risk rating combining PEP, sanctions, and anomalies (CRITICAL/HIGH/MEDIUM/LOW/NO_RISK)',
+    OVERALL_RISK_SCORE NUMBER(5,2) COMMENT 'Numerical risk score (0-100) combining all risk factors',
     REQUIRES_EXPOSED_PERSON_REVIEW BOOLEAN COMMENT 'Boolean flag indicating if customer requires PEP compliance review',
     REQUIRES_SANCTIONS_REVIEW BOOLEAN COMMENT 'Boolean flag indicating if customer requires sanctions compliance review',
     HIGH_RISK_CUSTOMER BOOLEAN COMMENT 'Boolean flag for customers with both anomalies and PEP/sanctions matches',
     LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when customer record was last updated'
-) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, account summary, Exposed Person fuzzy matching, and Global Sanctions Data integration with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting.'
+) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, account summary, Exposed Person fuzzy matching, and Global Sanctions Data fuzzy matching with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting with both PEP and sanctions screening capabilities.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
@@ -291,24 +295,103 @@ SELECT
         ELSE 'NO_EXPOSED_PERSON_RISK'
     END AS OVERALL_EXPOSED_PERSON_RISK,
     
-    -- Sanctions Matching (Global Sanctions Data) - Temporarily disabled due to time travel limitations
-    NULL AS SANCTIONS_EXACT_MATCH_ID,
-    NULL AS SANCTIONS_EXACT_MATCH_NAME,
-    NULL AS SANCTIONS_EXACT_MATCH_TYPE,
-    NULL AS SANCTIONS_EXACT_MATCH_COUNTRY,
+    -- Sanctions Matching (Global Sanctions Data) - Fuzzy matching against external database
+    sanctions_exact.ENTITY_ID AS SANCTIONS_EXACT_MATCH_ID,
+    sanctions_exact.ENTITY_NAME AS SANCTIONS_EXACT_MATCH_NAME,
+    sanctions_exact.ENTITY_TYPE AS SANCTIONS_EXACT_MATCH_TYPE,
+    sanctions_exact.COUNTRY AS SANCTIONS_EXACT_MATCH_COUNTRY,
     
-    NULL AS SANCTIONS_FUZZY_MATCH_ID,
-    NULL AS SANCTIONS_FUZZY_MATCH_NAME,
-    NULL AS SANCTIONS_FUZZY_MATCH_TYPE,
-    NULL AS SANCTIONS_FUZZY_MATCH_COUNTRY,
+    sanctions_fuzzy.ENTITY_ID AS SANCTIONS_FUZZY_MATCH_ID,
+    sanctions_fuzzy.ENTITY_NAME AS SANCTIONS_FUZZY_MATCH_NAME,
+    sanctions_fuzzy.ENTITY_TYPE AS SANCTIONS_FUZZY_MATCH_TYPE,
+    sanctions_fuzzy.COUNTRY AS SANCTIONS_FUZZY_MATCH_COUNTRY,
     
-    -- Sanctions Match Accuracy Level - Temporarily disabled
-    NULL AS SANCTIONS_MATCH_ACCURACY_PERCENT,
+    -- Sanctions Match Accuracy Level
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL THEN 100.0  -- Exact match = 100% accuracy
+        WHEN sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN
+            -- Calculate accuracy based on edit distance for fuzzy matches
+            CASE 
+                -- Edit distance of 1 (highest fuzzy accuracy)
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 1
+                THEN 95.0
+                -- Edit distance of 2
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 2
+                THEN 90.0
+                -- Edit distance of 3
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 3
+                THEN 85.0
+                -- Edit distance of 4
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 4
+                THEN 80.0
+                -- Edit distance of 5 (lowest acceptable fuzzy match)
+                WHEN EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) = 5
+                THEN 75.0
+                -- Default fuzzy match accuracy
+                ELSE 70.0
+            END
+        ELSE NULL  -- No match
+    END AS SANCTIONS_MATCH_ACCURACY_PERCENT,
     
-    -- Sanctions Risk Assessment - Temporarily disabled
-    'NO_MATCH' AS SANCTIONS_MATCH_TYPE,
+    -- Sanctions Risk Assessment
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL THEN 'EXACT_MATCH'
+        WHEN sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 'FUZZY_MATCH'
+        ELSE 'NO_MATCH'
+    END AS SANCTIONS_MATCH_TYPE,
     
-    'NO_SANCTIONS_RISK' AS OVERALL_SANCTIONS_RISK,
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 'CRITICAL'
+        ELSE 'NO_SANCTIONS_RISK'
+    END AS OVERALL_SANCTIONS_RISK,
+    
+    -- Overall Risk Rating (combines PEP, sanctions, and anomalies)
+    CASE 
+        -- CRITICAL: Any sanctions match OR (PEP CRITICAL + anomaly)
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 'CRITICAL'
+        WHEN (pep_exact.RISK_LEVEL = 'CRITICAL' OR pep_fuzzy.RISK_LEVEL = 'CRITICAL') AND c.HAS_ANOMALY = TRUE THEN 'CRITICAL'
+        
+        -- HIGH: PEP HIGH + anomaly OR PEP CRITICAL without anomaly
+        WHEN (pep_exact.RISK_LEVEL = 'HIGH' OR pep_fuzzy.RISK_LEVEL = 'HIGH') AND c.HAS_ANOMALY = TRUE THEN 'HIGH'
+        WHEN pep_exact.RISK_LEVEL = 'CRITICAL' OR pep_fuzzy.RISK_LEVEL = 'CRITICAL' THEN 'HIGH'
+        
+        -- MEDIUM: PEP MEDIUM + anomaly OR PEP HIGH without anomaly
+        WHEN (pep_exact.RISK_LEVEL = 'MEDIUM' OR pep_fuzzy.RISK_LEVEL = 'MEDIUM') AND c.HAS_ANOMALY = TRUE THEN 'MEDIUM'
+        WHEN pep_exact.RISK_LEVEL = 'HIGH' OR pep_fuzzy.RISK_LEVEL = 'HIGH' THEN 'MEDIUM'
+        
+        -- LOW: PEP LOW + anomaly OR PEP MEDIUM without anomaly OR anomaly only
+        WHEN (pep_exact.RISK_LEVEL = 'LOW' OR pep_fuzzy.RISK_LEVEL = 'LOW') AND c.HAS_ANOMALY = TRUE THEN 'LOW'
+        WHEN pep_exact.RISK_LEVEL = 'MEDIUM' OR pep_fuzzy.RISK_LEVEL = 'MEDIUM' THEN 'LOW'
+        WHEN c.HAS_ANOMALY = TRUE THEN 'LOW'
+        WHEN pep_exact.RISK_LEVEL = 'LOW' OR pep_fuzzy.RISK_LEVEL = 'LOW' THEN 'LOW'
+        
+        -- NO_RISK: No matches and no anomalies
+        ELSE 'NO_RISK'
+    END AS OVERALL_RISK_RATING,
+    
+    -- Overall Risk Score (0-100 numerical score)
+    CASE 
+        -- CRITICAL: 90-100
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN 100
+        WHEN (pep_exact.RISK_LEVEL = 'CRITICAL' OR pep_fuzzy.RISK_LEVEL = 'CRITICAL') AND c.HAS_ANOMALY = TRUE THEN 95
+        
+        -- HIGH: 70-89
+        WHEN (pep_exact.RISK_LEVEL = 'HIGH' OR pep_fuzzy.RISK_LEVEL = 'HIGH') AND c.HAS_ANOMALY = TRUE THEN 85
+        WHEN pep_exact.RISK_LEVEL = 'CRITICAL' OR pep_fuzzy.RISK_LEVEL = 'CRITICAL' THEN 80
+        
+        -- MEDIUM: 50-69
+        WHEN (pep_exact.RISK_LEVEL = 'MEDIUM' OR pep_fuzzy.RISK_LEVEL = 'MEDIUM') AND c.HAS_ANOMALY = TRUE THEN 65
+        WHEN pep_exact.RISK_LEVEL = 'HIGH' OR pep_fuzzy.RISK_LEVEL = 'HIGH' THEN 60
+        
+        -- LOW: 20-49
+        WHEN (pep_exact.RISK_LEVEL = 'LOW' OR pep_fuzzy.RISK_LEVEL = 'LOW') AND c.HAS_ANOMALY = TRUE THEN 45
+        WHEN pep_exact.RISK_LEVEL = 'MEDIUM' OR pep_fuzzy.RISK_LEVEL = 'MEDIUM' THEN 40
+        WHEN c.HAS_ANOMALY = TRUE THEN 35
+        WHEN pep_exact.RISK_LEVEL = 'LOW' OR pep_fuzzy.RISK_LEVEL = 'LOW' THEN 30
+        
+        -- NO_RISK: 0-19
+        ELSE 10
+    END AS OVERALL_RISK_SCORE,
     
     -- Compliance Flags
     CASE 
@@ -316,10 +399,13 @@ SELECT
         ELSE FALSE 
     END AS REQUIRES_EXPOSED_PERSON_REVIEW,
     
-    FALSE AS REQUIRES_SANCTIONS_REVIEW,
+    CASE 
+        WHEN sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL THEN TRUE 
+        ELSE FALSE 
+    END AS REQUIRES_SANCTIONS_REVIEW,
     
     CASE 
-        WHEN c.HAS_ANOMALY = TRUE AND (pep_exact.EXPOSED_PERSON_ID IS NOT NULL OR pep_fuzzy.EXPOSED_PERSON_ID IS NOT NULL) THEN TRUE
+        WHEN c.HAS_ANOMALY = TRUE AND (pep_exact.EXPOSED_PERSON_ID IS NOT NULL OR pep_fuzzy.EXPOSED_PERSON_ID IS NOT NULL OR sanctions_exact.ENTITY_ID IS NOT NULL OR sanctions_fuzzy.ENTITY_ID IS NOT NULL) THEN TRUE
         ELSE FALSE
     END AS HIGH_RISK_CUSTOMER,
     
@@ -362,22 +448,22 @@ LEFT JOIN CRM_RAW_001.CRMI_EXPOSED_PERSON pep_fuzzy
         EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(pep_fuzzy.FULL_NAME)) <= 3
     )
 
--- Sanctions matching temporarily disabled due to time travel limitations
--- TODO: Re-enable when Global Sanctions Data time travel is configured
--- LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET.GLOBAL_SANCTIONS_DATA.SANCTIONS_DATAFEED sanctions_exact
---     ON UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)) = UPPER(sanctions_exact.ENTITY_NAME)
---     AND sanctions_exact.ENTITY_TYPE = 'Individual'
--- 
--- LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET.GLOBAL_SANCTIONS_DATA.SANCTIONS_DATAFEED sanctions_fuzzy
---     ON sanctions_fuzzy.ENTITY_ID != COALESCE(sanctions_exact.ENTITY_ID, 'NO_EXACT_MATCH')
---     AND sanctions_fuzzy.ENTITY_TYPE = 'Individual'
---     AND EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) <= 5
+-- Sanctions matching against Global Sanctions Data with fuzzy matching
+-- Using copy database to avoid external database limitations
+LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET_COPY.PUBLIC.SANCTIONS_DATA_STAGING sanctions_exact
+    ON UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)) = UPPER(sanctions_exact.ENTITY_NAME)
+
+LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET_COPY.PUBLIC.SANCTIONS_DATA_STAGING sanctions_fuzzy
+    ON sanctions_fuzzy.ENTITY_ID != COALESCE(sanctions_exact.ENTITY_ID, 'NO_EXACT_MATCH')
+    AND EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) <= 5
 
 GROUP BY 
     c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.DATE_OF_BIRTH, c.ONBOARDING_DATE, c.REPORTING_CURRENCY, c.HAS_ANOMALY,
     addr.STREET_ADDRESS, addr.CITY, addr.STATE, addr.ZIPCODE, addr.COUNTRY, addr.CURRENT_FROM,
     pep_exact.EXPOSED_PERSON_ID, pep_exact.FULL_NAME, pep_exact.EXPOSED_PERSON_CATEGORY, pep_exact.RISK_LEVEL, pep_exact.STATUS,
-    pep_fuzzy.EXPOSED_PERSON_ID, pep_fuzzy.FULL_NAME, pep_fuzzy.FIRST_NAME, pep_fuzzy.LAST_NAME, pep_fuzzy.EXPOSED_PERSON_CATEGORY, pep_fuzzy.RISK_LEVEL, pep_fuzzy.STATUS
+    pep_fuzzy.EXPOSED_PERSON_ID, pep_fuzzy.FULL_NAME, pep_fuzzy.FIRST_NAME, pep_fuzzy.LAST_NAME, pep_fuzzy.EXPOSED_PERSON_CATEGORY, pep_fuzzy.RISK_LEVEL, pep_fuzzy.STATUS,
+    sanctions_exact.ENTITY_ID, sanctions_exact.ENTITY_NAME, sanctions_exact.ENTITY_TYPE, sanctions_exact.COUNTRY,
+    sanctions_fuzzy.ENTITY_ID, sanctions_fuzzy.ENTITY_NAME, sanctions_fuzzy.ENTITY_TYPE, sanctions_fuzzy.COUNTRY
 
 ORDER BY c.CUSTOMER_ID;
 
