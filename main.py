@@ -25,6 +25,7 @@ from mortgage_email_generator import MortgageEmailGenerator
 from address_update_generator import AddressUpdateGenerator
 from fixed_income_generator import FixedIncomeTradeGenerator
 from commodity_generator import CommodityTradeGenerator
+from customer_lifecycle_generator import CustomerLifecycleGenerator
 
 
 def parse_arguments():
@@ -60,6 +61,9 @@ Examples:
 
   Generate complete dataset with FRTB market risk data:
     python main.py --customers 100 --generate-swift --generate-pep --generate-fixed-income --generate-commodities --clean
+
+  Generate complete banking dataset with all features:
+    python main.py --customers 100 --generate-swift --generate-pep --generate-address-updates --generate-lifecycle --clean
 
   Generate PEP data only:
     python main.py --generate-pep --pep-records 100
@@ -274,6 +278,13 @@ Examples:
         type=int,
         default=500,
         help="Number of commodity trades to generate (default: 500)"
+    )
+    
+    # Customer lifecycle event generation options
+    parser.add_argument(
+        "--generate-lifecycle",
+        action="store_true",
+        help="Generate customer lifecycle events and status history"
     )
     
     return parser.parse_args()
@@ -742,6 +753,45 @@ def main():
                     import traceback
                     traceback.print_exc()
         
+        # Generate customer lifecycle events if requested
+        lifecycle_results = None
+        if args.generate_lifecycle:
+            try:
+                print("\n" + "=" * 80)
+                print("CUSTOMER LIFECYCLE EVENT GENERATION")
+                print("=" * 80)
+                
+                # Initialize lifecycle event generator
+                customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
+                address_updates_dir = str(Path(config.output_directory) / "master_data" / "address_updates")
+                output_dir = str(Path(config.output_directory) / "master_data")
+                
+                lifecycle_generator = CustomerLifecycleGenerator(
+                    customer_file=customer_file_path,
+                    address_updates_dir=address_updates_dir,
+                    output_dir=output_dir
+                )
+                
+                # Generate all lifecycle events
+                lifecycle_generator.generate_all()
+                
+                # Create results summary
+                lifecycle_results = {
+                    'output_dir': output_dir,
+                    'events_file': str(Path(output_dir) / 'customer_events.csv'),
+                    'status_file': str(Path(output_dir) / 'customer_status.csv')
+                }
+                
+                print(f"✅ Customer lifecycle events generated successfully")
+                print(f"📁 Events file: {lifecycle_results['events_file']}")
+                print(f"📁 Status file: {lifecycle_results['status_file']}")
+                
+            except Exception as e:
+                print(f"\n❌ Customer lifecycle generation failed: {str(e)}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+        
         # Collect additional results for summary
         additional_results = {
             'swift': swift_results,
@@ -749,60 +799,13 @@ def main():
             'mortgage': mortgage_results,
             'address_updates': address_update_results,
             'fixed_income': fixed_income_results,
-            'commodity': commodity_results
+            'commodity': commodity_results,
+            'lifecycle': lifecycle_results
         }
         
         # Update summary report with additional results
         if additional_results and any(additional_results.values()):
-            print("\nUpdating summary report with additional generator results...")
-            # Read the existing summary and append additional results
-            summary_file = Path(config.output_directory) / "reports" / "generation_summary.txt"
-            if summary_file.exists():
-                with open(summary_file, 'a', encoding='utf-8') as f:
-                    f.write(f"\nADDITIONAL GENERATORS:\n")
-                    
-                    if 'swift' in additional_results and additional_results['swift']:
-                        swift = additional_results['swift']
-                        f.write(f"\n📁 SWIFT Messages (swift_messages/):\n")
-                        f.write(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
-                        f.write(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
-                        f.write(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
-                    
-                    if 'pep' in additional_results and additional_results['pep']:
-                        pep = additional_results['pep']
-                        f.write(f"\n📁 PEP Data (master_data/):\n")
-                        f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
-                        f.write(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
-                        f.write(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
-                    
-                    if 'mortgage' in additional_results and additional_results['mortgage']:
-                        mortgage = additional_results['mortgage']
-                        f.write(f"\n📁 Mortgage Emails (emails/):\n")
-                        f.write(f"  Customers: {mortgage.get('customers', 0)}\n")
-                        f.write(f"  Total emails: {mortgage.get('total_emails', 0)} (3 types per customer)\n")
-                    
-                    if 'address_updates' in additional_results and additional_results['address_updates']:
-                        address = additional_results['address_updates']
-                        f.write(f"\n📁 Address Updates (master_data/address_updates/):\n")
-                        f.write(f"  Update files: {address.get('files_generated', 0)}\n")
-                        f.write(f"  For SCD Type 2 processing\n")
-                    
-                    if 'fixed_income' in additional_results and additional_results['fixed_income']:
-                        fixed_income = additional_results['fixed_income']
-                        f.write(f"\n📁 Fixed Income Trades (fixed_income_trades/):\n")
-                        f.write(f"  Total trades: {fixed_income.get('total_trades', 0)}\n")
-                        f.write(f"  Bonds: {fixed_income.get('bonds', 0)}, Swaps: {fixed_income.get('swaps', 0)}\n")
-                        f.write(f"  Total Notional: CHF {fixed_income.get('total_notional_chf', 0):,.2f}\n")
-                        f.write(f"  Files created: {fixed_income.get('files_created', 0)} (one per trade date)\n")
-                    
-                    if 'commodity' in additional_results and additional_results['commodity']:
-                        commodity = additional_results['commodity']
-                        f.write(f"\n📁 Commodity Trades (commodity_trades/):\n")
-                        f.write(f"  Total trades: {commodity.get('total_trades', 0)}\n")
-                        commodity_summary = ', '.join([f"{k}:{v}" for k, v in commodity.get('commodity_types', {}).items()])
-                        f.write(f"  Types: {commodity_summary}\n")
-                        f.write(f"  Total Value: CHF {commodity.get('total_value_chf', 0):,.2f}\n")
-                        f.write(f"  Files created: {commodity.get('files_created', 0)} (one per trade date)\n")
+            file_generator.update_summary_with_additional_results(additional_results)
         
         end_time = datetime.now()
         duration = end_time - start_time
@@ -879,6 +882,16 @@ def main():
         else:
             print(f"⏭️  Commodity generation: SKIPPED (use --generate-commodities to enable)")
         
+        if args.generate_lifecycle and lifecycle_results:
+            print(f"✅ Customer lifecycle generation: SUCCESS")
+            print(f"   - Events file: customer_events.csv")
+            print(f"   - Status file: customer_status.csv")
+            print(f"   - For churn prediction and lifecycle analytics")
+        elif args.generate_lifecycle:
+            print(f"❌ Customer lifecycle generation: FAILED")
+        else:
+            print(f"⏭️  Customer lifecycle generation: SKIPPED (use --generate-lifecycle to enable)")
+        
         print(f"\n📁 Output directory: {Path(config.output_directory).absolute()}")
         if args.generate_swift and swift_results:
             print(f"📁 SWIFT directory: {Path(swift_results['summary']['configuration']['output_directory']).absolute()}")
@@ -890,6 +903,8 @@ def main():
             print(f"📁 Fixed income directory: {fixed_income_results['output_dir']}")
         if args.generate_commodities and commodity_results:
             print(f"📁 Commodity directory: {commodity_results['output_dir']}")
+        if args.generate_lifecycle and lifecycle_results:
+            print(f"📁 Lifecycle files: {lifecycle_results['output_dir']}")
         
         print("\n💡 Next steps:")
         print("   1. Load CSV files into Snowflake using DDL scripts in ./structure/")
@@ -909,7 +924,11 @@ def main():
         if args.generate_commodities and commodity_results:
             print("   11. Load commodity trades into CMD_RAW_001 schema for commodity risk")
             print("   12. Implement FRTB Standardized Approach (SA) capital calculations")
-        print("   13. Query aggregated data from REPP_AGG_001 schema")
+        if args.generate_lifecycle and lifecycle_results:
+            print("   13. Load lifecycle events into CRMI_CUSTOMER_EVENT for churn prediction")
+            print("   14. Use CRMA_AGG_DT_CUSTOMER_LIFECYCLE for customer retention analytics")
+            print("   15. Query REPP_AGG_DT_LIFECYCLE_ANOMALIES for AML correlation patterns")
+        print("   16. Query aggregated data from REPP_AGG_001 schema")
         
         print("\n✅ Generation completed successfully!")
         

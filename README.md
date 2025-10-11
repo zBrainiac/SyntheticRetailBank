@@ -19,8 +19,11 @@ A showcase demonstrating risk management and governance challenges faced by mode
 - **Multi-Jurisdictional Customer Base**: EMEA customers across 12 countries with localized compliance requirements
 - **Dynamic Risk Scoring**: Behavioral profiling with CRITICAL, HIGH, MODERATE, NORMAL risk classifications
 - **PEP Screening & Monitoring**: Politically Exposed Persons identification with fuzzy name matching algorithms
-- **Customer 360° Risk View**: Comprehensive profiles integrating master data, transaction history, and compliance status
+- **Customer 360° Risk View**: Comprehensive profiles integrating master data, transaction history, lifecycle events, and compliance status
 - **Enhanced Due Diligence**: Automated triggers for high-risk customer segments and suspicious behavior patterns
+- **Customer Lifecycle Analytics**: Event tracking (onboarding, address changes, employment changes, account upgrades, closures, reactivations, churn)
+- **Churn Prediction**: ML-ready dataset with churn probability scoring (0-100%) based on transaction inactivity and lifecycle patterns
+- **Lifecycle Event Correlation**: AML detection correlating lifecycle events with transaction anomalies for SAR filing recommendations
 
 ### **Transaction Monitoring & AML**
 - **Real-Time Anomaly Detection**: Multi-dimensional behavioral analysis using statistical scoring models
@@ -144,6 +147,7 @@ This repository delivers a complete data generation and ingestion framework, org
 | **`mortgage_email_generator.py`**  | Realistic mortgage application email threads (customer, internal, loan officer)              |
 | **`pep_generator.py`**             | Politically Exposed Persons reference data with fuzzy matching capabilities                  |
 | **`address_update_generator.py`**  | SCD Type 2 address change files for data governance and audit trails                         |
+| **`customer_lifecycle_generator.py`** | Customer lifecycle events (onboarding, address changes, employment changes, account upgrades, closures, reactivations, churn) and status history (SCD Type 2) for churn prediction and lifecycle analytics |
 | **`anomaly_patterns.py`**          | Suspicious transaction pattern injection for AML testing and training                        |
 
 ### External Data Integration
@@ -199,10 +203,10 @@ venv\Scripts\activate     # On Windows
 Deploy the complete synthetic bank with automatic data upload:
 
 ```bash
-# 1. Generate comprehensive data (3 months, 1000 customers, all generators)
-./venv/bin/python main.py --customers 1000 --period 3 \
+# 1. Generate comprehensive data (19 months for proper dormancy and churn testing, 1000 customers, all generators including lifecycle)
+./venv/bin/python main.py --customers 1000 --period 19 \
   --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --generate-fixed-income --generate-commodities \
+  --generate-address-updates --generate-lifecycle --generate-fixed-income --generate-commodities \
   --swift-percentage 75 --pep-records 500 --mortgage-customers 150 \
   --address-update-files 15 --fixed-income-trades 50 --commodity-trades 25
 
@@ -219,8 +223,8 @@ Deploy the complete synthetic bank with automatic data upload:
 If you prefer manual control:
 
 ```bash
-# 1. Generate data
-./venv/bin/python main.py --customers 1000 --period 3 --generate-swift --generate-pep
+# 1. Generate data (including lifecycle events, 19 months for dormancy and churn testing)
+./venv/bin/python main.py --customers 1000 --period 19 --generate-swift --generate-pep --generate-lifecycle
 
 # 2. Deploy SQL structure only
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
@@ -238,7 +242,7 @@ If you prefer manual control:
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --DRY_RUN
 
 # Test single SQL file
-./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --FILE=031_ICGI.sql
+./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --FILE=031_ICGI_swift_messages.sql
 ```
 
 ## Usage
@@ -255,18 +259,19 @@ python main.py
 
 #### Generate Everything (Complete Dataset)
 ```bash
-# 🎯 GENERATE ALL DATA TYPES - Complete synthetic bank dataset
-./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 3 \
+# 🎯 GENERATE ALL DATA TYPES - Complete synthetic bank dataset (including lifecycle events)
+# Note: 19 months recommended for proper dormancy (> 180 days) and churn (> 365 days) testing
+./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 19 \
   --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --swift-percentage 40 --pep-records 150 \
-  --mortgage-customers 2 --address-update-files 2 \
+  --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 150 \
+  --mortgage-customers 2 --address-update-files 9 \
   --generate-fixed-income --generate-commodities \
   --fixed-income-trades 10 --commodity-trades 5 --clean
 
-# 🚀 PRODUCTION-READY DATASET - Large scale with all features
+# 🚀 PRODUCTION-READY DATASET - Large scale with all features (including lifecycle events)
 ./venv/bin/python main.py --customers 1000 --anomaly-rate 3.0 --period 19 \
   --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --swift-percentage 40 --pep-records 15000 \
+  --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 15000 \
   --mortgage-customers 52 --address-update-files 9 \
   --generate-fixed-income --generate-commodities \
   --fixed-income-trades 700 --commodity-trades 888 --clean
@@ -292,17 +297,20 @@ python main.py
 # Verbose output with detailed configuration
 ./venv/bin/python python main.py --verbose --customers 20 --anomaly-rate 3.0
 
-# generate all (small dataset)
-./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 3 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --swift-percentage 40 --pep-records 150 --mortgage-customers 5 --address-update-files 12 --clean
+# Generate with customer lifecycle events for churn prediction (19 months for full lifecycle testing)
+./venv/bin/python main.py --customers 100 --period 19 --generate-address-updates --generate-lifecycle --clean
 
-# generate all (large dataset)
-./venv/bin/python main.py --customers 1000 --anomaly-rate 3.0 --period 24 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --swift-percentage 30 --pep-records 200 --mortgage-customers 25 --address-update-files 24 --clean
+# generate all (small dataset with lifecycle - 19 months for dormancy and churn testing)
+./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 19 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 150 --mortgage-customers 5 --address-update-files 9 --clean
+
+# generate all (large dataset with lifecycle)
+./venv/bin/python main.py --customers 1000 --anomaly-rate 3.0 --period 24 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --generate-lifecycle --swift-percentage 30 --pep-records 200 --mortgage-customers 25 --address-update-files 24 --clean
 
 # Generate with FRTB market risk data (fixed income + commodities)
 python main.py --customers 100 --generate-fixed-income --generate-commodities --fixed-income-trades 1000 --commodity-trades 500 --clean
 
-# Complete dataset with all risk classes (credit, market, operational)
-python main.py --customers 200 --period 24 --generate-swift --generate-pep --generate-fixed-income --generate-commodities --anomaly-rate 4.0 --clean
+# Complete dataset with all risk classes (credit, market, operational, lifecycle)
+python main.py --customers 200 --period 24 --generate-swift --generate-pep --generate-lifecycle --generate-fixed-income --generate-commodities --anomaly-rate 4.0 --clean
 ```
 
 ### Command Line Options
@@ -350,6 +358,11 @@ python main.py --customers 200 --period 24 --generate-swift --generate-pep --gen
 | `--generate-address-updates` | Generate address update files for SCD Type 2 processing | False              |
 | `--address-update-files`     | Number of address update files to generate              | 6                  |
 | `--updates-per-file`         | Number of address updates per file                      | 5-15% of customers |
+
+#### Customer Lifecycle Generation Options
+| Option                  | Description                                                                          | Default |
+|-------------------------|--------------------------------------------------------------------------------------|---------|
+| `--generate-lifecycle`  | Generate customer lifecycle events and status history for churn prediction & analytics | False   |
 
 #### Fixed Income Generation Options (FRTB Market Risk)
 | Option                    | Description                                                | Default |
@@ -600,6 +613,11 @@ generated_data/
     - `REPP_AGG_DT_ANOMALY_ANALYSIS`
     - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
     - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
+- **Churn Prediction & Retention**: Identify at-risk customers for retention campaigns and churn prevention strategies
+  - *Key Reports*:
+    - `CRMA_AGG_DT_CUSTOMER_LIFECYCLE`
+    - `REPP_AGG_DT_LIFECYCLE_ANOMALIES`
+    - `CRMA_AGG_DT_CUSTOMER`
 - **Audit & Control Testing**: Internal audit teams can validate control effectiveness and identify process gaps
   - *Key Reports*:
     - `CRMA_AGG_DT_ADDRESSES_HISTORY`
@@ -612,6 +630,7 @@ generated_data/
     - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
     - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
     - `REPP_AGG_DT_ANOMALY_ANALYSIS`
+    - `REPP_AGG_DT_LIFECYCLE_ANOMALIES`
 - **Risk Model Development**: Build and calibrate customer risk scoring models with controlled datasets
   - *Key Reports*:
     - `REPP_AGG_DT_CUSTOMER_SUMMARY`

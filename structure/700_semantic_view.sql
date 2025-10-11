@@ -18,7 +18,7 @@
 --
 -- PREREQUISITES:
 -- - All reporting schemas must be deployed first:
---   * 500_REPP.sql (Core reporting)
+--   * 500_REPP_core_reporting.sql (Core reporting)
 --   * 510_REPP_EQUITY.sql (Equity trading)
 --   * 520_REPP_CREDIT_RISK.sql (Credit risk)
 --   * 525_REPP_FRTB.sql (FRTB market risk)
@@ -51,7 +51,7 @@ USE SCHEMA REP_AGG_001;
 
 CREATE OR REPLACE SEMANTIC VIEW REPP_SEMANTIC_VIEW
 	tables (
-		-- Core Reporting Tables (500_REPP.sql)
+		-- Core Reporting Tables (500_REPP_core_reporting.sql)
 		REPP_AGG_DT_ANOMALY_ANALYSIS,
 		REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT,
 		REPP_AGG_DT_CURRENCY_EXPOSURE_HISTORY,

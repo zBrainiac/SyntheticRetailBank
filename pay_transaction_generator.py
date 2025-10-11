@@ -385,16 +385,90 @@ class TransactionGenerator:
         base_amount = amount * fx_rate
         return fx_rate, base_amount
     
+    def get_transactions_by_date(self) -> dict:
+        """Group all transactions by date (optimized for batch processing)"""
+        transactions_by_date = {}
+        for t in self.transactions:
+            date_str = t.booking_date.strftime("%Y-%m-%d")
+            if date_str not in transactions_by_date:
+                transactions_by_date[date_str] = []
+            transactions_by_date[date_str].append(t)
+        return transactions_by_date
+    
     def get_transactions_for_date(self, date: datetime) -> List[Transaction]:
-        """Get all transactions for a specific date"""
+        """Get all transactions for a specific date (legacy method, slower)"""
         date_str = date.strftime("%Y-%m-%d")
         return [
             t for t in self.transactions 
             if t.booking_date.strftime("%Y-%m-%d") == date_str
         ]
     
+    def save_all_daily_transactions_to_csv(self, output_dir: str, show_progress: bool = True) -> dict:
+        """Save all transactions grouped by date (optimized batch processing)"""
+        from pathlib import Path
+        import os
+        
+        # Ensure output directory exists
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Group transactions by date once (single pass through all transactions)
+        print("  📊 Grouping transactions by date...")
+        transactions_by_date = self.get_transactions_by_date()
+        
+        fieldnames = [
+            "booking_date", "value_date", "transaction_id", "account_id", "amount", 
+            "currency", "base_amount", "base_currency", "fx_rate", 
+            "counterparty_account", "description"
+        ]
+        
+        files_created = []
+        transaction_counts = {}
+        
+        total_days = len(transactions_by_date)
+        print(f"  💾 Writing {total_days} daily files...")
+        
+        # Write all files in batch
+        for idx, (date_str, transactions) in enumerate(sorted(transactions_by_date.items()), 1):
+            filename = f"{output_dir}/pay_transactions_{date_str}.csv"
+            
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                # Pre-format all rows at once (batch conversion)
+                rows = []
+                for t in transactions:
+                    rows.append({
+                        "booking_date": t.booking_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                        "value_date": t.value_date.strftime("%Y-%m-%d"),
+                        "transaction_id": t.transaction_id,
+                        "account_id": t.account_id,
+                        "amount": t.amount,
+                        "currency": t.currency,
+                        "base_amount": t.base_amount,
+                        "base_currency": t.base_currency,
+                        "fx_rate": t.fx_rate,
+                        "counterparty_account": t.counterparty_account,
+                        "description": t.description
+                    })
+                
+                # Write all rows at once (bulk write)
+                writer.writerows(rows)
+            
+            files_created.append(filename)
+            transaction_counts[date_str] = len(transactions)
+            
+            # Show progress every 50 files for large datasets
+            if show_progress and idx % 50 == 0:
+                print(f"  ⏳ Progress: {idx}/{total_days} files ({idx*100//total_days}%)")
+        
+        return {
+            'files': files_created,
+            'counts': transaction_counts
+        }
+    
     def save_daily_transactions_to_csv(self, date: datetime, output_dir: str) -> str:
-        """Save transactions for a specific date to CSV file"""
+        """Save transactions for a specific date to CSV file (legacy method, slower)"""
         transactions = self.get_transactions_for_date(date)
         
         if not transactions:

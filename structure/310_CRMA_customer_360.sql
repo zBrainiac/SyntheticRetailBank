@@ -149,10 +149,10 @@ ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
 -- ============================================================
 -- CRMA_AGG_DT_CUSTOMER - Comprehensive Customer View with PEP Matching & Accuracy Scoring
 -- ============================================================
--- 360-degree customer view combining master data, current address, accounts,
--- Exposed Person compliance fuzzy matching, and Global Sanctions Data fuzzy matching 
--- with accuracy percentage scoring. Used for comprehensive customer analysis, 
--- compliance screening, and risk assessment across all customer touchpoints 
+-- 360-degree customer view combining master data, current address, current status,
+-- accounts, Exposed Person compliance fuzzy matching, and Global Sanctions Data 
+-- fuzzy matching with accuracy percentage scoring. Used for comprehensive customer 
+-- analysis, compliance screening, and risk assessment across all customer touchpoints 
 -- with quantified match confidence levels for both PEP and sanctions screening.
 
 CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
@@ -170,6 +170,8 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     ZIPCODE VARCHAR(20) COMMENT 'Current postal code for address validation',
     COUNTRY VARCHAR(50) COMMENT 'Current country for regulatory and tax purposes',
     ADDRESS_EFFECTIVE_DATE TIMESTAMP_NTZ COMMENT 'Date when current address became effective',
+    CURRENT_STATUS VARCHAR(30) COMMENT 'Current customer status (ACTIVE/DORMANT/CLOSED/SUSPENDED/etc.)',
+    STATUS_EFFECTIVE_DATE DATE COMMENT 'Date when current status became effective',
     TOTAL_ACCOUNTS NUMBER(10,0) COMMENT 'Total number of accounts held by customer',
     ACCOUNT_TYPES VARCHAR(200) COMMENT 'Comma-separated list of account types held',
     CURRENCIES VARCHAR(50) COMMENT 'Comma-separated list of currencies used by customer',
@@ -207,7 +209,7 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     REQUIRES_SANCTIONS_REVIEW BOOLEAN COMMENT 'Boolean flag indicating if customer requires sanctions compliance review',
     HIGH_RISK_CUSTOMER BOOLEAN COMMENT 'Boolean flag for customers with both anomalies and PEP/sanctions matches',
     LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when customer record was last updated'
-) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, account summary, Exposed Person fuzzy matching, and Global Sanctions Data fuzzy matching with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting with both PEP and sanctions screening capabilities.'
+) COMMENT = 'Comprehensive 360-degree customer view with master data, current address, current status, account summary, Exposed Person fuzzy matching, and Global Sanctions Data fuzzy matching with accuracy scoring for compliance screening. Combines operational and compliance data for holistic customer risk assessment and regulatory reporting with both PEP and sanctions screening capabilities.'
 TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
 AS
 SELECT 
@@ -228,6 +230,10 @@ SELECT
     addr.ZIPCODE,
     addr.COUNTRY,
     addr.CURRENT_FROM AS ADDRESS_EFFECTIVE_DATE,
+    
+    -- Current Status Information
+    status.STATUS AS CURRENT_STATUS,
+    status.STATUS_START_DATE AS STATUS_EFFECTIVE_DATE,
     
     -- Account Summary
     COUNT(acc.ACCOUNT_ID) AS TOTAL_ACCOUNTS,
@@ -412,11 +418,24 @@ SELECT
     -- Metadata
     CURRENT_TIMESTAMP() AS LAST_UPDATED
 
-FROM CRM_RAW_001.CRMI_PARTY c
+FROM CRM_RAW_001.CRMI_CUSTOMER c
 
 -- Join current address
 LEFT JOIN CRMA_AGG_DT_ADDRESSES_CURRENT addr
     ON c.CUSTOMER_ID = addr.CUSTOMER_ID
+
+-- Join current customer status (get latest status per customer)
+LEFT JOIN (
+    SELECT 
+        CUSTOMER_ID,
+        STATUS,
+        STATUS_START_DATE,
+        ROW_NUMBER() OVER (PARTITION BY CUSTOMER_ID ORDER BY STATUS_START_DATE DESC) AS rn
+    FROM CRM_RAW_001.CRMI_CUSTOMER_STATUS
+    WHERE IS_CURRENT = TRUE
+) status
+    ON c.CUSTOMER_ID = status.CUSTOMER_ID
+    AND status.rn = 1
 
 -- Join accounts (aggregated)
 LEFT JOIN CRM_RAW_001.ACCI_ACCOUNTS acc
@@ -460,6 +479,7 @@ LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET_COPY.PUBLIC.S
 GROUP BY 
     c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.DATE_OF_BIRTH, c.ONBOARDING_DATE, c.REPORTING_CURRENCY, c.HAS_ANOMALY,
     addr.STREET_ADDRESS, addr.CITY, addr.STATE, addr.ZIPCODE, addr.COUNTRY, addr.CURRENT_FROM,
+    status.STATUS, status.STATUS_START_DATE,
     pep_exact.EXPOSED_PERSON_ID, pep_exact.FULL_NAME, pep_exact.EXPOSED_PERSON_CATEGORY, pep_exact.RISK_LEVEL, pep_exact.STATUS,
     pep_fuzzy.EXPOSED_PERSON_ID, pep_fuzzy.FULL_NAME, pep_fuzzy.FIRST_NAME, pep_fuzzy.LAST_NAME, pep_fuzzy.EXPOSED_PERSON_CATEGORY, pep_fuzzy.RISK_LEVEL, pep_fuzzy.STATUS,
     sanctions_exact.ENTITY_ID, sanctions_exact.ENTITY_NAME, sanctions_exact.ENTITY_TYPE, sanctions_exact.COUNTRY,
@@ -474,8 +494,9 @@ ORDER BY c.CUSTOMER_ID;
 -- DYNAMIC TABLE REFRESH STATUS:
 -- All three dynamic tables will automatically refresh based on changes to the
 -- source tables with a 1-hour target lag. The 360° view depends on multiple
--- source tables: CRMI_PARTY, CRMI_ADDRESSES, ACCI_ACCOUNTS, CRMI_EXPOSED_PERSON,
--- and Global Sanctions Data from Snowflake Data Exchange with comprehensive fuzzy matching.
+-- source tables: CRMI_CUSTOMER, CRMI_ADDRESSES, CRMI_CUSTOMER_STATUS, ACCI_ACCOUNTS, 
+-- CRMI_EXPOSED_PERSON, and Global Sanctions Data from Snowflake Data Exchange with 
+-- comprehensive fuzzy matching.
 --
 -- USAGE EXAMPLES:
 --

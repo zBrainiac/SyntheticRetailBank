@@ -215,6 +215,20 @@ upload_to_stage \
     "CRM_RAW_001" \
     "Exposed Person Compliance Data"
 
+# Customer lifecycle events
+upload_to_stage \
+    "$GENERATED_DATA_DIR/master_data/customer_events.csv" \
+    "CRMI_CUSTOMER_EVENTS" \
+    "CRM_RAW_001" \
+    "Customer Lifecycle Events"
+
+# Customer status history
+upload_to_stage \
+    "$GENERATED_DATA_DIR/master_data/customer_status.csv" \
+    "CRMI_CUSTOMER_EVENTS" \
+    "CRM_RAW_001" \
+    "Customer Status History"
+
 # Account master data
 upload_to_stage \
     "$GENERATED_DATA_DIR/master_data/accounts.csv" \

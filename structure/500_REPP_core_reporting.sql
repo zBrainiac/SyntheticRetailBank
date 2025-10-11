@@ -20,7 +20,7 @@
 -- - Proper data architecture: RAW → AGG → REPORTING
 --
 -- OBJECTS CREATED:
--- ┌─ DYNAMIC TABLES (9):
+-- ┌─ DYNAMIC TABLES (10):
 -- │  ├─ REPP_AGG_DT_CUSTOMER_SUMMARY                    - Customer profiling with transaction stats
 -- │  ├─ REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY           - Daily transaction volume analysis
 -- │  ├─ REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT           - Current FX exposure monitoring
@@ -29,6 +29,7 @@
 -- │  ├─ REPP_AGG_DT_ANOMALY_ANALYSIS                    - Customer-level anomaly detection
 -- │  ├─ REPP_AGG_DT_HIGH_RISK_PATTERNS                  - High-risk transaction patterns
 -- │  ├─ REPP_AGG_DT_SETTLEMENT_ANALYSIS                 - Settlement timing analysis
+-- │  ├─ REPP_AGG_DT_LIFECYCLE_ANOMALIES                 - Lifecycle event AML correlation
 -- │  └─ (Additional tables in 510_REPP_EQUITY.sql, 520_REPP_CREDIT_RISK.sql, 530_REPP_PORTFOLIO.sql)
 -- │
 -- └─ REFRESH STRATEGY:
@@ -412,6 +413,105 @@ FROM AAA_DEV_SYNTHETIC_BANK.PAY_AGG_001.PAYA_AGG_DT_TRANSACTION_ANOMALIES
 GROUP BY DATE(BOOKING_DATE), DATE(VALUE_DATE), DATEDIFF(DAY, BOOKING_DATE, VALUE_DATE)
 ORDER BY BOOKING_DATE DESC, SETTLEMENT_DAYS DESC;
 
+-- =====================================================
+-- REPP_AGG_DT_LIFECYCLE_ANOMALIES - Lifecycle Event AML Correlation
+-- =====================================================
+-- BUSINESS PURPOSE: Cross-domain AML detection correlating customer lifecycle
+-- events with transaction anomalies for Suspicious Activity Report (SAR) generation.
+-- =====================================================
+
+-- Lifecycle event correlation with transaction anomalies for AML detection
+CREATE OR REPLACE DYNAMIC TABLE REPP_AGG_DT_LIFECYCLE_ANOMALIES(
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer full name',
+    LIFECYCLE_EVENT_ID VARCHAR(50) COMMENT 'Lifecycle event that triggered review',
+    EVENT_TYPE VARCHAR(30) COMMENT 'Type of lifecycle event',
+    EVENT_DATE DATE COMMENT 'Date of lifecycle event',
+    DAYS_DORMANT_BEFORE_EVENT NUMBER(10,0) COMMENT 'Days customer was dormant before event',
+    TRANSACTION_ID VARCHAR(50) COMMENT 'Suspicious transaction ID',
+    TRANSACTION_DATE DATE COMMENT 'Date of suspicious transaction',
+    TRANSACTION_AMOUNT DECIMAL(15,2) COMMENT 'Transaction amount',
+    ANOMALY_SCORE NUMBER(8,2) COMMENT 'Composite anomaly score from PAYA_AGG_DT_TRANSACTION_ANOMALIES',
+    ANOMALY_LEVEL VARCHAR(30) COMMENT 'Overall anomaly level (CRITICAL/HIGH/MODERATE)',
+    DAYS_BETWEEN_EVENT_AND_TRANSACTION NUMBER(10,0) COMMENT 'Days between lifecycle event and suspicious transaction',
+    AML_RISK_LEVEL VARCHAR(30) COMMENT 'AML risk assessment (CRITICAL/HIGH/MEDIUM/LOW)',
+    REQUIRES_SAR_FILING BOOLEAN COMMENT 'Flag indicating if Suspicious Activity Report required',
+    INVESTIGATION_STATUS VARCHAR(30) COMMENT 'Investigation status (OPEN/UNDER_REVIEW/CLEARED/SAR_FILED)',
+    LAST_UPDATED TIMESTAMP_NTZ COMMENT 'Timestamp when record was last refreshed'
+) COMMENT = 'Lifecycle event correlation with transaction anomalies for AML detection. Identifies suspicious patterns like dormant accounts suddenly active after reactivation events, address changes followed by high-value transfers, and employment changes with unusual transaction patterns. Used for SAR filing and compliance investigations.'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
+AS
+SELECT 
+    c.CUSTOMER_ID,
+    CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME) AS FULL_NAME,
+    
+    -- Lifecycle Event Details
+    e.EVENT_ID AS LIFECYCLE_EVENT_ID,
+    e.EVENT_TYPE,
+    e.EVENT_DATE,
+    
+    -- Calculate dormancy period
+    DATEDIFF(DAY, prev_txn.LAST_TXN_BEFORE_EVENT, e.EVENT_DATE) AS DAYS_DORMANT_BEFORE_EVENT,
+    
+    -- Transaction Anomaly Details
+    a.TRANSACTION_ID,
+    a.BOOKING_DATE::DATE AS TRANSACTION_DATE,
+    a.AMOUNT AS TRANSACTION_AMOUNT,
+    a.COMPOSITE_ANOMALY_SCORE AS ANOMALY_SCORE,
+    a.OVERALL_ANOMALY_CLASSIFICATION AS ANOMALY_LEVEL,
+    
+    -- Correlation Metrics
+    DATEDIFF(DAY, e.EVENT_DATE, a.BOOKING_DATE::DATE) AS DAYS_BETWEEN_EVENT_AND_TRANSACTION,
+    
+    -- AML Risk Assessment
+    CASE 
+        WHEN a.OVERALL_ANOMALY_CLASSIFICATION = 'CRITICAL' AND e.EVENT_TYPE IN ('REACTIVATION', 'ADDRESS_CHANGE') THEN 'CRITICAL'
+        WHEN a.OVERALL_ANOMALY_CLASSIFICATION IN ('CRITICAL', 'HIGH') AND DATEDIFF(DAY, prev_txn.LAST_TXN_BEFORE_EVENT, e.EVENT_DATE) > 180 THEN 'HIGH'
+        WHEN a.OVERALL_ANOMALY_CLASSIFICATION = 'HIGH' THEN 'MEDIUM'
+        ELSE 'LOW'
+    END AS AML_RISK_LEVEL,
+    
+    -- SAR Filing Flag
+    CASE 
+        WHEN a.OVERALL_ANOMALY_CLASSIFICATION = 'CRITICAL' 
+             AND e.EVENT_TYPE IN ('REACTIVATION', 'ADDRESS_CHANGE')
+             AND DATEDIFF(DAY, prev_txn.LAST_TXN_BEFORE_EVENT, e.EVENT_DATE) > 180 
+        THEN TRUE 
+        ELSE FALSE 
+    END AS REQUIRES_SAR_FILING,
+    
+    -- Investigation Status (default to OPEN for new cases)
+    'OPEN' AS INVESTIGATION_STATUS,
+    
+    CURRENT_TIMESTAMP() AS LAST_UPDATED
+
+FROM CRM_RAW_001.CRMI_CUSTOMER c
+
+-- Join lifecycle events (focus on high-risk event types)
+INNER JOIN CRM_RAW_001.CRMI_CUSTOMER_EVENT e
+    ON c.CUSTOMER_ID = e.CUSTOMER_ID
+    AND e.EVENT_TYPE IN ('REACTIVATION', 'ADDRESS_CHANGE', 'EMPLOYMENT_CHANGE')
+
+-- Join transaction anomalies (occurring shortly after lifecycle event)
+INNER JOIN PAY_AGG_001.PAYA_AGG_DT_TRANSACTION_ANOMALIES a
+    ON c.CUSTOMER_ID = a.CUSTOMER_ID
+    AND a.BOOKING_DATE::DATE BETWEEN e.EVENT_DATE AND DATEADD(DAY, 30, e.EVENT_DATE)
+    AND a.OVERALL_ANOMALY_CLASSIFICATION IN ('CRITICAL', 'HIGH')
+
+-- Calculate previous transaction activity before event
+LEFT JOIN LATERAL (
+    SELECT MAX(t.BOOKING_DATE::DATE) AS LAST_TXN_BEFORE_EVENT
+    FROM CRM_RAW_001.ACCI_ACCOUNTS acc
+    INNER JOIN PAY_RAW_001.PAYI_TRANSACTIONS t ON acc.ACCOUNT_ID = t.ACCOUNT_ID
+    WHERE acc.CUSTOMER_ID = c.CUSTOMER_ID
+    AND t.BOOKING_DATE::DATE < e.EVENT_DATE
+) prev_txn
+
+-- Filter to only cases where dormancy period exists
+WHERE DATEDIFF(DAY, prev_txn.LAST_TXN_BEFORE_EVENT, e.EVENT_DATE) > 30
+
+ORDER BY AML_RISK_LEVEL DESC, ANOMALY_SCORE DESC;
+
 --
 -- Customer and Transaction Analytics:
 -- SELECT * FROM REPP_AGG_DT_CUSTOMER_SUMMARY WHERE HAS_ANOMALY = TRUE;
@@ -428,6 +528,10 @@ ORDER BY BOOKING_DATE DESC, SETTLEMENT_DAYS DESC;
 -- Settlement Risk:
 -- SELECT * FROM REPP_AGG_DT_SETTLEMENT_ANALYSIS WHERE DELAYED_COUNT > 0 ORDER BY BOOKING_DATE DESC;
 --
+-- Lifecycle AML Correlation:
+-- SELECT * FROM REPP_AGG_DT_LIFECYCLE_ANOMALIES WHERE REQUIRES_SAR_FILING = TRUE ORDER BY AML_RISK_LEVEL DESC, ANOMALY_SCORE DESC;
+-- SELECT * FROM REPP_AGG_DT_LIFECYCLE_ANOMALIES WHERE EVENT_TYPE = 'REACTIVATION' AND DAYS_DORMANT_BEFORE_EVENT > 180;
+--
 -- For additional reporting tables, see:
 -- - 510_REPP_EQUITY.sql: Equity trading analytics
 -- - 520_REPP_CREDIT_RISK.sql: IRB credit risk analytics
@@ -440,5 +544,5 @@ ORDER BY BOOKING_DATE DESC, SETTLEMENT_DAYS DESC;
 -- ALTER DYNAMIC TABLE REPP_AGG_DT_CUSTOMER_SUMMARY REFRESH;
 --
 -- ============================================================
--- 500_REPP.sql - Core Reporting & Analytics completed!
+-- 500_REPP_core_reporting.sql - Core Reporting & Analytics completed!
 -- ============================================================

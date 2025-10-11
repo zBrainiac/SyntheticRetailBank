@@ -64,7 +64,7 @@ if [[ -z "$DATABASE" || -z "$CONNECTION_NAME" ]]; then
   echo "  --DATABASE=...        Target database name"
   echo "  --CONNECTION_NAME=... Snowflake connection name"
   echo "  --SQL_DIR=...         Path to SQL files (default: ./structure)"
-  echo "  --FILE=...            Test a single SQL file (e.g., 031_ICGI.sql)"
+  echo "  --FILE=...            Test a single SQL file (e.g., 031_ICGI_swift_messages.sql)"
   echo "  --DRY_RUN            Show what would be executed without running"
   exit 1
 fi

@@ -1,6 +1,6 @@
 -- ============================================================
 -- REP_AGG_001 Schema - Credit Risk & IRB Reporting
--- Created on: 2025-10-05 (Split from 500_REPP.sql)
+-- Created on: 2025-10-05 (Split from 500_REPP_core_reporting.sql)
 -- ============================================================
 --
 -- OVERVIEW:
@@ -41,7 +41,7 @@
 -- RELATED SCHEMAS:
 -- - CRM_AGG_001: Customer master data
 -- - PAY_AGG_001: Account balances and exposure
--- - 500_REPP.sql: Core reporting tables (anomaly analysis)
+-- - 500_REPP_core_reporting.sql: Core reporting tables (anomaly analysis)
 -- - 510_REPP_EQUITY.sql: Equity trading reporting
 -- - 530_REPP_PORTFOLIO.sql: Portfolio performance reporting
 -- ============================================================

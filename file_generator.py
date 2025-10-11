@@ -107,27 +107,21 @@ class FileGenerator:
         
         print(f"Generated {len(all_transactions)} total transactions")
         
-        # Generate daily files
+        # Generate daily files (optimized batch processing)
         print("\nGenerating daily transaction files...")
-        daily_files = []
-        current_date = self.config.start_date
-        transaction_count = 0
+        result = transaction_generator.save_all_daily_transactions_to_csv(str(self.payment_transactions_dir))
+        daily_files = result['files']
+        transaction_counts = result['counts']
         
-        while current_date <= self.config.end_date:
-            daily_transactions = transaction_generator.get_transactions_for_date(current_date)
-            
-            if daily_transactions:
-                filename = transaction_generator.save_daily_transactions_to_csv(
-                    current_date, str(self.payment_transactions_dir)
-                )
-                if filename:
-                    daily_files.append(filename)
-                    transaction_count += len(daily_transactions)
-                    print(f"  {current_date.strftime('%Y-%m-%d')}: {len(daily_transactions)} transactions")
-            
-            current_date += timedelta(days=1)
+        # Print sample of daily counts (first 12 days)
+        for date_str in sorted(list(transaction_counts.keys()))[:12]:
+            print(f"  {date_str}: {transaction_counts[date_str]} transactions")
         
-        print(f"\nGenerated {len(daily_files)} daily files with {transaction_count} transactions")
+        if len(transaction_counts) > 12:
+            print(f"  ... ({len(transaction_counts) - 12} more days)")
+        
+        transaction_count = sum(transaction_counts.values())
+        print(f"\n✅ Generated {len(daily_files)} daily files with {transaction_count} transactions")
         
         # Filter investment accounts for equity trading
         print("\nFiltering investment accounts for equity trading...")
@@ -244,7 +238,33 @@ class FileGenerator:
             f.write(f"  Total transactions: {len(transactions)}\n")
             f.write(f"  Anomalous transactions: {len(anomalous_transactions)} ({len(anomalous_transactions)/len(transactions)*100:.1f}%)\n")
             f.write(f"  FX rate records: {len(fx_rates)}\n")
-            f.write(f"  Daily files generated: {len(daily_files)}\n\n")
+            f.write(f"  Daily payment files: {len(daily_files)}\n")
+            f.write(f"  Equity trades: {equity_summary['total_trades']}\n")
+            
+            # Add additional generator counts to main summary
+            if additional_results:
+                if 'swift' in additional_results and additional_results['swift']:
+                    swift = additional_results['swift']
+                    f.write(f"  SWIFT message pairs: {swift.get('successful_pairs', 0)}\n")
+                if 'pep' in additional_results and additional_results['pep']:
+                    pep = additional_results['pep']
+                    f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
+                if 'mortgage' in additional_results and additional_results['mortgage']:
+                    mortgage = additional_results['mortgage']
+                    f.write(f"  Mortgage customers: {mortgage.get('total_customers', 0)}\n")
+                if 'address_updates' in additional_results and additional_results['address_updates']:
+                    addr = additional_results['address_updates']
+                    f.write(f"  Address update files: {addr.get('update_files', 0)}\n")
+                if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                    fi = additional_results['fixed_income']
+                    f.write(f"  Fixed income trades: {fi.get('total_trades', 0)}\n")
+                if 'commodities' in additional_results and additional_results['commodities']:
+                    comm = additional_results['commodities']
+                    f.write(f"  Commodity trades: {comm.get('total_trades', 0)}\n")
+                if 'lifecycle' in additional_results and additional_results['lifecycle']:
+                    f.write(f"  Customer lifecycle events: Generated\n")
+            
+            f.write("\n")
             
             f.write("ACCOUNT DISTRIBUTION:\n")
             for acc_type, count in account_types.items():
@@ -272,6 +292,47 @@ class FileGenerator:
             f.write(f"  Base currency: {equity_summary['base_currency']}\n")
             f.write(f"  Markets covered: {', '.join(equity_summary['markets'])}\n\n")
             
+            # Add detailed statistics for additional generators
+            if additional_results:
+                if 'swift' in additional_results and additional_results['swift']:
+                    swift = additional_results['swift']
+                    f.write("SWIFT MESSAGE STATISTICS:\n")
+                    f.write(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
+                    f.write(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
+                    f.write(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
+                    f.write(f"  SWIFT customers: {swift.get('swift_customers', 0)}\n")
+                    if swift.get('anomaly_customers_with_swift'):
+                        f.write(f"  Anomaly customers with SWIFT: {swift.get('anomaly_customers_with_swift', 0)}\n")
+                    f.write("\n")
+                
+                if 'pep' in additional_results and additional_results['pep']:
+                    pep = additional_results['pep']
+                    f.write("PEP DATA STATISTICS:\n")
+                    f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
+                    f.write(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
+                    f.write(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
+                    f.write("\n")
+                
+                if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                    fi = additional_results['fixed_income']
+                    f.write("FIXED INCOME STATISTICS:\n")
+                    f.write(f"  Total trades: {fi.get('total_trades', 0)}\n")
+                    f.write(f"  Bonds: {fi.get('bonds', 0)}, Swaps: {fi.get('swaps', 0)}\n")
+                    f.write(f"  Total Notional: {fi.get('currency', 'CHF')} {fi.get('total_notional', 0):,.2f}\n")
+                    f.write(f"  Files created: {fi.get('files_created', 0)}\n")
+                    f.write("\n")
+                
+                if 'commodities' in additional_results and additional_results['commodities']:
+                    comm = additional_results['commodities']
+                    f.write("COMMODITY STATISTICS:\n")
+                    f.write(f"  Total trades: {comm.get('total_trades', 0)}\n")
+                    types_str = ', '.join([f'{k}:{v}' for k, v in comm.get('trade_types', {}).items()])
+                    if types_str:
+                        f.write(f"  Types: {types_str}\n")
+                    f.write(f"  Total Value: {comm.get('currency', 'CHF')} {comm.get('total_value', 0):,.2f}\n")
+                    f.write(f"  Files created: {comm.get('files_created', 0)}\n")
+                    f.write("\n")
+            
             f.write("ANOMALOUS CUSTOMERS:\n")
             for customer in anomalous_customers:
                 f.write(f"  {customer.customer_id}: {customer.first_name} {customer.family_name}\n")
@@ -294,55 +355,64 @@ class FileGenerator:
             for trade_file in self.equity_trades_dir.glob("trades_*.csv"):
                 f.write(f"  {trade_file.name}\n")
             
-            f.write(f"\n📁 Reports (reports/):\n")
-            f.write(f"  generation_summary.txt\n")
             
-            # Add additional generator results if provided
+            # Add additional generator files if provided
             if additional_results:
-                f.write(f"\nADDITIONAL GENERATORS:\n")
-                
                 if 'swift' in additional_results and additional_results['swift']:
                     swift = additional_results['swift']
                     f.write(f"\n📁 SWIFT Messages (swift_messages/):\n")
-                    f.write(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
-                    f.write(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
-                    f.write(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
+                    swift_dir = self.output_dir / "swift_messages"
+                    if swift_dir.exists():
+                        swift_files = sorted(swift_dir.glob("*.xml"))[:10]  # Show first 10
+                        for swift_file in swift_files:
+                            f.write(f"  {swift_file.name}\n")
+                        total_files = len(list(swift_dir.glob("*.xml")))
+                        if total_files > 10:
+                            f.write(f"  ... ({total_files - 10} more files)\n")
                 
                 if 'pep' in additional_results and additional_results['pep']:
-                    pep = additional_results['pep']
                     f.write(f"\n📁 PEP Data (master_data/):\n")
-                    f.write(f"  PEP records: {pep.get('total_records', 0)}\n")
-                    f.write(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
-                    f.write(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
+                    f.write(f"  pep_data.csv\n")
                 
                 if 'mortgage' in additional_results and additional_results['mortgage']:
-                    mortgage = additional_results['mortgage']
                     f.write(f"\n📁 Mortgage Emails (emails/):\n")
-                    f.write(f"  Customers: {mortgage.get('customers', 0)}\n")
-                    f.write(f"  Total emails: {mortgage.get('total_emails', 0)} (3 types per customer)\n")
+                    email_dir = self.output_dir / "emails"
+                    if email_dir.exists():
+                        email_files = sorted(email_dir.glob("*.txt"))[:10]  # Show first 10
+                        for email_file in email_files:
+                            f.write(f"  {email_file.name}\n")
+                        total_files = len(list(email_dir.glob("*.txt")))
+                        if total_files > 10:
+                            f.write(f"  ... ({total_files - 10} more files)\n")
                 
                 if 'address_updates' in additional_results and additional_results['address_updates']:
-                    address = additional_results['address_updates']
                     f.write(f"\n📁 Address Updates (master_data/address_updates/):\n")
-                    f.write(f"  Update files: {address.get('files_generated', 0)}\n")
-                    f.write(f"  For SCD Type 2 processing\n")
+                    addr_dir = self.master_data_dir / "address_updates"
+                    if addr_dir.exists():
+                        for addr_file in sorted(addr_dir.glob("customer_addresses_*.csv")):
+                            f.write(f"  {addr_file.name}\n")
                 
                 if 'fixed_income' in additional_results and additional_results['fixed_income']:
-                    fixed_income = additional_results['fixed_income']
                     f.write(f"\n📁 Fixed Income Trades (fixed_income_trades/):\n")
-                    f.write(f"  Total trades: {fixed_income.get('total_trades', 0)}\n")
-                    f.write(f"  Bonds: {fixed_income.get('bonds', 0)}, Swaps: {fixed_income.get('swaps', 0)}\n")
-                    f.write(f"  Total Notional: CHF {fixed_income.get('total_notional_chf', 0):,.2f}\n")
-                    f.write(f"  Files created: {fixed_income.get('files_created', 0)} (one per trade date)\n")
+                    fi_dir = self.output_dir / "fixed_income_trades"
+                    if fi_dir.exists():
+                        for fi_file in sorted(fi_dir.glob("*.csv")):
+                            f.write(f"  {fi_file.name}\n")
                 
                 if 'commodity' in additional_results and additional_results['commodity']:
-                    commodity = additional_results['commodity']
                     f.write(f"\n📁 Commodity Trades (commodity_trades/):\n")
-                    f.write(f"  Total trades: {commodity.get('total_trades', 0)}\n")
-                    commodity_summary = ', '.join([f"{k}:{v}" for k, v in commodity.get('commodity_types', {}).items()])
-                    f.write(f"  Types: {commodity_summary}\n")
-                    f.write(f"  Total Value: CHF {commodity.get('total_value_chf', 0):,.2f}\n")
-                    f.write(f"  Files created: {commodity.get('files_created', 0)} (one per trade date)\n")
+                    comm_dir = self.output_dir / "commodity_trades"
+                    if comm_dir.exists():
+                        for comm_file in sorted(comm_dir.glob("*.csv")):
+                            f.write(f"  {comm_file.name}\n")
+                
+                if 'lifecycle' in additional_results and additional_results['lifecycle']:
+                    f.write(f"\n📁 Customer Lifecycle Events (master_data/):\n")
+                    f.write(f"  customer_events.csv\n")
+                    f.write(f"  customer_status.csv\n")
+            
+            f.write(f"\n📁 Reports (reports/):\n")
+            f.write(f"  generation_summary.txt\n")
             
             f.write(f"\n📁 Database Setup:\n")
             f.write(f"  Database schema definitions are managed in the structure/ directory\n")
@@ -350,6 +420,114 @@ class FileGenerator:
         
         print(f"Summary report saved to: {summary_file}")
         return str(summary_file)
+    
+    def update_summary_with_additional_results(self, additional_results: dict) -> None:
+        """Update the existing summary report with additional generator results"""
+        if not additional_results:
+            return
+        
+        summary_file = self.reports_dir / "generation_summary.txt"
+        if not summary_file.exists():
+            print("Warning: Summary file not found, cannot update")
+            return
+        
+        # Read the existing summary
+        with open(summary_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        # Find the line with "Equity trades:" and insert additional counts after it
+        equity_line_idx = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("Equity trades:"):
+                equity_line_idx = i
+                break
+        
+        if equity_line_idx is not None:
+            # Insert additional generator counts
+            insert_lines = []
+            if 'swift' in additional_results and additional_results['swift']:
+                swift = additional_results['swift']
+                insert_lines.append(f"  SWIFT message pairs: {swift.get('successful_pairs', 0)}\n")
+            if 'pep' in additional_results and additional_results['pep']:
+                pep = additional_results['pep']
+                insert_lines.append(f"  PEP records: {pep.get('total_records', 0)}\n")
+            if 'mortgage' in additional_results and additional_results['mortgage']:
+                mortgage = additional_results['mortgage']
+                insert_lines.append(f"  Mortgage customers: {mortgage.get('customers', 0)}\n")
+            if 'address_updates' in additional_results and additional_results['address_updates']:
+                addr = additional_results['address_updates']
+                insert_lines.append(f"  Address update files: {addr.get('files_generated', 0)}\n")
+            if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                fi = additional_results['fixed_income']
+                insert_lines.append(f"  Fixed income trades: {fi.get('total_trades', 0)}\n")
+            if 'commodity' in additional_results and additional_results['commodity']:
+                comm = additional_results['commodity']
+                insert_lines.append(f"  Commodity trades: {comm.get('total_trades', 0)}\n")
+            if 'lifecycle' in additional_results and additional_results['lifecycle']:
+                insert_lines.append(f"  Customer lifecycle events: Generated\n")
+            
+            # Insert the lines after equity trades line
+            lines = lines[:equity_line_idx+1] + insert_lines + lines[equity_line_idx+1:]
+        
+        # Find where to insert detailed statistics sections (after EQUITY TRADE STATISTICS section)
+        insert_idx = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("ANOMALOUS CUSTOMERS:"):
+                insert_idx = i
+                break
+        
+        if insert_idx is not None:
+            stat_lines = []
+            
+            # Add detailed statistics for each generator
+            if 'swift' in additional_results and additional_results['swift']:
+                swift = additional_results['swift']
+                stat_lines.append("SWIFT MESSAGE STATISTICS:\n")
+                stat_lines.append(f"  Message pairs: {swift.get('successful_pairs', 0)}\n")
+                stat_lines.append(f"  XML files: {swift.get('successful_pairs', 0) * 2}\n")
+                stat_lines.append(f"  Transaction volume: €{swift.get('total_volume', 0):,.2f}\n")
+                stat_lines.append(f"  SWIFT customers: {swift.get('summary', {}).get('configuration', {}).get('swift_customers', 0)}\n")
+                anomaly_count = swift.get('summary', {}).get('generation_stats', {}).get('anomaly_customers_with_swift', 0)
+                if anomaly_count:
+                    stat_lines.append(f"  Anomaly customers with SWIFT: {anomaly_count}\n")
+                stat_lines.append("\n")
+            
+            if 'pep' in additional_results and additional_results['pep']:
+                pep = additional_results['pep']
+                stat_lines.append("PEP DATA STATISTICS:\n")
+                stat_lines.append(f"  PEP records: {pep.get('total_records', 0)}\n")
+                stat_lines.append(f"  Risk levels: {', '.join([f'{k}:{v}' for k, v in pep.get('risk_levels', {}).items()])}\n")
+                stat_lines.append(f"  Categories: {', '.join([f'{k}:{v}' for k, v in pep.get('categories', {}).items()])}\n")
+                stat_lines.append("\n")
+            
+            if 'fixed_income' in additional_results and additional_results['fixed_income']:
+                fi = additional_results['fixed_income']
+                stat_lines.append("FIXED INCOME STATISTICS:\n")
+                stat_lines.append(f"  Total trades: {fi.get('total_trades', 0)}\n")
+                stat_lines.append(f"  Bonds: {fi.get('bonds', 0)}, Swaps: {fi.get('swaps', 0)}\n")
+                stat_lines.append(f"  Total Notional: CHF {fi.get('total_notional_chf', 0):,.2f}\n")
+                stat_lines.append(f"  Files created: {fi.get('files_created', 0)}\n")
+                stat_lines.append("\n")
+            
+            if 'commodity' in additional_results and additional_results['commodity']:
+                comm = additional_results['commodity']
+                stat_lines.append("COMMODITY STATISTICS:\n")
+                stat_lines.append(f"  Total trades: {comm.get('total_trades', 0)}\n")
+                types_str = ', '.join([f'{k}:{v}' for k, v in comm.get('commodity_types', {}).items()])
+                if types_str:
+                    stat_lines.append(f"  Types: {types_str}\n")
+                stat_lines.append(f"  Total Value: CHF {comm.get('total_value_chf', 0):,.2f}\n")
+                stat_lines.append(f"  Files created: {comm.get('files_created', 0)}\n")
+                stat_lines.append("\n")
+            
+            # Insert before ANOMALOUS CUSTOMERS
+            lines = lines[:insert_idx] + stat_lines + lines[insert_idx:]
+        
+        # Write updated summary
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        
+        print(f"✅ Summary report updated with additional generator results")
     
     def clean_output_directory(self) -> None:
         """Clean the output directory of previously generated files (selective cleaning)"""

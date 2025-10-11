@@ -55,7 +55,7 @@
 -- - CMD_RAW_001: Commodity trading data
 -- - CMD_AGG_001: Commodity position aggregation
 -- - CRM_AGG_001: Account master data
--- - 500_REPP.sql: Core reporting tables
+-- - 500_REPP_core_reporting.sql: Core reporting tables
 -- - 510_REPP_EQUITY.sql: Equity trading reporting
 -- - 520_REPP_CREDIT_RISK.sql: Credit risk reporting
 -- - 525_REPP_FRTB.sql: FRTB market risk reporting

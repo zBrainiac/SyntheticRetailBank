@@ -1,6 +1,6 @@
 -- ============================================================
 -- REP_AGG_001 Schema - Equity Trading Reporting & Analytics
--- Created on: 2025-10-05 (Split from 500_REPP.sql)
+-- Created on: 2025-10-05 (Split from 500_REPP_core_reporting.sql)
 -- ============================================================
 --
 -- OVERVIEW:
@@ -36,7 +36,7 @@
 -- - EQT_RAW_001: Source equity trading data
 -- - EQT_AGG_001: Equity aggregation layer (positions, analytics)
 -- - CRM_AGG_001: Customer and account master data
--- - 500_REPP.sql: Core reporting tables
+-- - 500_REPP_core_reporting.sql: Core reporting tables
 -- - 520_REPP_CREDIT_RISK.sql: Credit risk reporting
 -- - 530_REPP_PORTFOLIO.sql: Portfolio performance reporting
 -- ============================================================

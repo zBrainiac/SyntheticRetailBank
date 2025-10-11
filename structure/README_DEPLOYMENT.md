@@ -9,32 +9,35 @@ The DDL is organized by **business domain** to ensure a clear separation of conc
 
 ```
 structure/
-├── 000_database_setup.sql     # Database and warehouse creation
-├── 001_get_listings.sql       # Snowflake Data Exchange: Global Sanctions Data Setup
-├── 010_CRMI.sql               # CRM Raw: Customer Master Data & Exposed Person System
-├── 011_ACCI.sql               # CRM Raw: Account Master Data
-├── 020_REFI.sql               # REF Raw: FX Rates Reference Data
-├── 030_PAYI.sql               # PAY Raw: Payment Transactions
-├── 031_ICGI.sql               # PAY Raw: SWIFT ISO20022 Message Processing
-├── 040_EQTI.sql               # EQT Raw: Equity Trading
-├── 050_FIII.sql               # FII Raw: Fixed Income Trading (NEW)
-├── 055_CMDI.sql               # CMD Raw: Commodity Trading (NEW)
-├── 060_LOAI.sql               # LOA Raw: Loan & Document Processing
-├── 310_CRMA.sql               # CRM Agg: Customer Address Aggregation (SCD Type 2)
-├── 311_ACCA.sql               # CRM Agg: Account Aggregation Layer
-├── 330_PAYA.sql               # PAY Agg: Payment Anomaly Detection & Account Balances
-├── 331_ICGA.sql               # PAY Agg: SWIFT Message Aggregation
-├── 340_EQTA.sql               # EQT Agg: Equity Trading Aggregation & Analytics
-├── 350_FIIA.sql               # FII Agg: Fixed Income Aggregation & Analytics (NEW)
-├── 355_CMDA.sql               # CMD Agg: Commodity Aggregation & Analytics (NEW)
-├── 500_REPP.sql               # REP Agg: Core Reporting & Analytics
-├── 510_REPP_EQUITY.sql        # REP Agg: Equity Trading Reporting
-├── 520_REPP_CREDIT_RISK.sql   # REP Agg: Credit Risk & IRB Reporting
-├── 525_REPP_FRTB.sql          # REP Agg: FRTB Market Risk Reporting (NEW)
-├── 540_REPP_BCBS239.sql       # REP Agg: BCBS 239 Risk Data Aggregation & Reporting
-├── 600_REPP_PORTFOLIO.sql     # REP Agg: Portfolio Performance Reporting
-├── 700_semantic_view.sql      # Business-friendly semantic view
-└── README_DEPLOYMENT.md       # This deployment guide
+├── 000_database_setup.sql               # Database and warehouse creation
+├── 001_get_listings.sql                 # Snowflake Data Exchange: Global Sanctions Data Setup
+├── 002_SANC_sanction_data.sql          # Sanctions data integration
+├── 010_CRMI_customer_master.sql        # CRM Raw: Customer Master Data & Exposed Person System
+├── 011_ACCI_accounts.sql               # CRM Raw: Account Master Data
+├── 020_REFI_fx_rates.sql               # REF Raw: FX Rates Reference Data
+├── 030_PAYI_transactions.sql           # PAY Raw: Payment Transactions
+├── 031_ICGI_swift_messages.sql         # PAY Raw: SWIFT ISO20022 Message Processing
+├── 040_EQTI_equity_trades.sql          # EQT Raw: Equity Trading
+├── 050_FIII_fixed_income.sql           # FII Raw: Fixed Income Trading
+├── 055_CMDI_commodities.sql            # CMD Raw: Commodity Trading
+├── 060_LOAI_loans_documents.sql        # LOA Raw: Loan & Document Processing
+├── 310_CRMA_customer_360.sql           # CRM Agg: Customer 360° & Address History (SCD Type 2)
+├── 311_ACCA_accounts_agg.sql           # CRM Agg: Account Aggregation Layer
+├── 312_CRMA_LIFECYCLE.sql              # CRM Agg: Customer Lifecycle & Churn Prediction
+├── 320_REFA_fx_analytics.sql           # REF Agg: FX Rates Analytics & Volatility
+├── 330_PAYA_anomaly_detection.sql      # PAY Agg: Payment Anomaly Detection & Account Balances
+├── 331_ICGA_swift_lifecycle.sql        # PAY Agg: SWIFT Message Aggregation & Lifecycle
+├── 340_EQTA_equity_analytics.sql       # EQT Agg: Equity Trading Analytics & Portfolio
+├── 350_FIIA_fixed_income_analytics.sql # FII Agg: Fixed Income Analytics & Risk Metrics
+├── 355_CMDA_commodity_analytics.sql    # CMD Agg: Commodity Analytics & Delta Risk
+├── 500_REPP_core_reporting.sql         # REP Agg: Core Reporting & Analytics
+├── 510_REPP_equity_reporting.sql       # REP Agg: Equity Trading Reporting
+├── 520_REPP_credit_risk.sql            # REP Agg: Credit Risk & IRB Reporting
+├── 525_REPP_frtb_market_risk.sql       # REP Agg: FRTB Market Risk Capital Calculations
+├── 540_REPP_bcbs239_compliance.sql     # REP Agg: BCBS 239 Risk Data Aggregation
+├── 600_REPP_portfolio_performance.sql  # REP Agg: Portfolio Performance & TWR
+├── 700_semantic_view.sql               # Business-friendly semantic view
+└── README_DEPLOYMENT.md                # This deployment guide
 ```
 
 ## Object Prefix Matrix
@@ -118,30 +121,32 @@ structure/
 
 ```sql
 -- Execute second: Core customer data and compliance
-@010_CRMI.sql
+@010_CRMI_customer_master.sql
 ```
 
 **Objects Created:**
 - **Schema**: `CRM_RAW_001`
-- **Stages**: `CRMI_CUSTOMERS`, `CRMI_ADDRESSES`, `CRMI_EXPOSED_PERSON`
-- **File Formats**: `CRMI_FF_CUSTOMER_CSV`, `CRMI_FF_ADDRESS_CSV`, `CRMI_FF_EXPOSED_PERSON_CSV`
-- **Tables**: `CRMI_PARTY`, `CRMI_ADDRESSES`, `CRMI_EXPOSED_PERSON`
-- **Streams**: `CRMI_STREAM_CUSTOMER_FILES`, `CRMI_STREAM_ADDRESS_FILES`, `CRMI_STREAM_EXPOSED_PERSON_FILES`
-- **Tasks**: `CRMI_TASK_LOAD_CUSTOMERS`, `CRMI_TASK_LOAD_ADDRESSES`, `CRMI_TASK_LOAD_EXPOSED_PERSON`
+- **Stages**: `CRMI_CUSTOMERS`, `CRMI_ADDRESSES`, `CRMI_EXPOSED_PERSON`, `CRMI_CUSTOMER_EVENTS`
+- **File Formats**: `CRMI_FF_CUSTOMER_CSV`, `CRMI_FF_ADDRESS_CSV`, `CRMI_FF_EXPOSED_PERSON_CSV`, `CRMI_FF_CUSTOMER_EVENT_CSV`, `CRMI_FF_CUSTOMER_STATUS_CSV`
+- **Tables**: `CRMI_CUSTOMER`, `CRMI_ADDRESSES`, `CRMI_EXPOSED_PERSON`, `CRMI_CUSTOMER_EVENT`, `CRMI_CUSTOMER_STATUS`
+- **Streams**: `CRMI_STREAM_CUSTOMER_FILES`, `CRMI_STREAM_ADDRESS_FILES`, `CRMI_STREAM_EXPOSED_PERSON_FILES`, `CRMI_STREAM_CUSTOMER_EVENT_FILES`, `CRMI_STREAM_CUSTOMER_STATUS_FILES`
+- **Tasks**: `CRMI_TASK_LOAD_CUSTOMERS`, `CRMI_TASK_LOAD_ADDRESSES`, `CRMI_TASK_LOAD_EXPOSED_PERSON`, `CRMI_TASK_LOAD_CUSTOMER_EVENTS`, `CRMI_TASK_LOAD_CUSTOMER_STATUS`
 
 **Key Features:**
 - **Customer Master Data**: Core customer information (12 EMEA countries)
 - **REPORTING_CURRENCY**: Country-based currency assignment (EUR, GBP, NOK, SEK, DKK, PLN)
 - **SCD Type 2 Addresses**: Append-only base table with `INSERT_TIMESTAMP_UTC`
 - **Exposed Person Compliance**: Politically Exposed Persons for regulatory compliance
-- **Automated Loading**: Stream-triggered tasks with 1-hour schedule
+- **Customer Lifecycle Events**: Comprehensive event tracking (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)
+- **Customer Status History**: SCD Type 2 status tracking for lifecycle analytics
+- **Automated Loading**: Stream-triggered serverless tasks (1-hour schedule for master data, 5-minute for lifecycle events)
 
 ### 3. Account Master Data
 **Business Domain**: `CRM`
 
 ```sql
 -- Execute third: Account information
-@011_ACCI.sql
+@011_ACCI_accounts.sql
 ```
 
 **Objects Created:**
@@ -157,7 +162,7 @@ structure/
 
 ```sql
 -- Execute fourth: Foreign exchange rates
-@020_REFI.sql
+@020_REFI_fx_rates.sql
 ```
 
 **Objects Created:**
@@ -178,7 +183,7 @@ structure/
 
 ```sql
 -- Execute after raw layer: Enhanced FX rates with analytics
-@320_REFA.sql
+@320_REFA_fx_analytics.sql
 ```
 
 **Objects Created:**
@@ -195,7 +200,7 @@ structure/
 
 ```sql
 -- Execute fifth: Payment data
-@030_PAYI.sql
+@030_PAYI_transactions.sql
 ```
 
 **Objects Created:**
@@ -216,7 +221,7 @@ structure/
 
 ```sql
 -- Execute sixth: Trading data
-@040_EQTI.sql
+@040_EQTI_equity_trades.sql
 ```
 
 **Objects Created:**
@@ -232,7 +237,7 @@ structure/
 
 ```sql
 -- Execute seventh: Fixed income trades (bonds and swaps)
-@050_FIII.sql
+@050_FIII_fixed_income.sql
 ```
 
 **Objects Created:**
@@ -254,7 +259,7 @@ structure/
 
 ```sql
 -- Execute eighth: Commodity trades (energy, metals, agricultural)
-@055_CMDI.sql
+@055_CMDI_commodities.sql
 ```
 
 **Objects Created:**
@@ -277,7 +282,7 @@ structure/
 
 ```sql
 -- Execute fifth: SWIFT message processing (raw layer)
-@031_ICGI.sql
+@031_ICGI_swift_messages.sql
 ```
 
 **Objects Created:**
@@ -300,7 +305,7 @@ Execute after all raw layer schemas are deployed:
 ### 8. Customer Address Aggregation (SCD Type 2)
 ```sql
 -- Execute eighth: Customer address dimensional views
-@310_CRMA.sql
+@310_CRMA_customer_360.sql
 ```
 
 **Objects Created:**
@@ -308,18 +313,38 @@ Execute after all raw layer schemas are deployed:
 - **Dynamic Tables**: 
   - `CRMA_AGG_DT_ADDRESSES_CURRENT` - Latest address per customer
   - `CRMA_AGG_DT_ADDRESSES_HISTORY` - Full SCD Type 2 with VALID_FROM/VALID_TO
-  - `CRMA_AGG_DT_CUSTOMER` - Customer 360° view with Exposed Person fuzzy matching
+  - `CRMA_AGG_DT_CUSTOMER` - Customer 360° view with Exposed Person fuzzy matching and current status
 
 **Key Features:**
 - **SCD Type 2 Implementation**: Complete address history tracking
-- **Customer 360°**: Comprehensive customer view with master data, addresses, accounts
+- **Customer 360°**: Comprehensive customer view with master data, addresses, accounts, current status
 - **Exposed Person Matching**: Advanced `EDITDISTANCE` fuzzy matching for compliance
+- **Customer Status Integration**: Current status and status effective date from lifecycle tracking
 - **Real-Time Refresh**: 1-hour TARGET_LAG for operational queries
+
+### 8a. Customer Lifecycle Analytics
+```sql
+-- Execute after CRM aggregation: Customer lifecycle and churn prediction
+@312_CRMA_LIFECYCLE.sql
+```
+
+**Objects Created:**
+- **Schema**: `CRM_AGG_001`
+- **Dynamic Tables**: 
+  - `CRMA_AGG_DT_CUSTOMER_LIFECYCLE` - Comprehensive lifecycle metrics and churn prediction
+
+**Key Features:**
+- **Lifecycle Metrics**: Event counts, status tracking, days since last event
+- **Churn Prediction**: Calculated churn probability based on transaction patterns and dormancy
+- **Lifecycle Stages**: NEW, ACTIVE, MATURE, DECLINING, DORMANT, CHURNED
+- **Risk Indicators**: IS_DORMANT, IS_AT_RISK flags for proactive customer management
+- **Transaction Integration**: Combines lifecycle events with transaction activity for accurate risk assessment
+- **Real-Time Refresh**: 1-hour TARGET_LAG for near-real-time churn prediction
 
 ### 9. Account Aggregation Layer
 ```sql
 -- Execute ninth: Account master data aggregation
-@311_ACCA.sql
+@311_ACCA_accounts_agg.sql
 ```
 
 **Objects Created:**
@@ -334,7 +359,7 @@ Execute after all raw layer schemas are deployed:
 ### 10. Payment Anomaly Detection & Account Balances
 ```sql
 -- Execute tenth: Payment analytics and anomaly detection
-@330_PAYA.sql
+@330_PAYA_anomaly_detection.sql
 ```
 
 **Objects Created:**
@@ -352,7 +377,7 @@ Execute after all raw layer schemas are deployed:
 ### 11. SWIFT Message Aggregation
 ```sql
 -- Execute sixth: SWIFT message aggregation (PAY_AGG_001)
-@331_ICGA.sql
+@331_ICGA_swift_lifecycle.sql
 ```
 
 **Objects Created:**
@@ -365,7 +390,7 @@ Execute after all raw layer schemas are deployed:
 ### 12. Equity Trading Aggregation & Analytics
 ```sql
 -- Execute: Equity trading analytics
-@340_EQTA.sql
+@340_EQTA_equity_analytics.sql
 ```
 
 **Objects Created:**
@@ -385,7 +410,7 @@ Execute after all raw layer schemas are deployed:
 ### 13. Fixed Income Aggregation & Analytics (FRTB)
 ```sql
 -- Execute: Fixed income analytics
-@350_FIIA.sql
+@350_FIIA_fixed_income_analytics.sql
 ```
 
 **Objects Created:**
@@ -407,7 +432,7 @@ Execute after all raw layer schemas are deployed:
 ### 14. Commodity Aggregation & Analytics (FRTB)
 ```sql
 -- Execute: Commodity analytics
-@355_CMDA.sql
+@355_CMDA_commodity_analytics.sql
 ```
 
 **Objects Created:**
@@ -429,12 +454,12 @@ Execute after all raw layer schemas are deployed:
 ### 15. Core Reporting & Analytics
 ```sql
 -- Execute: Core reporting tables
-@500_REPP.sql
+@500_REPP_core_reporting.sql
 ```
 
 **Objects Created:**
 - **Schema**: `REP_AGG_001`
-- **Dynamic Tables** (9 core tables): 
+- **Dynamic Tables** (10 core tables): 
   - `REPP_AGG_DT_CUSTOMER_SUMMARY` - Comprehensive customer profiling with transaction statistics
   - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY` - Daily transaction volume and pattern analysis
   - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT` - Current foreign exchange exposure monitoring
@@ -443,17 +468,19 @@ Execute after all raw layer schemas are deployed:
   - `REPP_AGG_DT_ANOMALY_ANALYSIS` - Customer-level anomaly detection
   - `REPP_AGG_DT_HIGH_RISK_PATTERNS` - High-risk transaction pattern detection
   - `REPP_AGG_DT_SETTLEMENT_ANALYSIS` - Settlement timing analysis
+  - `REPP_AGG_DT_LIFECYCLE_ANOMALIES` - Lifecycle event correlation with transaction anomalies for AML detection
 
 **Key Features:**
 - **Customer Analytics**: 360° customer view with transaction profiling
 - **FX Risk Management**: Multi-dimensional currency exposure analysis
 - **Compliance Monitoring**: Anomaly detection and suspicious activity reporting
 - **Settlement Risk**: Liquidity and operational risk monitoring
+- **Lifecycle AML Correlation**: Cross-domain detection of suspicious patterns (e.g., dormant accounts reactivated followed by high-value transfers)
 
 ### 14. Equity Trading Reporting
 ```sql
 -- Execute: Equity trading reporting
-@510_REPP_EQUITY.sql
+@510_REPP_equity_reporting.sql
 ```
 
 **Objects Created:**
@@ -473,7 +500,7 @@ Execute after all raw layer schemas are deployed:
 ### 15. Credit Risk & IRB Reporting
 ```sql
 -- Execute: Credit risk and IRB analytics
-@520_REPP_CREDIT_RISK.sql
+@520_REPP_credit_risk.sql
 ```
 
 **Objects Created:**
@@ -495,7 +522,7 @@ Execute after all raw layer schemas are deployed:
 ### 22. Portfolio Performance Reporting
 ```sql
 -- Execute: Portfolio performance analytics
-@600_REPP_PORTFOLIO.sql
+@600_REPP_portfolio_performance.sql
 ```
 
 **Objects Created:**
@@ -514,13 +541,13 @@ Execute after all raw layer schemas are deployed:
 ### 19. FRTB Market Risk Reporting
 ```sql
 -- Execute: FRTB market risk capital calculations
-@525_REPP_FRTB.sql
+@525_REPP_frtb_market_risk.sql
 ```
 
 ### 20. BCBS 239 Risk Data Aggregation & Reporting
 ```sql
 -- Execute: BCBS 239 compliance reporting
-@540_REPP_BCBS239.sql
+@540_REPP_bcbs239_compliance.sql
 ```
 
 **Objects Created:**
@@ -606,7 +633,7 @@ Execute after all raw layer schemas are deployed:
 ### RAW LAYER (Data Ingestion)
 | Schema         | Purpose                          | Key Objects                                                    | Refresh Strategy       |
 |----------------|----------------------------------|----------------------------------------------------------------|------------------------|
-| `CRM_RAW_001`  | Customer Master & Exposed Person | CRMI_PARTY, CRMI_ADDRESSES, CRMI_EXPOSED_PERSON, ACCI_ACCOUNTS | Stream-triggered tasks |
+| `CRM_RAW_001`  | Customer Master & Lifecycle      | CRMI_CUSTOMER, CRMI_ADDRESSES, CRMI_EXPOSED_PERSON, CRMI_CUSTOMER_EVENT, CRMI_CUSTOMER_STATUS, ACCI_ACCOUNTS | Stream-triggered serverless tasks |
 | `REF_RAW_001`  | Reference Data                   | REFI_FX_RATES                                                  | Stream-triggered tasks |
 | `PAY_RAW_001`  | Payment Transactions & SWIFT     | PAYI_TRANSACTIONS, ICGI_RAW_SWIFT_MESSAGES                     | Stream-triggered tasks |
 | `EQT_RAW_001`  | Equity Trading                   | EQTI_TRADES                                                    | Stream-triggered tasks |
@@ -616,13 +643,13 @@ Execute after all raw layer schemas are deployed:
 ### AGGREGATION LAYER (Business Logic)
 | Schema         | Purpose                  | Key Objects                                            | Refresh Strategy      |
 |----------------|--------------------------|--------------------------------------------------------|-----------------------|
-| `CRM_AGG_001`  | Customer Analytics       | Address SCD Type 2, Customer 360°, Account aggregation | 1-hour dynamic tables |
+| `CRM_AGG_001`  | Customer Analytics & Lifecycle | Address SCD Type 2, Customer 360°, Account aggregation, Lifecycle metrics, Churn prediction | 1-hour dynamic tables |
 | `REF_AGG_001`  | Reference Analytics      | FX rates with analytics and volatility metrics         | 1-hour dynamic tables |
 | `PAY_AGG_001`  | Payment Analytics        | Anomaly detection, Account balances, SWIFT processing  | 1-hour dynamic tables |
 | `EQT_AGG_001`  | Equity Trading Analytics | Portfolio positions, Trade summary, Customer activity  | 1-hour dynamic tables |
 | `FII_AGG_001`  | Fixed Income Analytics   | Duration/DV01, Credit exposure, Yield curve            | 1-hour dynamic tables |
 | `CMD_AGG_001`  | Commodity Analytics      | Delta exposure, Volatility, Delivery schedule          | 1-hour dynamic tables |
-| `REP_AGG_001`  | Reporting & FRTB & BCBS239| Cross-domain reporting, FRTB capital calculations, BCBS 239 compliance | 1-hour dynamic tables |
+| `REP_AGG_001`  | Reporting & FRTB & BCBS239| Cross-domain reporting, Lifecycle AML correlation, FRTB capital, BCBS 239 compliance | 1-hour dynamic tables |
 
 ##  Advanced Features
 
@@ -657,10 +684,21 @@ Execute after all raw layer schemas are deployed:
 - **Fuzzy Matching**: Advanced name matching for compliance screening
 
 ### Customer 360° View
-- **Comprehensive Data**: Master data + current address + account summary + Exposed Person matching
+- **Comprehensive Data**: Master data + current address + current status + account summary + Exposed Person matching
 - **Fuzzy Exposed Person Matching**: `EDITDISTANCE` functions for similar name detection
 - **Risk Assessment**: Automated Exposed Person risk level calculation
 - **Compliance Flags**: High-risk customer identification
+- **Lifecycle Integration**: Current status and status effective date for operational decision-making
+
+### Customer Lifecycle Management
+- **Event Tracking**: 7 event types (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)
+- **Status History**: SCD Type 2 tracking with IS_CURRENT flags for regulatory reporting
+- **Churn Prediction**: Calculated churn probability based on transaction patterns and dormancy (>180 days)
+- **Lifecycle Stages**: NEW, ACTIVE, MATURE, DECLINING, DORMANT, CHURNED
+- **Risk Indicators**: IS_DORMANT and IS_AT_RISK flags for proactive retention campaigns
+- **AML Correlation**: Cross-domain detection linking lifecycle events with transaction anomalies
+- **JSON Event Details**: Structured event metadata stored as VARIANT (single quotes in CSV, converted to valid JSON)
+- **Near-Real-Time Processing**: 5-minute task schedule for lifecycle events and status updates
 
 ### SWIFT Message Processing
 - **ISO20022 Support**: PACS.008 (payment initiation) and PACS.002 (payment status)
@@ -671,7 +709,7 @@ Execute after all raw layer schemas are deployed:
 ## Object Naming Standards
 
 ### Consistent Naming Convention
-- **Raw Tables**: `{DOMAIN}I_{OBJECT}` (e.g., `CRMI_PARTY`, `PAYI_TRANSACTIONS`)
+- **Raw Tables**: `{DOMAIN}I_{OBJECT}` (e.g., `CRMI_CUSTOMER`, `PAYI_TRANSACTIONS`)
 - **Aggregation Tables**: `{DOMAIN}A_AGG_DT_{OBJECT}` (e.g., `ICGA_AGG_DT_SWIFT_PACS008`)
 - **Dynamic Tables**: `{SCHEMA}_DT_{PURPOSE}` (e.g., `CRMA_AGG_DT_ADDRESSES_CURRENT`)
 - **Stages**: `{DOMAIN}I_{OBJECT}` (e.g., `CRMI_CUSTOMERS`)
@@ -713,101 +751,30 @@ To change warehouse:
 - **Pattern Matching**: Specific file patterns for each data type
 - **Comprehensive Logging**: Built-in Snowflake task logging
 
-## Verification
-
-### Post-Deployment Checks
-```sql
--- Verify database and schemas
-SHOW DATABASES LIKE 'AAA_DEV_SYNTHETIC_BANK';
-SHOW SCHEMAS IN DATABASE AAA_DEV_SYNTHETIC_BANK;
-
--- Check core tables
-SHOW TABLES IN SCHEMA AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001;
-SHOW TABLES IN SCHEMA AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001;
-
--- Verify dynamic tables
-SHOW DYNAMIC TABLES IN SCHEMA AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001;
-SHOW DYNAMIC TABLES IN SCHEMA AAA_DEV_SYNTHETIC_BANK.REP_AGG_001;
-
--- Check task status
-SHOW TASKS IN DATABASE AAA_DEV_SYNTHETIC_BANK;
-SELECT NAME, STATE, SCHEDULE FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
-
--- Verify streams
-SHOW STREAMS IN DATABASE AAA_DEV_SYNTHETIC_BANK;
-```
-
-### Sample Queries
-```sql
--- Customer 360 view with Exposed Person matching
-SELECT * FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_CUSTOMER 
-WHERE PEP_MATCH_TYPE != 'NO_MATCH' LIMIT 10;
-
--- Current addresses
-SELECT * FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_CURRENT LIMIT 10;
-
--- Address history for specific customer
-SELECT * FROM AAA_DEV_SYNTHETIC_BANK.CRM_AGG_001.CRMA_AGG_DT_ADDRESSES_HISTORY 
-WHERE CUSTOMER_ID = 'CUST_00001' ORDER BY VALID_FROM;
-
--- BCBS 239 Executive Risk Dashboard
-SELECT 
-    TOTAL_EXPOSURE_CHF,
-    TOTAL_CAPITAL_REQUIREMENT_CHF,
-    CAPITAL_RATIO_PERCENT,
-    BASEL_III_COMPLIANCE_STATUS,
-    DATA_COMPLETENESS_PERCENT
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD;
-
--- BCBS 239 Risk Concentration Analysis
-SELECT 
-    CUSTOMER_ID,
-    RISK_TYPE,
-    TOTAL_EXPOSURE_CHF,
-    EXPOSURE_PERCENT_OF_PORTFOLIO,
-    RISK_CONCENTRATION_FLAG
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_RISK_CONCENTRATION
-WHERE RISK_CONCENTRATION_FLAG != 'LOW_CONCENTRATION'
-ORDER BY EXPOSURE_PERCENT_OF_PORTFOLIO DESC;
-
--- BCBS 239 Data Quality Metrics
-SELECT 
-    DATA_SOURCE,
-    DATA_TYPE,
-    COMPLETENESS_PERCENT,
-    ACCURACY_SCORE,
-    OVERALL_QUALITY_SCORE,
-    QUALITY_GRADE
-FROM AAA_DEV_SYNTHETIC_BANK.REP_AGG_001.REPP_AGG_DT_BCBS239_DATA_QUALITY
-ORDER BY OVERALL_QUALITY_SCORE DESC;
-```
 
 ## Data Loading
 
-### File Upload Process
-```sql
--- Upload customer master data
-PUT file://path/to/customers.csv @AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001.CRMI_CUSTOMERS;
+### Automated File Upload Process
 
--- Upload address data (base + updates)
-PUT file://path/to/customer_addresses.csv @AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001.CRMI_ADDRESSES;
-PUT file://path/to/address_updates/*.csv @AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001.CRMI_ADDRESSES;
+Use the automated upload script for seamless data loading:
 
--- Upload Exposed Person data
-PUT file://path/to/exposed_person_data.csv @AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001.CRMI_EXPOSED_PERSON;
+```bash
+# Execute the automated upload script
+./upload-data.sh --CONNECTION_NAME=<my-sf-connection>
 
--- Upload accounts
-PUT file://path/to/accounts.csv @AAA_DEV_SYNTHETIC_BANK.CRM_RAW_001.ACCI_ACCOUNTS;
-
--- Upload transaction files
-PUT file://path/to/pay_transactions_*.csv @AAA_DEV_SYNTHETIC_BANK.PAY_RAW_001.PAYI_TRANSACTIONS;
-
--- Upload equity trades
-PUT file://path/to/trades_*.csv @AAA_DEV_SYNTHETIC_BANK.EQT_RAW_001.EQTI_TRADES;
-
--- Upload SWIFT messages
-PUT file://path/to/*.xml @AAA_DEV_SYNTHETIC_BANK.ICGI_RAW_001.ICGI_RAW_SWIFT_INBOUND_DEV;
+# Or run in dry-run mode to preview the uploads
+./upload-data.sh --CONNECTION_NAME=<my-sf-connection> --DRY_RUN
 ```
+
+**Features:**
+- Uploads all generated data to appropriate Snowflake stages
+- Handles customer master data, addresses, lifecycle events, PEP data
+- Uploads payment transactions, SWIFT messages, equity/fixed income/commodity trades
+- Includes loan documents (emails and PDFs)
+- Progress tracking and error handling
+- Automatic stage detection and file validation
+
+**See:** `../upload-data.sh` for complete upload automation and stage mappings
 
 ### Automated Processing
 1. **Streams detect** new files automatically
