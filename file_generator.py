@@ -408,7 +408,7 @@ class FileGenerator:
                 
                 if 'lifecycle' in additional_results and additional_results['lifecycle']:
                     f.write(f"\n📁 Customer Lifecycle Events (master_data/):\n")
-                    f.write(f"  customer_events.csv\n")
+                    f.write(f"  customer_events/ (date-based files)\n")
                     f.write(f"  customer_status.csv\n")
             
             f.write(f"\n📁 Reports (reports/):\n")

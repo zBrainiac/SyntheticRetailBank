@@ -23,6 +23,7 @@ from swift_generator import SWIFTGenerator
 from pep_generator import PEPGenerator
 from mortgage_email_generator import MortgageEmailGenerator
 from address_update_generator import AddressUpdateGenerator
+from customer_update_generator import CustomerUpdateGenerator
 from fixed_income_generator import FixedIncomeTradeGenerator
 from commodity_generator import CommodityTradeGenerator
 from customer_lifecycle_generator import CustomerLifecycleGenerator
@@ -285,6 +286,26 @@ Examples:
         "--generate-lifecycle",
         action="store_true",
         help="Generate customer lifecycle events and status history"
+    )
+    
+    # Customer update generation options
+    parser.add_argument(
+        "--generate-customer-updates",
+        action="store_true",
+        help="Generate customer update files for SCD Type 2 processing"
+    )
+    
+    parser.add_argument(
+        "--customer-update-files",
+        type=int,
+        default=8,
+        help="Number of customer update files to generate (default: 8)"
+    )
+    
+    parser.add_argument(
+        "--generate-customer-snapshot",
+        action="store_true",
+        help="Generate initial customer snapshot with extended attributes"
     )
     
     return parser.parse_args()
@@ -555,6 +576,49 @@ def main():
                     import traceback
                     traceback.print_exc()
         
+        # Generate customer updates if requested
+        customer_update_results = None
+        if args.generate_customer_updates or args.generate_customer_snapshot:
+            try:
+                print("\n" + "=" * 80)
+                print("CUSTOMER UPDATE GENERATION FOR SCD TYPE 2")
+                print("=" * 80)
+                
+                # Initialize customer update generator
+                customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
+                output_dir = str(Path(config.output_directory) / "master_data")
+                
+                customer_update_generator = CustomerUpdateGenerator(customer_file_path, output_dir)
+                
+                snapshot_file = None
+                generated_files = []
+                
+                # Generate initial snapshot if requested
+                if args.generate_customer_snapshot:
+                    snapshot_file = customer_update_generator.generate_initial_customer_snapshot()
+                    print(f"📸 Initial customer snapshot created")
+                
+                # Generate update files if requested
+                if args.generate_customer_updates:
+                    generated_files = customer_update_generator.generate_customer_updates(
+                        num_update_files=args.customer_update_files
+                    )
+                    print(f"✅ Generated {len(generated_files)} customer update files")
+                
+                customer_update_results = {
+                    'snapshot_file': snapshot_file,
+                    'update_files_generated': len(generated_files),
+                    'update_file_paths': generated_files
+                }
+                
+                print(f"📁 Customer updates directory: {Path(output_dir) / 'customer_updates'}")
+                
+            except Exception as e:
+                print(f"\n❌ Customer update generation failed: {str(e)}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+        
         # Generate fixed income trades if requested
         fixed_income_results = None
         if args.generate_fixed_income:
@@ -764,12 +828,19 @@ def main():
                 # Initialize lifecycle event generator
                 customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
                 address_updates_dir = str(Path(config.output_directory) / "master_data" / "address_updates")
+                customer_updates_dir = str(Path(config.output_directory) / "master_data" / "customer_updates")
                 output_dir = str(Path(config.output_directory) / "master_data")
+                
+                # Check if customer updates directory exists, otherwise set to None
+                if not Path(customer_updates_dir).exists():
+                    print(f"⚠️  Customer updates directory not found, will use only address updates and random events")
+                    customer_updates_dir = None
                 
                 lifecycle_generator = CustomerLifecycleGenerator(
                     customer_file=customer_file_path,
                     address_updates_dir=address_updates_dir,
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    customer_updates_dir=customer_updates_dir
                 )
                 
                 # Generate all lifecycle events
@@ -778,12 +849,12 @@ def main():
                 # Create results summary
                 lifecycle_results = {
                     'output_dir': output_dir,
-                    'events_file': str(Path(output_dir) / 'customer_events.csv'),
+                    'events_dir': str(Path(output_dir) / 'customer_events'),
                     'status_file': str(Path(output_dir) / 'customer_status.csv')
                 }
                 
                 print(f"✅ Customer lifecycle events generated successfully")
-                print(f"📁 Events file: {lifecycle_results['events_file']}")
+                print(f"📁 Events directory: {lifecycle_results['events_dir']}")
                 print(f"📁 Status file: {lifecycle_results['status_file']}")
                 
             except Exception as e:
@@ -798,6 +869,7 @@ def main():
             'pep': pep_results,
             'mortgage': mortgage_results,
             'address_updates': address_update_results,
+            'customer_updates': customer_update_results,
             'fixed_income': fixed_income_results,
             'commodity': commodity_results,
             'lifecycle': lifecycle_results
@@ -859,6 +931,18 @@ def main():
         else:
             print(f"⏭️  Address update generation: SKIPPED (use --generate-address-updates to enable)")
         
+        if (args.generate_customer_updates or args.generate_customer_snapshot) and customer_update_results:
+            print(f"✅ Customer update generation: SUCCESS")
+            if customer_update_results.get('snapshot_file'):
+                print(f"   - Initial snapshot: customer_snapshot_initial.csv")
+            if customer_update_results.get('update_files_generated', 0) > 0:
+                print(f"   - Update files: {customer_update_results['update_files_generated']}")
+            print(f"   - For SCD Type 2 processing")
+        elif args.generate_customer_updates or args.generate_customer_snapshot:
+            print(f"❌ Customer update generation: FAILED")
+        else:
+            print(f"⏭️  Customer update generation: SKIPPED (use --generate-customer-updates to enable)")
+        
         if args.generate_fixed_income and fixed_income_results:
             print(f"✅ Fixed income generation: SUCCESS")
             print(f"   - Total trades: {fixed_income_results['total_trades']}")
@@ -884,7 +968,7 @@ def main():
         
         if args.generate_lifecycle and lifecycle_results:
             print(f"✅ Customer lifecycle generation: SUCCESS")
-            print(f"   - Events file: customer_events.csv")
+            print(f"   - Events: customer_events/ (date-based files)")
             print(f"   - Status file: customer_status.csv")
             print(f"   - For churn prediction and lifecycle analytics")
         elif args.generate_lifecycle:

@@ -111,14 +111,14 @@ CREATE OR REPLACE TABLE ACCI_ACCOUNTS (
     STATUS VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'Account status (ACTIVE, INACTIVE, CLOSED, SUSPENDED)',
 
     -- Constraints
-    CONSTRAINT PK_ACCI_ACCOUNTS PRIMARY KEY (ACCOUNT_ID),
-    CONSTRAINT FK_ACCI_ACCOUNTS_CUSTOMER FOREIGN KEY (CUSTOMER_ID) REFERENCES CRM_RAW_001.CRMI_CUSTOMER (CUSTOMER_ID)
+    CONSTRAINT PK_ACCI_ACCOUNTS PRIMARY KEY (ACCOUNT_ID)
+    -- FK to CRMI_CUSTOMER removed due to SCD Type 2 composite PK
     -- CHECK constraints not supported in Snowflake - replaced with comments for documentation
     -- CHK_ACCOUNT_TYPE: ACCOUNT_TYPE should be in ('CHECKING', 'SAVINGS', 'BUSINESS', 'INVESTMENT')
     -- CHK_BASE_CURRENCY: BASE_CURRENCY should be in ('EUR', 'GBP', 'USD', 'CHF', 'NOK', 'SEK', 'DKK')
     -- CHK_STATUS: STATUS should be in ('ACTIVE', 'INACTIVE', 'CLOSED', 'SUSPENDED')
 )
-COMMENT = 'Account master data table supporting multi-currency retail banking operations. Each customer can have multiple accounts of different types. Investment accounts are used for equity trading settlement.';
+COMMENT = 'Account master data table supporting multi-currency retail banking operations. Each customer can have multiple accounts of different types. Investment accounts are used for equity trading settlement. FK to CRMI_CUSTOMER removed due to SCD Type 2 composite PK.';
 
 -- ============================================================
 -- CHANGE DETECTION STREAMS - File Monitoring

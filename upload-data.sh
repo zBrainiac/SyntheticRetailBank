@@ -208,6 +208,14 @@ upload_single_files \
     "Customer Address Updates (SCD Type 2)" \
     "customer_addresses_*.csv"
 
+# Customer attribute updates (SCD Type 2 - employment, account tier, etc.)
+upload_single_files \
+    "$GENERATED_DATA_DIR/master_data/customer_updates" \
+    "CRMI_CUSTOMERS" \
+    "CRM_RAW_001" \
+    "Customer Attribute Updates (SCD Type 2)" \
+    "customer_updates_*.csv"
+
 # Exposed Person compliance data
 upload_to_stage \
     "$GENERATED_DATA_DIR/master_data/pep_data.csv" \
@@ -215,12 +223,13 @@ upload_to_stage \
     "CRM_RAW_001" \
     "Exposed Person Compliance Data"
 
-# Customer lifecycle events
-upload_to_stage \
-    "$GENERATED_DATA_DIR/master_data/customer_events.csv" \
+# Customer lifecycle events (date-based files)
+upload_single_files \
+    "$GENERATED_DATA_DIR/master_data/customer_events" \
     "CRMI_CUSTOMER_EVENTS" \
     "CRM_RAW_001" \
-    "Customer Lifecycle Events"
+    "Customer Lifecycle Events (by date)" \
+    "customer_events_*.csv"
 
 # Customer status history
 upload_to_stage \

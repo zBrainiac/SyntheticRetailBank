@@ -1,29 +1,36 @@
 -- ============================================================
--- CRM_AGG_001 Schema - Customer Address Aggregation & SCD Type 2 Views
--- Generated on: 2025-09-27 (Updated)
+-- CRM_AGG_001 Schema - Customer & Address Aggregation with SCD Type 2 Views
+-- Generated on: 2025-09-27 (Updated: 2025-10-26)
 -- ============================================================
 --
 -- OVERVIEW:
 -- This schema provides aggregated views and Slowly Changing Dimension (SCD) Type 2
--- processing for customer address data. It transforms the append-only base table
--- from CRM_RAW_001.CRMI_ADDRESSES into business-ready dimensional views.
+-- processing for customer master data and address data. It transforms the append-only 
+-- base tables from CRM_RAW_001 into business-ready dimensional views with current
+-- and historical tracking capabilities.
 --
 -- BUSINESS PURPOSE:
--- - Current address lookup for operational systems
+-- - Current customer attribute lookup for operational systems (account tier, employment, etc.)
+-- - Current address lookup for correspondence and compliance
+-- - Historical tracking of customer attribute changes (SCD Type 2)
 -- - Historical address tracking for compliance and analytics
--- - Point-in-time address queries for regulatory reporting
--- - Address change audit trails for customer service
+-- - Point-in-time queries for regulatory reporting
+-- - Audit trails for customer service and compliance reviews
 --
 -- SCD TYPE 2 IMPLEMENTATION:
--- The base table (CRMI_ADDRESSES) uses an append-only structure where each
--- address change creates a new record with INSERT_TIMESTAMP_UTC. Dynamic tables
--- automatically convert this into proper SCD Type 2 with VALID_FROM/VALID_TO ranges.
+-- Both CRMI_CUSTOMER and CRMI_ADDRESSES use append-only structures where each
+-- change creates a new record with INSERT_TIMESTAMP_UTC. Dynamic tables automatically
+-- convert these into proper SCD Type 2 with VALID_FROM/VALID_TO ranges.
+-- - CRMI_CUSTOMER: Tracks changes to employment, account tier, contact info, risk profile
+-- - CRMI_ADDRESSES: Tracks address changes for compliance and correspondence
 --
 -- OBJECTS CREATED:
--- ┌─ DYNAMIC TABLES (3):
+-- ┌─ DYNAMIC TABLES (5):
 -- │  ├─ CRMA_AGG_DT_ADDRESSES_CURRENT  - Latest address per customer (operational)
--- │  ├─ CRMA_AGG_DT_ADDRESSES_HISTORY  - Full SCD Type 2 history (analytical)
--- │  └─ CRMA_AGG_DT_CUSTOMER           - Comprehensive customer view with Exposed Person matching
+-- │  ├─ CRMA_AGG_DT_ADDRESSES_HISTORY  - Full SCD Type 2 address history (analytical)
+-- │  ├─ CRMA_AGG_DT_CUSTOMER_CURRENT   - Latest customer attributes per customer (operational)
+-- │  ├─ CRMA_AGG_DT_CUSTOMER_HISTORY   - Full SCD Type 2 customer attribute history (analytical)
+-- │  └─ CRMA_AGG_DT_CUSTOMER_360       - Comprehensive 360° customer view with PEP/Sanctions matching
 -- │
 -- └─ REFRESH STRATEGY:
 --    ├─ TARGET_LAG: 1 hour (consistent with system schedule)
@@ -36,8 +43,14 @@
 -- CRMA_AGG_DT_ADDRESSES_CURRENT (latest addresses)
 --     ↓
 -- CRMA_AGG_DT_ADDRESSES_HISTORY (full SCD Type 2)
+--
+-- CRM_RAW_001.CRMI_CUSTOMER (append-only base with SCD Type 2)
 --     ↓
--- CRMA_AGG_DT_CUSTOMER (comprehensive view with Exposed Person matching)
+-- CRMA_AGG_DT_CUSTOMER_CURRENT (latest customer attributes)
+--     ↓
+-- CRMA_AGG_DT_CUSTOMER_HISTORY (full SCD Type 2)
+--     ↓
+-- CRMA_AGG_DT_CUSTOMER_360 (comprehensive 360° view with PEP/Sanctions matching)
 --
 -- SUPPORTED COUNTRIES:
 -- Norway, Netherlands, Sweden, Germany, France, Italy, United Kingdom,
@@ -147,7 +160,151 @@ FROM CRM_RAW_001.CRMI_ADDRESSES
 ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
 
 -- ============================================================
--- CRMA_AGG_DT_CUSTOMER - Comprehensive Customer View with PEP Matching & Accuracy Scoring
+-- CRMA_AGG_DT_CUSTOMER_CURRENT - Current Customer Attributes (Operational)
+-- ============================================================
+-- Operational view providing the most recent customer record with all attributes.
+-- Used by front-end applications, customer service, and real-time processing.
+-- Optimized for fast lookups with one record per customer.
+
+CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER_CURRENT(
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for lookup (CUST_XXXXX format)',
+    FIRST_NAME VARCHAR(100) COMMENT 'Customer first name',
+    FAMILY_NAME VARCHAR(100) COMMENT 'Customer family/last name',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer full name (First + Last)',
+    DATE_OF_BIRTH DATE COMMENT 'Customer date of birth',
+    ONBOARDING_DATE DATE COMMENT 'Date when customer relationship was established',
+    REPORTING_CURRENCY VARCHAR(3) COMMENT 'Customer reporting currency',
+    HAS_ANOMALY BOOLEAN COMMENT 'Flag for anomalous transaction patterns',
+    EMPLOYER VARCHAR(200) COMMENT 'Current employer',
+    POSITION VARCHAR(100) COMMENT 'Current job position/title',
+    EMPLOYMENT_TYPE VARCHAR(30) COMMENT 'Current employment type',
+    INCOME_RANGE VARCHAR(30) COMMENT 'Current income range bracket',
+    ACCOUNT_TIER VARCHAR(30) COMMENT 'Current account tier',
+    EMAIL VARCHAR(255) COMMENT 'Customer email address',
+    PHONE VARCHAR(50) COMMENT 'Customer phone number',
+    PREFERRED_CONTACT_METHOD VARCHAR(20) COMMENT 'Preferred contact method',
+    RISK_CLASSIFICATION VARCHAR(20) COMMENT 'Risk classification',
+    CREDIT_SCORE_BAND VARCHAR(20) COMMENT 'Credit score band',
+    CURRENT_FROM TIMESTAMP_NTZ COMMENT 'Date when these attributes became current/effective',
+    IS_CURRENT BOOLEAN COMMENT 'Boolean flag indicating this is the current record (always TRUE)'
+) COMMENT = 'Current/latest customer attributes for each customer. Operational view with one record per customer showing the most recent state based on INSERT_TIMESTAMP_UTC. Used for real-time customer lookups and front-end applications.'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
+AS
+SELECT 
+    CUSTOMER_ID,
+    FIRST_NAME,
+    FAMILY_NAME,
+    CONCAT(FIRST_NAME, ' ', FAMILY_NAME) AS FULL_NAME,
+    DATE_OF_BIRTH,
+    ONBOARDING_DATE,
+    REPORTING_CURRENCY,
+    HAS_ANOMALY,
+    EMPLOYER,
+    POSITION,
+    EMPLOYMENT_TYPE,
+    INCOME_RANGE,
+    ACCOUNT_TIER,
+    EMAIL,
+    PHONE,
+    PREFERRED_CONTACT_METHOD,
+    RISK_CLASSIFICATION,
+    CREDIT_SCORE_BAND,
+    INSERT_TIMESTAMP_UTC AS CURRENT_FROM,
+    TRUE AS IS_CURRENT
+FROM (
+    SELECT 
+        CUSTOMER_ID,
+        FIRST_NAME,
+        FAMILY_NAME,
+        DATE_OF_BIRTH,
+        ONBOARDING_DATE,
+        REPORTING_CURRENCY,
+        HAS_ANOMALY,
+        EMPLOYER,
+        POSITION,
+        EMPLOYMENT_TYPE,
+        INCOME_RANGE,
+        ACCOUNT_TIER,
+        EMAIL,
+        PHONE,
+        PREFERRED_CONTACT_METHOD,
+        RISK_CLASSIFICATION,
+        CREDIT_SCORE_BAND,
+        INSERT_TIMESTAMP_UTC,
+        ROW_NUMBER() OVER (PARTITION BY CUSTOMER_ID ORDER BY INSERT_TIMESTAMP_UTC DESC) as rn
+    FROM CRM_RAW_001.CRMI_CUSTOMER
+) ranked
+WHERE rn = 1;
+
+-- ============================================================
+-- CRMA_AGG_DT_CUSTOMER_HISTORY - Customer Attribute History SCD Type 2 (Analytical)
+-- ============================================================
+-- Analytical view providing complete SCD Type 2 customer attribute history with effective date ranges.
+-- Used for compliance reporting, historical analysis, and point-in-time queries.
+-- Includes VALID_FROM/VALID_TO ranges and IS_CURRENT flags for each attribute version.
+
+CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER_HISTORY(
+    CUSTOMER_ID VARCHAR(30) COMMENT 'Customer identifier for history tracking',
+    FIRST_NAME VARCHAR(100) COMMENT 'Customer first name (immutable)',
+    FAMILY_NAME VARCHAR(100) COMMENT 'Customer family/last name (immutable)',
+    FULL_NAME VARCHAR(201) COMMENT 'Customer full name',
+    DATE_OF_BIRTH DATE COMMENT 'Customer date of birth (immutable)',
+    ONBOARDING_DATE DATE COMMENT 'Customer onboarding date (immutable)',
+    REPORTING_CURRENCY VARCHAR(3) COMMENT 'Customer reporting currency',
+    HAS_ANOMALY BOOLEAN COMMENT 'Anomaly flag',
+    EMPLOYER VARCHAR(200) COMMENT 'Historical employer',
+    POSITION VARCHAR(100) COMMENT 'Historical job position',
+    EMPLOYMENT_TYPE VARCHAR(30) COMMENT 'Historical employment type',
+    INCOME_RANGE VARCHAR(30) COMMENT 'Historical income range',
+    ACCOUNT_TIER VARCHAR(30) COMMENT 'Historical account tier',
+    EMAIL VARCHAR(255) COMMENT 'Historical email address',
+    PHONE VARCHAR(50) COMMENT 'Historical phone number',
+    PREFERRED_CONTACT_METHOD VARCHAR(20) COMMENT 'Historical contact method',
+    RISK_CLASSIFICATION VARCHAR(20) COMMENT 'Historical risk classification',
+    CREDIT_SCORE_BAND VARCHAR(20) COMMENT 'Historical credit score band',
+    VALID_FROM DATE COMMENT 'Start date when these attributes were effective (SCD Type 2)',
+    VALID_TO DATE COMMENT 'End date when these attributes were superseded (NULL if current)',
+    IS_CURRENT BOOLEAN COMMENT 'Boolean flag indicating if this is the current record',
+    INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ COMMENT 'Original timestamp when this version was recorded in system'
+) COMMENT = 'SCD Type 2 customer attribute history with VALID_FROM/VALID_TO effective date ranges. Tracks changes to mutable attributes (employment, account tier, contact info) over time. Used for compliance reporting, historical analysis, and point-in-time customer attribute queries.'
+TARGET_LAG = '60 MINUTE' WAREHOUSE = MD_TEST_WH
+AS
+SELECT 
+    CUSTOMER_ID,
+    FIRST_NAME,
+    FAMILY_NAME,
+    CONCAT(FIRST_NAME, ' ', FAMILY_NAME) AS FULL_NAME,
+    DATE_OF_BIRTH,
+    ONBOARDING_DATE,
+    REPORTING_CURRENCY,
+    HAS_ANOMALY,
+    EMPLOYER,
+    POSITION,
+    EMPLOYMENT_TYPE,
+    INCOME_RANGE,
+    ACCOUNT_TIER,
+    EMAIL,
+    PHONE,
+    PREFERRED_CONTACT_METHOD,
+    RISK_CLASSIFICATION,
+    CREDIT_SCORE_BAND,
+    INSERT_TIMESTAMP_UTC::DATE AS VALID_FROM,
+    CASE 
+        WHEN LEAD(INSERT_TIMESTAMP_UTC) OVER (PARTITION BY CUSTOMER_ID ORDER BY INSERT_TIMESTAMP_UTC) IS NOT NULL 
+        THEN LEAD(INSERT_TIMESTAMP_UTC) OVER (PARTITION BY CUSTOMER_ID ORDER BY INSERT_TIMESTAMP_UTC)::DATE - 1
+        ELSE NULL 
+    END AS VALID_TO,
+    CASE 
+        WHEN LEAD(INSERT_TIMESTAMP_UTC) OVER (PARTITION BY CUSTOMER_ID ORDER BY INSERT_TIMESTAMP_UTC) IS NULL 
+        THEN TRUE 
+        ELSE FALSE 
+    END AS IS_CURRENT,
+    INSERT_TIMESTAMP_UTC
+FROM CRM_RAW_001.CRMI_CUSTOMER
+ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
+
+-- ============================================================
+-- CRMA_AGG_DT_CUSTOMER_360 - Comprehensive Customer View with PEP Matching & Accuracy Scoring
 -- ============================================================
 -- 360-degree customer view combining master data, current address, current status,
 -- accounts, Exposed Person compliance fuzzy matching, and Global Sanctions Data 
@@ -155,7 +312,7 @@ ORDER BY CUSTOMER_ID, INSERT_TIMESTAMP_UTC;
 -- analysis, compliance screening, and risk assessment across all customer touchpoints 
 -- with quantified match confidence levels for both PEP and sanctions screening.
 
-CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
+CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER_360(
     CUSTOMER_ID VARCHAR(30) COMMENT 'Unique customer identifier for relationship management',
     FIRST_NAME VARCHAR(100) COMMENT 'Customer first name for identification and compliance',
     FAMILY_NAME VARCHAR(100) COMMENT 'Customer family/last name for identification and compliance',
@@ -164,6 +321,16 @@ CREATE OR REPLACE DYNAMIC TABLE CRMA_AGG_DT_CUSTOMER(
     ONBOARDING_DATE DATE COMMENT 'Date when customer relationship was established',
     REPORTING_CURRENCY VARCHAR(3) COMMENT 'Customer reporting currency based on country',
     HAS_ANOMALY BOOLEAN COMMENT 'Flag indicating if customer has anomalous transaction patterns',
+    EMPLOYER VARCHAR(200) COMMENT 'Current employer name',
+    POSITION VARCHAR(100) COMMENT 'Current job position/title',
+    EMPLOYMENT_TYPE VARCHAR(30) COMMENT 'Current employment type',
+    INCOME_RANGE VARCHAR(30) COMMENT 'Current income range bracket',
+    ACCOUNT_TIER VARCHAR(30) COMMENT 'Current account tier',
+    EMAIL VARCHAR(255) COMMENT 'Customer email address',
+    PHONE VARCHAR(50) COMMENT 'Customer phone number',
+    PREFERRED_CONTACT_METHOD VARCHAR(20) COMMENT 'Preferred contact method',
+    RISK_CLASSIFICATION VARCHAR(20) COMMENT 'Risk classification',
+    CREDIT_SCORE_BAND VARCHAR(20) COMMENT 'Credit score band',
     STREET_ADDRESS VARCHAR(200) COMMENT 'Current street address for correspondence',
     CITY VARCHAR(100) COMMENT 'Current city for location and regulatory purposes',
     STATE VARCHAR(100) COMMENT 'Current state/region for jurisdiction and compliance',
@@ -217,11 +384,23 @@ SELECT
     c.CUSTOMER_ID,
     c.FIRST_NAME,
     c.FAMILY_NAME,
-    CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME) AS FULL_NAME,
+    c.FULL_NAME,
     c.DATE_OF_BIRTH,
     c.ONBOARDING_DATE,
     c.REPORTING_CURRENCY,
     c.HAS_ANOMALY,
+    
+    -- Customer Extended Attributes
+    c.EMPLOYER,
+    c.POSITION,
+    c.EMPLOYMENT_TYPE,
+    c.INCOME_RANGE,
+    c.ACCOUNT_TIER,
+    c.EMAIL,
+    c.PHONE,
+    c.PREFERRED_CONTACT_METHOD,
+    c.RISK_CLASSIFICATION,
+    c.CREDIT_SCORE_BAND,
     
     -- Current Address Information
     addr.STREET_ADDRESS,
@@ -418,7 +597,7 @@ SELECT
     -- Metadata
     CURRENT_TIMESTAMP() AS LAST_UPDATED
 
-FROM CRM_RAW_001.CRMI_CUSTOMER c
+FROM CRMA_AGG_DT_CUSTOMER_CURRENT c
 
 -- Join current address
 LEFT JOIN CRMA_AGG_DT_ADDRESSES_CURRENT addr
@@ -477,7 +656,8 @@ LEFT JOIN AAA_DEV_SYNTHETIC_BANK_REF_DAP_GLOBAL_SANCTIONS_DATA_SET_COPY.PUBLIC.S
     AND EDITDISTANCE(UPPER(CONCAT(c.FIRST_NAME, ' ', c.FAMILY_NAME)), UPPER(sanctions_fuzzy.ENTITY_NAME)) <= 5
 
 GROUP BY 
-    c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.DATE_OF_BIRTH, c.ONBOARDING_DATE, c.REPORTING_CURRENCY, c.HAS_ANOMALY,
+    c.CUSTOMER_ID, c.FIRST_NAME, c.FAMILY_NAME, c.FULL_NAME, c.DATE_OF_BIRTH, c.ONBOARDING_DATE, c.REPORTING_CURRENCY, c.HAS_ANOMALY,
+    c.EMPLOYER, c.POSITION, c.EMPLOYMENT_TYPE, c.INCOME_RANGE, c.ACCOUNT_TIER, c.EMAIL, c.PHONE, c.PREFERRED_CONTACT_METHOD, c.RISK_CLASSIFICATION, c.CREDIT_SCORE_BAND,
     addr.STREET_ADDRESS, addr.CITY, addr.STATE, addr.ZIPCODE, addr.COUNTRY, addr.CURRENT_FROM,
     status.STATUS, status.STATUS_START_DATE,
     pep_exact.EXPOSED_PERSON_ID, pep_exact.FULL_NAME, pep_exact.EXPOSED_PERSON_CATEGORY, pep_exact.RISK_LEVEL, pep_exact.STATUS,
@@ -521,35 +701,35 @@ ORDER BY c.CUSTOMER_ID;
 --    ORDER BY VALID_FROM;
 --
 -- 5. Comprehensive customer view with Exposed Person and Sanctions screening:
---    SELECT * FROM CRMA_AGG_DT_CUSTOMER 
+--    SELECT * FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE CUSTOMER_ID = 'CUST_00001';
 --
 -- 6. Find customers with sanctions matches:
 --    SELECT CUSTOMER_ID, FULL_NAME, SANCTIONS_MATCH_TYPE, SANCTIONS_MATCH_ACCURACY_PERCENT,
 --           SANCTIONS_EXACT_MATCH_NAME, SANCTIONS_FUZZY_MATCH_NAME
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE SANCTIONS_MATCH_TYPE != 'NO_MATCH';
 --
 -- 7. High-risk customers (anomalies + PEP + sanctions):
 --    SELECT CUSTOMER_ID, FULL_NAME, HIGH_RISK_CUSTOMER, OVERALL_EXPOSED_PERSON_RISK, OVERALL_SANCTIONS_RISK
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE HIGH_RISK_CUSTOMER = TRUE;
 --
 -- 8. Compliance review queue:
 --    SELECT CUSTOMER_ID, FULL_NAME, REQUIRES_EXPOSED_PERSON_REVIEW, REQUIRES_SANCTIONS_REVIEW
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE REQUIRES_EXPOSED_PERSON_REVIEW = TRUE OR REQUIRES_SANCTIONS_REVIEW = TRUE;
 --
 -- 6. Find customers with Exposed Person matches (with accuracy):
 --    SELECT CUSTOMER_ID, FULL_NAME, EXPOSED_PERSON_MATCH_TYPE, OVERALL_EXPOSED_PERSON_RISK, EXPOSED_PERSON_MATCH_ACCURACY_PERCENT
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE EXPOSED_PERSON_MATCH_TYPE != 'NO_MATCH'
 --    ORDER BY EXPOSED_PERSON_MATCH_ACCURACY_PERCENT DESC, OVERALL_EXPOSED_PERSON_RISK DESC;
 --
 -- 7. High-risk customers (anomaly + PEP) with match accuracy:
 --    SELECT CUSTOMER_ID, FULL_NAME, COUNTRY, TOTAL_ACCOUNTS, 
 --           EXPOSED_PERSON_EXACT_MATCH_NAME, EXPOSED_PERSON_FUZZY_MATCH_NAME, OVERALL_EXPOSED_PERSON_RISK, EXPOSED_PERSON_MATCH_ACCURACY_PERCENT
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE HIGH_RISK_CUSTOMER = TRUE;
 --
 -- 8. Exposed Person match accuracy analysis:
@@ -564,7 +744,7 @@ ORDER BY c.CUSTOMER_ID;
 --        END AS ACCURACY_BAND,
 --        COUNT(*) AS CUSTOMER_COUNT,
 --        AVG(EXPOSED_PERSON_MATCH_ACCURACY_PERCENT) AS AVG_ACCURACY
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE EXPOSED_PERSON_MATCH_TYPE != 'NO_MATCH'
 --    GROUP BY EXPOSED_PERSON_MATCH_TYPE, ACCURACY_BAND
 --    ORDER BY AVG_ACCURACY DESC;
@@ -577,13 +757,13 @@ ORDER BY c.CUSTOMER_ID;
 --        COUNT(CASE WHEN REQUIRES_EXPOSED_PERSON_REVIEW = TRUE THEN 1 END) AS REQUIRES_REVIEW,
 --        COUNT(CASE WHEN HIGH_RISK_CUSTOMER = TRUE THEN 1 END) AS HIGH_RISK_COUNT,
 --        AVG(CASE WHEN EXPOSED_PERSON_MATCH_ACCURACY_PERCENT IS NOT NULL THEN EXPOSED_PERSON_MATCH_ACCURACY_PERCENT END) AS AVG_MATCH_ACCURACY
---    FROM CRMA_AGG_DT_CUSTOMER;
+--    FROM CRMA_AGG_DT_CUSTOMER_360;
 --
 -- 10. Sanctions screening with Global Sanctions Data:
 --    SELECT CUSTOMER_ID, FULL_NAME, COUNTRY,
 --           SANCTIONS_EXACT_MATCH_NAME, SANCTIONS_FUZZY_MATCH_NAME, 
 --           SANCTIONS_MATCH_TYPE, OVERALL_SANCTIONS_RISK, SANCTIONS_MATCH_ACCURACY_PERCENT
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE SANCTIONS_MATCH_TYPE != 'NO_MATCH'
 --    ORDER BY SANCTIONS_MATCH_ACCURACY_PERCENT DESC, OVERALL_SANCTIONS_RISK DESC;
 --
@@ -591,7 +771,7 @@ ORDER BY c.CUSTOMER_ID;
 --    SELECT CUSTOMER_ID, FULL_NAME, COUNTRY, TOTAL_ACCOUNTS,
 --           EXPOSED_PERSON_EXACT_MATCH_NAME, SANCTIONS_EXACT_MATCH_NAME,
 --           OVERALL_EXPOSED_PERSON_RISK, OVERALL_SANCTIONS_RISK
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE HIGH_RISK_CUSTOMER = TRUE;
 --
 -- 12. Sanctions match accuracy analysis:
@@ -606,7 +786,7 @@ ORDER BY c.CUSTOMER_ID;
 --        END AS ACCURACY_BAND,
 --        COUNT(*) AS CUSTOMER_COUNT,
 --        AVG(SANCTIONS_MATCH_ACCURACY_PERCENT) AS AVG_ACCURACY
---    FROM CRMA_AGG_DT_CUSTOMER 
+--    FROM CRMA_AGG_DT_CUSTOMER_360 
 --    WHERE SANCTIONS_MATCH_TYPE != 'NO_MATCH'
 --    GROUP BY SANCTIONS_MATCH_TYPE, ACCURACY_BAND
 --    ORDER BY AVG_ACCURACY DESC;
@@ -621,7 +801,7 @@ ORDER BY c.CUSTOMER_ID;
 --        COUNT(CASE WHEN REQUIRES_EXPOSED_PERSON_REVIEW = TRUE THEN 1 END) AS REQUIRES_PEP_REVIEW,
 --        COUNT(CASE WHEN REQUIRES_SANCTIONS_REVIEW = TRUE THEN 1 END) AS REQUIRES_SANCTIONS_REVIEW,
 --        COUNT(CASE WHEN HIGH_RISK_CUSTOMER = TRUE THEN 1 END) AS HIGH_RISK_COUNT
---    FROM CRMA_AGG_DT_CUSTOMER;
+--    FROM CRMA_AGG_DT_CUSTOMER_360;
 --
 -- MONITORING:
 -- - Monitor dynamic table refresh: SHOW DYNAMIC TABLES IN SCHEMA CRMA_AGG_001;

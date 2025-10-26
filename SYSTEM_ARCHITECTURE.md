@@ -44,7 +44,8 @@ Enterprise-grade synthetic banking data platform for:
 ### 1.3 System Scope
 
 **Data Domains**:
-- Customer Master Data (EMEA, 12 countries)
+- Customer Master Data (EMEA, 12 countries) with SCD Type 2
+- Customer Attribute Updates (employment, account tier, contact info)
 - Account Management
 - Payment Transactions
 - SWIFT ISO20022 Messages
@@ -53,15 +54,16 @@ Enterprise-grade synthetic banking data platform for:
 - Commodity Trading
 - FX Rate Management
 - PEP (Politically Exposed Persons)
-- Customer Lifecycle Events
+- Customer Lifecycle Events (date-based)
 - Churn Prediction
 
 **Key Metrics**:
 - 100+ customers (scalable to 10,000+)
 - 1,000+ transactions per month
-- 7 lifecycle event types
+- 9 lifecycle event types (5 data-driven, 4 random)
 - 6 lifecycle stages
 - 4 trading asset classes
+- SCD Type 2 tracking for customer attributes and addresses
 
 ---
 
@@ -102,6 +104,8 @@ Layer 2: AGGREGATION (AGG_001 Schemas)
   │              │  │              │  │              │
   │ • Customer   │  │ • Txn        │  │ • Account    │
   │   360° View  │  │   Anomalies  │  │   Rollups    │
+  │ • Customer   │  │              │  │              │
+  │   SCD Type 2 │  │              │  │              │
   │ • Address    │  │              │  │              │
   │   SCD Type 2 │  │              │  │              │
   │ • Lifecycle  │  │              │  │              │
@@ -210,19 +214,19 @@ Python Data Generators              Snowflake Ingestion              Analytics
 Step 1: Data Generation (Python)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ┌──────────────────┐          ┌──────────────────┐
-  │ customer_        │          │ address_update_  │
-  │ generator.py     │          │ generator.py     │
-  │                  │          │                  │
-  │ Creates:         │          │ Creates:         │
-  │ • customers.csv  │          │ • address_       │
-  │ • ONBOARDING_    │          │   updates/*.csv  │
-  │   DATE per       │          │ • Timestamps     │
-  │   customer       │          │                  │
-  └────────┬─────────┘          └────────┬─────────┘
-           │                             │
-           └─────────────┬───────────────┘
-                         ▼
+  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+  │ customer_        │  │ address_update_  │  │ customer_update_ │
+  │ generator.py     │  │ generator.py     │  │ generator.py     │
+  │                  │  │                  │  │                  │
+  │ Creates:         │  │ Creates:         │  │ Creates:         │
+  │ • customers.csv  │  │ • address_       │  │ • customer_      │
+  │ • Extended       │  │   updates/*.csv  │  │   updates/*.csv  │
+  │   attributes     │  │ • Timestamps     │  │ • Employment     │
+  │ • Initial SCD    │  │ • SCD Type 2     │  │ • Account tier   │
+  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+           │                     │                      │
+           └──────────────────┬──┴──────────────────────┘
+                              ▼
            ┌──────────────────────────────┐
            │ customer_lifecycle_          │
            │ generator.py                 │
@@ -230,16 +234,18 @@ Step 1: Data Generation (Python)
            │ Phase 1: Data-Driven Events  │
            │ • ONBOARDING (from customer) │
            │ • ADDRESS_CHANGE (from addr) │
+           │ • ACCOUNT_UPGRADE (cust upd) │
+           │ • ACCOUNT_DOWNGRADE (cust u.)│
+           │ • EMPLOYMENT_CHANGE (cust u.)│
            │                              │
            │ Phase 2: Random Events       │
-           │ • EMPLOYMENT_CHANGE          │
-           │ • ACCOUNT_UPGRADE            │
            │ • ACCOUNT_CLOSE              │
            │ • REACTIVATION               │
            │ • CHURN                      │
+           │ • DORMANT_DETECTED           │
            │                              │
            │ Generates:                   │
-           │ • customer_events.csv        │
+           │ • customer_events/ (by date) │
            │ • customer_status.csv        │
            └──────────────┬───────────────┘
                           │
@@ -251,7 +257,7 @@ Step 2: Snowflake Ingestion
            ┌──────────────────────────────┐
            │ @CRMI_CUSTOMER_EVENTS Stage  │
            │                              │
-           │ PUT customer_events.csv      │
+           │ PUT customer_events/*.csv    │
            │ PUT customer_status.csv      │
            └──────────────┬───────────────┘
                           │
@@ -287,12 +293,30 @@ Step 3: Aggregation Layer
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
    ┌────────────────────────────────────────────────┐
-   │ CRMA_AGG_DT_CUSTOMER_LIFECYCLE                 │
+   │ CRMA_AGG_DT_CUSTOMER_CURRENT                   │
+   │                                                │
+   │ Dynamic Table (Auto-Refresh 60 min)            │
+   │ • Latest customer attributes per customer      │
+   │ • Operational view (IS_CURRENT = TRUE)         │
+   │ • Includes extended attributes (tier, employer)│
+   └────────────────────┬───────────────────────────┘
+                        │
+   ┌────────────────────▼───────────────────────────┐
+   │ CRMA_AGG_DT_CUSTOMER_360                       │
+   │                                                │
+   │ Dynamic Table (Auto-Refresh 60 min)            │
+   │ • 360° customer view                           │
+   │ • Joins current customer, address, PEP data    │
+   │ • Includes all extended attributes             │
+   └────────────────────┬───────────────────────────┘
+                        │
+   ┌────────────────────▼───────────────────────────┐
+   │ CRMA_AGG_DT_CUSTOMER_360_LIFECYCLE             │
    │                                                │
    │ Dynamic Table (Auto-Refresh 60 min)            │
    │                                                │
    │ Combines:                                      │
-   │ • Customer master data                         │
+   │ • Customer 360° view                           │
    │ • Current status (from CRMI_CUSTOMER_STATUS)   │
    │ • Lifecycle events (from CRMI_CUSTOMER_EVENT)  │
    │ • Transaction activity (from PAYI_TRANSACTIONS)│
@@ -353,10 +377,10 @@ DATABASE: AAA_DEV_SYNTHETIC_BANK
 SCHEMA: CRM_RAW_001 (Customer Relationship Management - Raw)
 ────────────────────────────────────────────────────────────────────
 Tables (5):
-  • CRMI_CUSTOMER              - Customer master data
-  • CRMI_ADDRESSES             - Address history (append-only)
+  • CRMI_CUSTOMER              - Customer master data (SCD Type 2)
+  • CRMI_ADDRESSES             - Address history (SCD Type 2, append-only)
   • CRMI_EXPOSED_PERSON        - PEP data
-  • CRMI_CUSTOMER_EVENT        - Lifecycle event log (7 event types)
+  • CRMI_CUSTOMER_EVENT        - Lifecycle event log (9 event types)
   • CRMI_CUSTOMER_STATUS       - Status history (SCD Type 2)
 
 Stages (4):
@@ -376,10 +400,12 @@ Tasks (5 - All Serverless):
 
 SCHEMA: CRM_AGG_001 (Customer - Aggregation)
 ────────────────────────────────────────────────────────────────────
-Dynamic Tables (4):
+Dynamic Tables (6):
   • CRMA_AGG_DT_ADDRESSES_CURRENT  - Latest address per customer
   • CRMA_AGG_DT_ADDRESSES_HISTORY  - Full SCD Type 2 address history
-  • CRMA_AGG_DT_CUSTOMER           - 360° customer view + status
+  • CRMA_AGG_DT_CUSTOMER_CURRENT   - Latest customer attributes per customer
+  • CRMA_AGG_DT_CUSTOMER_HISTORY   - Full SCD Type 2 customer attribute history
+  • CRMA_AGG_DT_CUSTOMER_360       - 360° customer view + PEP/sanctions
   • CRMA_AGG_DT_CUSTOMER_LIFECYCLE - Lifecycle analytics & churn
 
 ────────────────────────────────────────────────────────────────────
@@ -472,12 +498,15 @@ Dynamic Tables (10):
                     ┌──────────────────┐
                     │ CRMI_CUSTOMER    │
                     │ ──────────────── │
-                    │ PK: CUSTOMER_ID  │
-                    │                  │
+                    │ PK: CUSTOMER_ID, │
+                    │     INSERT_TS    │
                     │ • first_name     │
                     │ • family_name    │
                     │ • date_of_birth  │
                     │ • onboarding_dt  │
+                    │ • employer       │
+                    │ • account_tier   │
+                    │ • SCD Type 2     │
                     └────────┬─────────┘
                              │
                              │ 1
@@ -487,8 +516,8 @@ Dynamic Tables (10):
       ┌───────────▼──────┐ ┌▼──────────────────┐ ┌▼──────────────────┐
       │ CRMI_ADDRESSES   │ │ CRMI_CUSTOMER_    │ │ CRMI_CUSTOMER_    │
       │ ──────────────── │ │ EVENT             │ │ STATUS            │
-      │ FK: CUSTOMER_ID  │ │ ───────────────── │ │ ───────────────── │
-      │                  │ │ PK: EVENT_ID      │ │ PK: STATUS_ID     │
+      │ PK: CUSTOMER_ID, │ │ ───────────────── │ │ ───────────────── │
+      │     INSERT_TS    │ │ PK: EVENT_ID      │ │ PK: STATUS_ID     │
       │ • street_address │ │ FK: CUSTOMER_ID   │ │ FK: CUSTOMER_ID   │
       │ • city, state    │ │                   │ │                   │
       │ • insert_ts_utc  │ │ • event_type      │ │ • status          │
@@ -496,9 +525,9 @@ Dynamic Tables (10):
       └──────────────────┘ │ • event_details   │ │ • end_date        │
                            │   (JSON/VARIANT)  │ │ • is_current      │
                            └───────────────────┘ └───────────────────┘
-      │
-      │ 1
-    * │
+              │
+              │ 1
+            * │
       ┌──────────────────┐
       │ ACCI_ACCOUNTS    │
       │ ──────────────── │
@@ -558,13 +587,22 @@ Core Generators:
 
 Specialized Generators:
 ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
-│ address_update_│  │ customer_      │  │ pep_           │
-│ generator.py   │  │ lifecycle_     │  │ generator.py   │
-│                │  │ generator.py   │  │                │
-│ • SCD Type 2   │  │                │  │ • PEP data     │
-│ • Time-series  │  │ • 7 event types│  │ • Risk levels  │
-│ • Multi-file   │  │ • 2-phase gen  │  │ • Categories   │
+│ address_update_│  │ customer_update│  │ customer_      │
+│ generator.py   │  │ _generator.py  │  │ lifecycle_     │
+│                │  │                │  │ generator.py   │
+│ • SCD Type 2   │  │ • Employment   │  │ • 9 event types│
+│ • Time-series  │  │ • Account tier │  │ • 2-phase gen  │
+│ • Multi-file   │  │ • SCD Type 2   │  │ • Data-driven  │
 └────────────────┘  └────────────────┘  └────────────────┘
+
+┌────────────────┐
+│ pep_           │
+│ generator.py   │
+│                │
+│ • PEP data     │
+│ • Risk levels  │
+│ • Categories   │
+└────────────────┘
 
 Trading Generators:
 ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
@@ -636,16 +674,22 @@ Phase 1: Data-Driven Events (Cannot be randomly generated)
   │   • Channel: ONLINE/BRANCH/MOBILE
   │   • Includes initial deposit, KYC
   │
-  └─▶ generate_address_change_events()
-      • Source: address_update_generator.py outputs
+  ├─▶ generate_address_change_events()
+  │   • Source: address_update_generator.py outputs
+  │   • ⚠️ CRITICAL: Uses EXACT timestamps from CSV files
+  │   • One-to-one mapping with address updates
+  │   • Includes old/new address in JSON
+  │
+  └─▶ generate_customer_update_events()
+      • Source: customer_update_generator.py outputs
       • ⚠️ CRITICAL: Uses EXACT timestamps from CSV files
-      • One-to-one mapping with address updates
-      • Includes old/new address in JSON
+      • Generates: ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, EMPLOYMENT_CHANGE
+      • One-to-one mapping with customer update files
 
-Phase 2: Random Event Generation
+Phase 2: Random Event Generation (Reduced scope)
   │
   ├─▶ generate_random_events()
-  │   • Number of events per customer: 0-3 (weighted)
+  │   • Number of events per customer: 0-2 (weighted)
   │   • Time deltas: 30-900 days (normal dist, mean=180)
   │   • Constraints:
   │     - NO events for dormant customers
@@ -653,20 +697,17 @@ Phase 2: Random Event Generation
   │
   └─▶ Event Types (weighted random selection):
       │
-      ├─▶ EMPLOYMENT_CHANGE (40%)
-      │   • Old/new employer, position, income change
-      │
-      ├─▶ ACCOUNT_UPGRADE (30%)
-      │   • Tier upgrade, benefits, fees
-      │
-      ├─▶ ACCOUNT_CLOSE (15%)
+      ├─▶ ACCOUNT_CLOSE (40%)
       │   • Closure reason, final balance
       │
-      ├─▶ REACTIVATION (10%)
+      ├─▶ REACTIVATION (30%)
       │   • Reactivation reason, dormancy period
       │
-      └─▶ CHURN (5%)
-          • Churn reason, retention attempts
+      ├─▶ CHURN (20%)
+      │   • Churn reason, retention attempts
+      │
+      └─▶ DORMANT_DETECTED (10%)
+          • Dormancy period, inactivity reason
 
 Status History Generation:
   │
@@ -682,7 +723,7 @@ Status History Generation:
 
 Output Files:
   │
-  ├─▶ customer_events.csv
+  ├─▶ customer_events/ (date-based CSV files)
   │   • All lifecycle events (ONBOARDING → CHURN)
   │   • JSON event_details with event-specific data
   │   • Channel and triggered_by tracking
@@ -693,8 +734,10 @@ Output Files:
       • Current status flagged (is_current=TRUE)
 
 Key Constraints:
-  • ⚠️ ADDRESS_CHANGE: NEVER randomly generated
-  • ⚠️ Timestamps MUST match address_update_generator.py
+  • ⚠️ ADDRESS_CHANGE: NEVER randomly generated (data-driven only)
+  • ⚠️ ACCOUNT_UPGRADE/DOWNGRADE: NEVER randomly generated (data-driven only)
+  • ⚠️ EMPLOYMENT_CHANGE: NEVER randomly generated (data-driven only)
+  • ⚠️ Timestamps MUST match source generators (address_update, customer_update)
   • ⚠️ Dormant customers: NO events during dormancy
   • ⚠️ Event sequencing: Realistic time deltas
 ```
@@ -716,7 +759,7 @@ Data Exchange:
 │                                                              │
 │ • Global Sanctions Data                                      │
 │ • Fuzzy name matching                                        │
-│ • CRMA_AGG_DT_CUSTOMER joins for screening                   │
+│ • CRMA_AGG_DT_CUSTOMER_360 joins for screening                   │
 └──────────────────────────────────────────────────────────────┘
 
 File Upload:
@@ -756,9 +799,22 @@ Critical Synchronization Points:
    ⚠️ CRITICAL: ADDRESS_CHANGE events must use exact timestamps
                 from address_update_generator.py outputs
 
+1b. Customer Attribute Changes ← → Lifecycle Events
+   ┌──────────────────────┐        ┌──────────────────────┐
+   │ CRMI_CUSTOMER (SCD2) │        │ CRMI_CUSTOMER_EVENT  │
+   │                      │        │                      │
+   │ INSERT_TIMESTAMP_UTC │◀──────▶│ EVENT_TIMESTAMP_UTC  │
+   │                      │  MUST  │ (ACCOUNT_UPGRADE,    │
+   │ (from cust_updates/) │  MATCH │  EMPLOYMENT_CHANGE)  │
+   └──────────────────────┘        └──────────────────────┘
+   
+   ⚠️ CRITICAL: Customer attribute changes create both:
+                1. New CRMI_CUSTOMER record (SCD Type 2)
+                2. Corresponding lifecycle event with same timestamp
+
 2. Lifecycle Events → Churn Prediction
    ┌──────────────────────┐        ┌──────────────────────┐
-   │ PAYI_TRANSACTIONS    │        │ CRMA_AGG_DT_CUSTOMER_│
+   │ PAYI_TRANSACTIONS    │        │ CRMA_AGG_DT_CUSTOMER_360_│
    │                      │        │ LIFECYCLE            │
    │ LAST_BOOKING_DATE    │──────▶ │                      │
    │                      │ Drives │ CHURN_PROBABILITY    │

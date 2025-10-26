@@ -60,22 +60,27 @@ class CustomerStatus:
 class CustomerLifecycleGenerator:
     """Generates customer lifecycle events and status history"""
     
-    def __init__(self, customer_file: str, address_updates_dir: str, output_dir: str):
+    def __init__(self, customer_file: str, address_updates_dir: str, output_dir: str, customer_updates_dir: str = None):
         self.customer_file = customer_file
         self.address_updates_dir = Path(address_updates_dir)
+        self.customer_updates_dir = Path(customer_updates_dir) if customer_updates_dir else None
         self.output_dir = Path(output_dir)
         self.customers = []
         self.address_changes = []  # Will be loaded from address update files
+        self.customer_updates = []  # Will be loaded from customer update files
         self.fake = Faker()
         random.seed(42)  # For reproducibility
         
         # Event type probabilities (for randomly generated events)
+        # NOTE: EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE are now primarily data-driven
+        # These weights apply only when customer_update files are not available
         self.event_type_weights = {
-            'EMPLOYMENT_CHANGE': 40,
-            'ACCOUNT_UPGRADE': 30,
+            'EMPLOYMENT_CHANGE': 25,  # Reduced - mostly data-driven now
+            'ACCOUNT_UPGRADE': 20,    # Reduced - mostly data-driven now
+            'ACCOUNT_DOWNGRADE': 15,  # NEW - mostly data-driven now
             'ACCOUNT_CLOSE': 15,
-            'REACTIVATION': 10,
-            'CHURN': 5
+            'REACTIVATION': 15,
+            'CHURN': 10
         }
         
         # Channel distribution
@@ -103,12 +108,39 @@ class CustomerLifecycleGenerator:
         Load address changes from address update files
         CRITICAL: These will be used to generate ADDRESS_CHANGE events
         with exact timestamp matching
+        
+        First loads initial addresses from customer_addresses.csv, then loads
+        all updates from address_updates/ directory
         """
+        # Step 1: Load initial addresses from customer_addresses.csv
+        initial_addresses_file = self.output_dir / 'customer_addresses.csv'
+        initial_count = 0
+        
+        if initial_addresses_file.exists():
+            with open(initial_addresses_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self.address_changes.append({
+                        'customer_id': row['customer_id'],
+                        'timestamp': row['insert_timestamp_utc'],
+                        'street_address': row['street_address'],
+                        'city': row['city'],
+                        'state': row['state'],
+                        'zipcode': row['zipcode'],
+                        'country': row['country']
+                    })
+                    initial_count += 1
+            print(f"📋 Loaded {initial_count} initial addresses from customer_addresses.csv")
+        else:
+            print(f"⚠️  Initial addresses file not found: {initial_addresses_file}")
+        
+        # Step 2: Load address updates from address_updates/ directory
         if not self.address_updates_dir.exists():
             print(f"⚠️  Address updates directory not found: {self.address_updates_dir}")
             return
         
         address_files = sorted(self.address_updates_dir.glob("customer_addresses_*.csv"))
+        update_count = 0
         
         for address_file in address_files:
             with open(address_file, 'r', encoding='utf-8') as f:
@@ -123,8 +155,45 @@ class CustomerLifecycleGenerator:
                         'zipcode': row['zipcode'],
                         'country': row['country']
                     })
+                    update_count += 1
         
-        print(f"📋 Loaded {len(self.address_changes)} address changes from {len(address_files)} files")
+        print(f"📋 Loaded {update_count} address updates from {len(address_files)} update files")
+        print(f"📊 Total addresses: {len(self.address_changes)} (initial + updates)")
+    
+    def load_customer_updates(self):
+        """
+        Load customer updates from customer update files
+        CRITICAL: These will be used to generate ACCOUNT_UPGRADE/DOWNGRADE and EMPLOYMENT_CHANGE events
+        with exact timestamp matching
+        """
+        if not self.customer_updates_dir or not self.customer_updates_dir.exists():
+            print(f"⚠️  Customer updates directory not found or not specified: {self.customer_updates_dir}")
+            print(f"   Skipping data-driven customer update events...")
+            return
+        
+        update_files = sorted(self.customer_updates_dir.glob("customer_updates_*.csv"))
+        
+        if not update_files:
+            print(f"⚠️  No customer update files found in {self.customer_updates_dir}")
+            return
+        
+        for update_file in update_files:
+            with open(update_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self.customer_updates.append({
+                        'customer_id': row['customer_id'],
+                        'update_type': row['update_type'],
+                        'timestamp': row['update_timestamp_utc'],
+                        'field_name': row['field_name'],
+                        'old_value': row['old_value'],
+                        'new_value': row['new_value'],
+                        'update_reason': row['update_reason'],
+                        'updated_by': row['updated_by'],
+                        'update_details': row['update_details']
+                    })
+        
+        print(f"📋 Loaded {len(self.customer_updates)} customer updates from {len(update_files)} files")
     
     def generate_event_id(self, counter: int) -> str:
         """Generate unique event ID"""
@@ -254,6 +323,104 @@ class CustomerLifecycleGenerator:
         print(f"✅ Generated {len(events)} ADDRESS_CHANGE events (data-driven from address updates)")
         return events
     
+    def generate_customer_update_events(self, event_counter_start: int) -> List[LifecycleEvent]:
+        """
+        Generate lifecycle events from customer update data
+        CRITICAL: Uses exact timestamps from customer_update_generator.py
+        Generates: ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, EMPLOYMENT_CHANGE (data-driven)
+        """
+        events = []
+        event_counter = event_counter_start
+        
+        if not self.customer_updates:
+            print("⚠️  No customer updates loaded, skipping data-driven customer update events")
+            return events
+        
+        for update in self.customer_updates:
+            event = None
+            
+            # Parse timestamp (handle ISO 8601 format with T and Z)
+            timestamp_str = update['timestamp'].replace('T', ' ').replace('Z', '')
+            # Remove microseconds if present
+            if '.' in timestamp_str:
+                timestamp_str = timestamp_str.split('.')[0]
+            event_dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+            
+            # Generate events based on update type and field
+            if update['update_type'] == 'ACCOUNT_TIER' and update['field_name'] == 'account_tier':
+                # Parse update details to determine upgrade vs downgrade
+                update_details_str = update['update_details'].replace("'", '"')
+                try:
+                    update_details = json.loads(update_details_str)
+                    tier_change = update_details.get('tier_change_type', 'UPGRADE')
+                except:
+                    # Fallback: determine from old/new values
+                    tier_order = ['STANDARD', 'SILVER', 'GOLD', 'PLATINUM', 'PREMIUM']
+                    old_idx = tier_order.index(update['old_value']) if update['old_value'] in tier_order else 0
+                    new_idx = tier_order.index(update['new_value']) if update['new_value'] in tier_order else 0
+                    tier_change = 'UPGRADE' if new_idx > old_idx else 'DOWNGRADE'
+                    update_details = {
+                        'old_tier': update['old_value'],
+                        'new_tier': update['new_value'],
+                        'tier_change_type': tier_change
+                    }
+                
+                event_type = 'ACCOUNT_UPGRADE' if tier_change == 'UPGRADE' else 'ACCOUNT_DOWNGRADE'
+                
+                event = LifecycleEvent(
+                    event_id=self.generate_event_id(event_counter),
+                    customer_id=update['customer_id'],
+                    event_type=event_type,
+                    event_date=event_dt.strftime('%Y-%m-%d'),
+                    event_timestamp_utc=update['timestamp'],  # EXACT timestamp from update file
+                    channel=random.choices(self.channels, weights=self.channel_weights)[0],
+                    event_details=json.dumps(update_details),
+                    previous_value=update['old_value'],
+                    new_value=update['new_value'],
+                    triggered_by=update['updated_by'],
+                    requires_review=False,
+                    review_status='NOT_REQUIRED',
+                    review_date='',
+                    notes=f"Account tier {tier_change.lower()} from {update['old_value']} to {update['new_value']}"
+                )
+            
+            elif update['update_type'] == 'EMPLOYMENT_CHANGE' and update['field_name'] in ['employer', 'position', 'employment_type']:
+                # Parse update details
+                update_details_str = update['update_details'].replace("'", '"')
+                try:
+                    update_details = json.loads(update_details_str)
+                except:
+                    update_details = {
+                        'field': update['field_name'],
+                        'old_value': update['old_value'],
+                        'new_value': update['new_value'],
+                        'reason': update['update_reason']
+                    }
+                
+                event = LifecycleEvent(
+                    event_id=self.generate_event_id(event_counter),
+                    customer_id=update['customer_id'],
+                    event_type='EMPLOYMENT_CHANGE',
+                    event_date=event_dt.strftime('%Y-%m-%d'),
+                    event_timestamp_utc=update['timestamp'],  # EXACT timestamp from update file
+                    channel=random.choices(self.channels, weights=self.channel_weights)[0],
+                    event_details=json.dumps(update_details),
+                    previous_value=update['old_value'][:200],
+                    new_value=update['new_value'][:200],
+                    triggered_by=update['updated_by'],
+                    requires_review=False,
+                    review_status='NOT_REQUIRED',
+                    review_date='',
+                    notes=f"Employment {update['field_name']} changed"
+                )
+            
+            if event:
+                events.append(event)
+                event_counter += 1
+        
+        print(f"✅ Generated {len(events)} lifecycle events from customer updates (data-driven)")
+        return events
+    
     def generate_random_events(self, event_counter_start: int) -> List[LifecycleEvent]:
         """
         Generate random lifecycle events for customers
@@ -368,6 +535,31 @@ class CustomerLifecycleGenerator:
                 review_status='NOT_REQUIRED',
                 review_date='',
                 notes='Account tier upgraded'
+            )
+        
+        elif event_type == 'ACCOUNT_DOWNGRADE':
+            event_details = {
+                "old_tier": random.choice(['GOLD', 'PLATINUM', 'PREMIUM']),
+                "new_tier": random.choice(['STANDARD', 'SILVER']),
+                "downgrade_reason": random.choice(['BALANCE_BELOW_THRESHOLD', 'CUSTOMER_REQUEST', 'FEE_REDUCTION', 'INACTIVITY']),
+                "removed_benefits": random.sample(['FREE_TRANSFERS', 'INTEREST_RATE_BONUS', 'PRIORITY_SUPPORT', 'TRAVEL_INSURANCE'], 2),
+                "annual_fee": 0.00
+            }
+            return LifecycleEvent(
+                event_id=self.generate_event_id(event_id_num),
+                customer_id=customer_id,
+                event_type=event_type,
+                event_date=event_date.strftime('%Y-%m-%d'),
+                event_timestamp_utc=event_date.strftime('%Y-%m-%d %H:%M:%S'),
+                channel=channel,
+                event_details=json.dumps(event_details),
+                previous_value=event_details['old_tier'],
+                new_value=event_details['new_tier'],
+                triggered_by=triggered_by,
+                requires_review=False,
+                review_status='NOT_REQUIRED',
+                review_date='',
+                notes='Account tier downgraded'
             )
         
         elif event_type == 'ACCOUNT_CLOSE':
@@ -511,43 +703,56 @@ class CustomerLifecycleGenerator:
         print(f"✅ Generated {len(statuses)} customer status records")
         return statuses
     
-    def save_events(self, events: List[LifecycleEvent], filename: str = 'customer_events.csv'):
-        """Save lifecycle events to CSV file with proper JSON handling"""
-        output_file = self.output_dir / filename
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+    def save_events(self, events: List[LifecycleEvent]):
+        """Save lifecycle events to CSV files grouped by date (for consistency with other transactional data)"""
+        events_dir = self.output_dir / 'customer_events'
+        events_dir.mkdir(parents=True, exist_ok=True)
         
-        with open(output_file, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = [
-                'EVENT_ID', 'CUSTOMER_ID', 'EVENT_TYPE', 'EVENT_DATE', 'EVENT_TIMESTAMP_UTC',
-                'CHANNEL', 'EVENT_DETAILS', 'PREVIOUS_VALUE', 'NEW_VALUE', 'TRIGGERED_BY',
-                'REQUIRES_REVIEW', 'REVIEW_STATUS', 'REVIEW_DATE', 'NOTES'
-            ]
-            # Use QUOTE_MINIMAL to avoid double-quoting JSON
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
-            writer.writeheader()
+        # Group events by date
+        events_by_date = {}
+        for event in events:
+            date = event.event_date  # Already in YYYY-MM-DD format
+            if date not in events_by_date:
+                events_by_date[date] = []
+            events_by_date[date].append(event)
+        
+        fieldnames = [
+            'EVENT_ID', 'CUSTOMER_ID', 'EVENT_TYPE', 'EVENT_DATE', 'EVENT_TIMESTAMP_UTC',
+            'CHANNEL', 'EVENT_DETAILS', 'PREVIOUS_VALUE', 'NEW_VALUE', 'TRIGGERED_BY',
+            'REQUIRES_REVIEW', 'REVIEW_STATUS', 'REVIEW_DATE', 'NOTES'
+        ]
+        
+        # Save each date's events to a separate file
+        for date, date_events in sorted(events_by_date.items()):
+            output_file = events_dir / f'customer_events_{date}.csv'
             
-            for event in events:
-                # Replace double quotes with single quotes in JSON for CSV compatibility
-                event_details = event.event_details.replace('"', "'") if event.event_details else ''
+            with open(output_file, 'w', newline='', encoding='utf-8') as f:
+                # Use QUOTE_MINIMAL to avoid double-quoting JSON
+                writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+                writer.writeheader()
                 
-                writer.writerow({
-                    'EVENT_ID': event.event_id,
-                    'CUSTOMER_ID': event.customer_id,
-                    'EVENT_TYPE': event.event_type,
-                    'EVENT_DATE': event.event_date,
-                    'EVENT_TIMESTAMP_UTC': event.event_timestamp_utc,
-                    'CHANNEL': event.channel,
-                    'EVENT_DETAILS': event_details,
-                    'PREVIOUS_VALUE': event.previous_value,
-                    'NEW_VALUE': event.new_value,
-                    'TRIGGERED_BY': event.triggered_by,
-                    'REQUIRES_REVIEW': event.requires_review,
-                    'REVIEW_STATUS': event.review_status,
-                    'REVIEW_DATE': event.review_date if event.review_date else '',
-                    'NOTES': event.notes
-                })
+                for event in date_events:
+                    # Replace double quotes with single quotes in JSON for CSV compatibility
+                    event_details = event.event_details.replace('"', "'") if event.event_details else ''
+                    
+                    writer.writerow({
+                        'EVENT_ID': event.event_id,
+                        'CUSTOMER_ID': event.customer_id,
+                        'EVENT_TYPE': event.event_type,
+                        'EVENT_DATE': event.event_date,
+                        'EVENT_TIMESTAMP_UTC': event.event_timestamp_utc,
+                        'CHANNEL': event.channel,
+                        'EVENT_DETAILS': event_details,
+                        'PREVIOUS_VALUE': event.previous_value,
+                        'NEW_VALUE': event.new_value,
+                        'TRIGGERED_BY': event.triggered_by,
+                        'REQUIRES_REVIEW': event.requires_review,
+                        'REVIEW_STATUS': event.review_status,
+                        'REVIEW_DATE': event.review_date if event.review_date else '',
+                        'NOTES': event.notes
+                    })
         
-        print(f"✅ Saved {len(events)} events to {output_file}")
+        print(f"✅ Saved {len(events)} events to {len(events_by_date)} date-based files in {events_dir}")
     
     def save_status_history(self, statuses: List[CustomerStatus], filename: str = 'customer_status.csv'):
         """Save customer status history to CSV file"""
@@ -583,22 +788,28 @@ class CustomerLifecycleGenerator:
         # Load data
         self.load_customers()
         self.load_address_changes()
+        self.load_customer_updates()
         
         # Phase 1: Data-driven events
         print("\n📊 Phase 1: Generating data-driven events...")
         onboarding_events = self.generate_onboarding_events()
+        
         address_change_events = self.generate_address_change_events(
             event_counter_start=len(onboarding_events) + 1
         )
         
-        # Phase 2: Random events
-        print("\n🎲 Phase 2: Generating random lifecycle events...")
-        random_events = self.generate_random_events(
+        customer_update_events = self.generate_customer_update_events(
             event_counter_start=len(onboarding_events) + len(address_change_events) + 1
         )
         
+        # Phase 2: Random events (only for event types not covered by data-driven events)
+        print("\n🎲 Phase 2: Generating random lifecycle events...")
+        random_events = self.generate_random_events(
+            event_counter_start=len(onboarding_events) + len(address_change_events) + len(customer_update_events) + 1
+        )
+        
         # Combine all events
-        all_events = onboarding_events + address_change_events + random_events
+        all_events = onboarding_events + address_change_events + customer_update_events + random_events
         
         # Sort by timestamp
         all_events.sort(key=lambda e: e.event_timestamp_utc)
@@ -617,7 +828,8 @@ class CustomerLifecycleGenerator:
         print(f"   Total Events: {len(all_events)}")
         print(f"   - ONBOARDING: {len(onboarding_events)}")
         print(f"   - ADDRESS_CHANGE: {len(address_change_events)}")
-        print(f"   - Other Events: {len(random_events)}")
+        print(f"   - CUSTOMER UPDATES (data-driven): {len(customer_update_events)}")
+        print(f"   - Other Events (random): {len(random_events)}")
         print(f"   Status Records: {len(status_history)}")
         print("=" * 60)
 
@@ -626,15 +838,16 @@ def main():
     import sys
     
     if len(sys.argv) < 3:
-        print("Usage: python customer_lifecycle_generator.py <customer_file> <address_updates_dir> <output_dir>")
-        print("Example: python customer_lifecycle_generator.py generated_data/master_data/customers.csv generated_data/master_data/address_updates generated_data/master_data")
+        print("Usage: python customer_lifecycle_generator.py <customer_file> <address_updates_dir> <output_dir> [customer_updates_dir]")
+        print("Example: python customer_lifecycle_generator.py generated_data/master_data/customers.csv generated_data/master_data/address_updates generated_data/master_data [generated_data/master_data/customer_updates]")
         sys.exit(1)
     
     customer_file = sys.argv[1]
     address_updates_dir = sys.argv[2]
     output_dir = sys.argv[3] if len(sys.argv) > 3 else "generated_data/master_data"
+    customer_updates_dir = sys.argv[4] if len(sys.argv) > 4 else None
     
-    generator = CustomerLifecycleGenerator(customer_file, address_updates_dir, output_dir)
+    generator = CustomerLifecycleGenerator(customer_file, address_updates_dir, output_dir, customer_updates_dir)
     generator.generate_all()
 
 if __name__ == '__main__':

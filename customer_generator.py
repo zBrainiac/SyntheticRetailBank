@@ -14,7 +14,7 @@ from base_generator import BaseGenerator
 
 @dataclass
 class Customer:
-    """Customer master data structure for EMEA retail banking"""
+    """Customer master data structure for EMEA retail banking with extended attributes"""
     customer_id: str
     first_name: str
     family_name: str
@@ -22,6 +22,17 @@ class Customer:
     onboarding_date: str
     reporting_currency: str
     has_anomaly: bool
+    # Extended attributes (previously in snapshot)
+    employer: str = ""
+    position: str = ""
+    employment_type: str = ""
+    income_range: str = ""
+    account_tier: str = ""
+    email: str = ""
+    phone: str = ""
+    preferred_contact_method: str = ""
+    risk_classification: str = ""
+    credit_score_band: str = ""
 
 
 @dataclass
@@ -116,7 +127,16 @@ class CustomerGenerator(BaseGenerator):
             # Get reporting currency based on country
             reporting_currency = self.country_to_currency[country]
             
-            # Create customer record (without address)
+            # Generate extended attributes
+            employment_types = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'SELF_EMPLOYED', 'RETIRED']
+            account_tiers = ['STANDARD', 'SILVER', 'GOLD', 'PLATINUM', 'PREMIUM']
+            income_ranges = ['<30K', '30K-50K', '50K-75K', '75K-100K', '100K-150K', '>150K']
+            positions = ['Analyst', 'Manager', 'Engineer', 'Consultant', 'Specialist']
+            risk_classifications = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH']
+            credit_score_bands = ['POOR', 'FAIR', 'GOOD', 'VERY_GOOD', 'EXCELLENT']
+            contact_methods = ['EMAIL', 'PHONE', 'SMS', 'MOBILE_APP', 'POST']
+            
+            # Create customer record with all attributes
             customer = Customer(
                 customer_id=customer_id,
                 first_name=fake_local.first_name(),
@@ -124,7 +144,18 @@ class CustomerGenerator(BaseGenerator):
                 date_of_birth=fake_local.date_of_birth(minimum_age=18, maximum_age=80).strftime("%Y-%m-%d"),
                 onboarding_date=onboarding_date.strftime("%Y-%m-%d"),
                 reporting_currency=reporting_currency,
-                has_anomaly=has_anomaly
+                has_anomaly=has_anomaly,
+                # Extended attributes
+                employer=self.fake.company(),
+                position=random.choice(positions),
+                employment_type=random.choice(employment_types),
+                income_range=random.choice(income_ranges),
+                account_tier=random.choices(account_tiers, weights=[30, 30, 20, 15, 5])[0],
+                email=self.fake.email(),
+                phone=self.fake.phone_number(),
+                preferred_contact_method=random.choice(contact_methods),
+                risk_classification=random.choices(risk_classifications, weights=[50, 30, 15, 5])[0],
+                credit_score_band=random.choices(credit_score_bands, weights=[5, 15, 30, 30, 20])[0]
             )
             
             # Generate address history for this customer (SCD Type 2)
@@ -241,11 +272,18 @@ class CustomerGenerator(BaseGenerator):
         return addresses
     
     def save_customers_to_csv(self, filename: str) -> None:
-        """Save customer master data to CSV file"""
+        """Save customer master data to CSV file with all extended attributes"""
         if not self.customers:
             raise ValueError("No customers generated. Call generate_customers() first.")
         
-        fieldnames = ["customer_id", "first_name", "family_name", "date_of_birth", "onboarding_date", "reporting_currency", "has_anomaly"]
+        fieldnames = [
+            "customer_id", "first_name", "family_name", "date_of_birth", "onboarding_date", 
+            "reporting_currency", "has_anomaly",
+            # Extended attributes
+            "employer", "position", "employment_type", "income_range", "account_tier",
+            "email", "phone", "preferred_contact_method", 
+            "risk_classification", "credit_score_band"
+        ]
         
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -259,7 +297,18 @@ class CustomerGenerator(BaseGenerator):
                     "date_of_birth": customer.date_of_birth,
                     "onboarding_date": customer.onboarding_date,
                     "reporting_currency": customer.reporting_currency,
-                    "has_anomaly": customer.has_anomaly
+                    "has_anomaly": customer.has_anomaly,
+                    # Extended attributes
+                    "employer": customer.employer,
+                    "position": customer.position,
+                    "employment_type": customer.employment_type,
+                    "income_range": customer.income_range,
+                    "account_tier": customer.account_tier,
+                    "email": customer.email,
+                    "phone": customer.phone,
+                    "preferred_contact_method": customer.preferred_contact_method,
+                    "risk_classification": customer.risk_classification,
+                    "credit_score_band": customer.credit_score_band
                 })
     
     def save_addresses_to_csv(self, filename: str) -> None:

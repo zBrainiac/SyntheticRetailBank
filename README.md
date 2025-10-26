@@ -113,13 +113,13 @@ The synthetic bank implements a focused data protection strategy using Snowflake
 
 | Role | Untagged | RESTRICTED | TOP_SECRET |
 |------|----------|------------|------------|
-| **PUBLIC_USER** | ✅ | ❌ | ❌ |
-| **BUSINESS_USER** | ✅ | ❌ | ❌ |
-| **ANALYST** | ✅ | ✅ | ❌ |
-| **SENIOR_ANALYST** | ✅ | ✅ | ❌ |
-| **RISK_MANAGER** | ✅ | ✅ | ✅ |
-| **COMPLIANCE_OFFICER** | ✅ | ✅ | ✅ |
-| **DATA_SCIENTIST** | ✅ | ✅ | ✅ |
+| **PUBLIC_USER** | Yes | No | No |
+| **BUSINESS_USER** | Yes | No | No |
+| **ANALYST** | Yes | Yes | No |
+| **SENIOR_ANALYST** | Yes | Yes | No |
+| **RISK_MANAGER** | Yes | Yes | Yes |
+| **COMPLIANCE_OFFICER** | Yes | Yes | Yes |
+| **DATA_SCIENTIST** | Yes | Yes | Yes |
 
 ### **Key Benefits**
 - **Focused Protection**: Only tag highly sensitive PII data that requires protection
@@ -203,18 +203,21 @@ venv\Scripts\activate     # On Windows
 Deploy the complete synthetic bank with automatic data upload:
 
 ```bash
-# 1. Generate comprehensive data (19 months for proper dormancy and churn testing, 1000 customers, all generators including lifecycle)
-./venv/bin/python main.py --customers 1000 --period 19 \
-  --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --generate-lifecycle --generate-fixed-income --generate-commodities \
-  --swift-percentage 75 --pep-records 500 --mortgage-customers 150 \
-  --address-update-files 15 --fixed-income-trades 50 --commodity-trades 25
+# 1. Generate comprehensive data (19 months for proper dormancy and churn testing)
+./data_generator.sh 1000 --clean
 
 # 2. Deploy everything (structure + data upload + task activation)
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
 ```
 
 **Result**: Fully operational synthetic bank with all data loaded and processing automatically! 🎉
+
+**What gets generated:**
+- 1000 customers with extended attributes (employment, account tier, risk profile)
+- 19 months of payment transactions, equity trades, fixed income & commodity trades
+- SWIFT ISO20022 messages, PEP data, mortgage emails
+- Customer lifecycle events, status history, address & attribute updates (SCD Type 2)
+- FX rates and anomaly patterns for AML testing
 
 **⚠️ Important**: Always generate data **before** deploying structure, as the deployment script expects the generated files to exist for automatic upload.
 
@@ -223,13 +226,13 @@ Deploy the complete synthetic bank with automatic data upload:
 If you prefer manual control:
 
 ```bash
-# 1. Generate data (including lifecycle events, 19 months for dormancy and churn testing)
-./venv/bin/python main.py --customers 1000 --period 19 --generate-swift --generate-pep --generate-lifecycle
+# 1. Generate data (default: 20 customers, 19 months, all generators)
+./data_generator.sh
 
-# 2. Deploy SQL structure only
+# 2. Deploy SQL structure
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection>
 
-# 3. Upload data manually
+# 3. Upload data manually (if needed)
 ./upload-data.sh --CONNECTION_NAME=<my-sf-connection>
 ```
 
@@ -249,151 +252,108 @@ If you prefer manual control:
 
 ### Basic Usage
 
-Generate default dataset (10 customers, 2% anomalies, 24 months):
+Generate default dataset (20 customers, 19 months, all generators):
 
 ```bash
-python main.py
+./data_generator.sh
 ```
 
 ### Advanced Usage
 
 #### Generate Everything (Complete Dataset)
-```bash
-# 🎯 GENERATE ALL DATA TYPES - Complete synthetic bank dataset (including lifecycle events)
-# Note: 19 months recommended for proper dormancy (> 180 days) and churn (> 365 days) testing
-./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 19 \
-  --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 150 \
-  --mortgage-customers 2 --address-update-files 9 \
-  --generate-fixed-income --generate-commodities \
-  --fixed-income-trades 10 --commodity-trades 5 --clean
 
-# 🚀 PRODUCTION-READY DATASET - Large scale with all features (including lifecycle events)
-./venv/bin/python main.py --customers 1000 --anomaly-rate 3.0 --period 19 \
-  --generate-swift --generate-pep --generate-mortgage-emails \
-  --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 15000 \
-  --mortgage-customers 52 --address-update-files 9 \
-  --generate-fixed-income --generate-commodities \
-  --fixed-income-trades 700 --commodity-trades 888 --clean
+**Recommended: Use the one-command data generator script:**
+
+```bash
+# Generate default dataset (20 customers, 19 months)
+./data_generator.sh
+
+# Generate with custom customer count
+./data_generator.sh 100
+
+# Generate with cleanup (removes previous data first)
+./data_generator.sh 100 --clean
 ```
 
-#### Specific Use Cases
-```bash
-# Generate larger dataset with more anomalies
-./venv/bin/python python main.py --customers 100 --anomaly-rate 5.0
+**What gets generated:**
+- Customer master data with extended attributes (employment, account tier, risk profile)
+- Payment transactions & accounts
+- Equity, fixed income, and commodity trades
+- SWIFT ISO20022 messages & mortgage emails
+- PEP data & sanctions screening
+- Customer lifecycle events & status history
+- Address & customer attribute updates (SCD Type 2)
+- FX rates & anomaly patterns
 
-# Generate with SWIFT ISO20022 messages
-./venv/bin/python python main.py --customers 50 --generate-swift
-
-# Custom SWIFT settings
-./venv/bin/python python main.py --customers 100 --generate-swift --swift-percentage 25 --swift-avg-messages 2.0
-
-# Custom time period and output directory
-./venv/bin/python python main.py --customers 25 --period 12 --output-dir ./custom_data
-
-# Clean previous output before generating new data
-./venv/bin/python python main.py --clean --customers 50
-
-# Verbose output with detailed configuration
-./venv/bin/python python main.py --verbose --customers 20 --anomaly-rate 3.0
-
-# Generate with customer lifecycle events for churn prediction (19 months for full lifecycle testing)
-./venv/bin/python main.py --customers 100 --period 19 --generate-address-updates --generate-lifecycle --clean
-
-# generate all (small dataset with lifecycle - 19 months for dormancy and churn testing)
-./venv/bin/python main.py --customers 10 --anomaly-rate 3.0 --period 19 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --generate-lifecycle --swift-percentage 40 --pep-records 150 --mortgage-customers 5 --address-update-files 9 --clean
-
-# generate all (large dataset with lifecycle)
-./venv/bin/python main.py --customers 1000 --anomaly-rate 3.0 --period 24 --generate-swift --generate-pep --generate-mortgage-emails --generate-address-updates --generate-lifecycle --swift-percentage 30 --pep-records 200 --mortgage-customers 25 --address-update-files 24 --clean
-
-# Generate with FRTB market risk data (fixed income + commodities)
-python main.py --customers 100 --generate-fixed-income --generate-commodities --fixed-income-trades 1000 --commodity-trades 500 --clean
-
-# Complete dataset with all risk classes (credit, market, operational, lifecycle)
-python main.py --customers 200 --period 24 --generate-swift --generate-pep --generate-lifecycle --generate-fixed-income --generate-commodities --anomaly-rate 4.0 --clean
-```
-
-### Command Line Options
-
-#### Core Data Generation Options
-| Option                     | Short | Description                                 | Default         |
-|----------------------------|-------|---------------------------------------------|-----------------|
-| `--customers`              | `-c`  | Number of customers to generate             | 10              |
-| `--anomaly-rate`           | `-a`  | Percentage of customers with anomalies      | 2.0             |
-| `--period`                 | `-p`  | Generation period in months                 | 24              |
-| `--transactions-per-month` | `-t`  | Average transactions per customer per month | 3.5             |
-| `--output-dir`             | `-o`  | Output directory for generated files        | generated_data  |
-| `--start-date`             | `-s`  | Start date (YYYY-MM-DD format)              | Auto-calculated |
-| `--clean`                  |       | Clean output directory before generation    | False           |
-| `--verbose`                | `-v`  | Enable verbose output                       | False           |
-| `--min-amount`             |       | Minimum transaction amount                  | 10.0            |
-| `--max-amount`             |       | Maximum transaction amount                  | 50000.0         |
-
-#### SWIFT Message Generation Options
-| Option                     | Description                                            | Default                     |
-|----------------------------|--------------------------------------------------------|-----------------------------|
-| `--generate-swift`         | Generate SWIFT ISO20022 messages for customers         | False                       |
-| `--swift-percentage`       | Percentage of customers to generate SWIFT messages for | 30.0                        |
-| `--swift-avg-messages`     | Average SWIFT messages per selected customer           | 1.2                         |
-| `--swift-workers`          | Number of parallel workers for SWIFT generation        | 4                           |
-| `--swift-generator-script` | Path to SWIFT message generator script                 | swift_message_generator.py  |
-| `--swift-generator-dir`    | Directory containing SWIFT generator script            | .                           |
-| `--swift-output-dir`       | Output directory for SWIFT XML files                   | {output_dir}/swift_messages |
-
-#### PEP (Politically Exposed Persons) Options
-| Option           | Description                                     | Default |
-|------------------|-------------------------------------------------|---------|
-| `--generate-pep` | Generate PEP (Politically Exposed Persons) data | False   |
-| `--pep-records`  | Number of PEP records to generate               | 50      |
-
-#### Mortgage Email Generation Options
-| Option                       | Description                                         | Default |
-|------------------------------|-----------------------------------------------------|---------|
-| `--generate-mortgage-emails` | Generate mortgage request emails                    | False   |
-| `--mortgage-customers`       | Number of customers to generate mortgage emails for | 3       |
-
-#### Address Update Generation Options
-| Option                       | Description                                             | Default            |
-|------------------------------|---------------------------------------------------------|--------------------|
-| `--generate-address-updates` | Generate address update files for SCD Type 2 processing | False              |
-| `--address-update-files`     | Number of address update files to generate              | 6                  |
-| `--updates-per-file`         | Number of address updates per file                      | 5-15% of customers |
-
-#### Customer Lifecycle Generation Options
-| Option                  | Description                                                                          | Default |
-|-------------------------|--------------------------------------------------------------------------------------|---------|
-| `--generate-lifecycle`  | Generate customer lifecycle events and status history for churn prediction & analytics | False   |
-
-#### Fixed Income Generation Options (FRTB Market Risk)
-| Option                    | Description                                                | Default |
-|---------------------------|------------------------------------------------------------|---------|
-| `--generate-fixed-income` | Generate fixed income trades (bonds and interest rate swaps) | False   |
-| `--fixed-income-trades`   | Number of fixed income trades to generate                  | 1000    |
-| `--bond-swap-ratio`       | Ratio of bonds to swaps (0.7 = 70% bonds, 30% swaps)      | 0.7     |
-
-#### Commodity Generation Options (FRTB Market Risk)
-| Option                  | Description                                                   | Default |
-|-------------------------|---------------------------------------------------------------|---------|
-| `--generate-commodities` | Generate commodity trades (energy, metals, agricultural)      | False   |
-| `--commodity-trades`    | Number of commodity trades to generate                        | 500     |
+📖 **For complete list of command-line options and advanced examples**, see: [`DATA_GENERATOR_USAGE.md`](DATA_GENERATOR_USAGE.md)
 
 ## Output Files
 
 ### Customer Data File
 **Filename**: `customers.csv`
 
-Contains EMEA customer information with localized data and the following columns:
+Contains EMEA customer information with localized data and extended attributes (17 columns):
+
+**Core Attributes:**
 - `customer_id`: Unique customer identifier (CUST_00001 format)
 - `first_name`: Customer first name (localized to country)
 - `family_name`: Customer family/last name (localized to country)
 - `date_of_birth`: Customer birth date (YYYY-MM-DD)
-- `street_address`: Street address (localized format)
-- `city`: City name (localized to country)
-- `state`: State/Region (where applicable for the country)
-- `zipcode`: Postal code (country-specific format)
-- `country`: Customer's country (12 EMEA countries supported)
 - `onboarding_date`: Date when customer was onboarded (YYYY-MM-DD)
+- `reporting_currency`: Customer reporting currency based on country (EUR, GBP, USD, CHF, NOK, SEK, DKK, PLN)
 - `has_anomaly`: Boolean flag indicating if customer has anomalous behavior
+
+**Employment Information:**
+- `employer`: Employer name (nullable for unemployed/retired)
+- `position`: Job position/title
+- `employment_type`: Employment type (FULL_TIME, PART_TIME, CONTRACT, SELF_EMPLOYED, RETIRED, UNEMPLOYED)
+- `income_range`: Income range bracket (e.g., 50K-75K, 100K-150K)
+
+**Account & Contact Information:**
+- `account_tier`: Account tier (STANDARD, SILVER, GOLD, PLATINUM, PREMIUM)
+- `email`: Customer email address
+- `phone`: Customer phone number
+- `preferred_contact_method`: Preferred contact method (EMAIL, SMS, POST, MOBILE_APP)
+
+**Risk Profile:**
+- `risk_classification`: Risk classification (LOW, MEDIUM, HIGH)
+- `credit_score_band`: Credit score band (POOR, FAIR, GOOD, VERY_GOOD, EXCELLENT)
+
+**Note**: Address data is stored separately in `customer_addresses.csv` with SCD Type 2 tracking support.
+
+### Customer Address Files
+
+**Initial Address File**: `customer_addresses.csv`
+- Contains the initial/onboarding address for each customer
+- Used as baseline for SCD Type 2 address tracking
+
+**Address Update Files**: `address_updates/customer_addresses_YYYY-MM-DD.csv`
+- Date-stamped files containing address changes over time
+- Implements SCD Type 2 (Slowly Changing Dimension Type 2) for historical address tracking
+- Each file represents a batch of address changes on a specific date
+- Used by `CRMI_ADDRESSES` table for audit trails and compliance reporting
+
+### Customer Update Files
+
+**Customer Update Files**: `customer_updates/customer_updates_YYYY-MM-DD.csv`
+- Date-stamped files containing customer attribute changes (employment, account tier, contact info, risk profile)
+- Each file contains complete customer records with all 17 attributes plus `insert_timestamp_utc`
+- Implements SCD Type 2 for tracking customer attribute history over time
+- Used by `CRMI_CUSTOMER` table for historical analysis and lifecycle tracking
+
+### Customer Lifecycle Files
+
+**Lifecycle Event Files**: `customer_events/customer_events_YYYY-MM-DD.csv`
+- Date-stamped files containing customer lifecycle events
+- Event types: ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN, DORMANT_DETECTED
+- Data-driven events (generated from address/customer updates) and random events (closures, reactivations)
+- Used for churn prediction, lifecycle analytics, and AML correlation analysis
+
+**Customer Status History**: `customer_status.csv`
+- Tracks customer status transitions over time (SCD Type 2)
+- Status types: ACTIVE, CLOSED, CHURNED, REACTIVATED, DORMANT
+- Includes status start/end dates and IS_CURRENT flag
+- Used for lifecycle reporting and customer segmentation
 
 ### Account Master Data File
 **Filename**: `accounts.csv`
@@ -528,16 +488,6 @@ Contains commodity trades across multiple asset classes with risk metrics:
 - `fx_rate`: Exchange rate to CHF
 - `liquidity_score`: Liquidity score (1-10) for NMRF classification
 
-### Summary Report
-**Filename**: `generation_summary.txt`
-
-Contains comprehensive statistics about the generated dataset including:
-- Configuration parameters used
-- Customer and transaction counts
-- Anomaly statistics
-- List of anomalous customers
-- Generated file inventory
-
 ## Anomaly Types
 
 The tool generates several types of suspicious transaction patterns:
@@ -558,7 +508,7 @@ The tool uses a configuration system that can be customized through command line
 
 - **Customer Count**: Number of customers to simulate
 - **Anomaly Percentage**: Percentage of customers that will exhibit suspicious behavior
-- **Generation Period**: Time span for transaction generation (default: 24 months)
+- **Generation Period**: Time span for transaction generation (default: 19 months for proper dormancy and churn testing)
 - **Transaction Frequency**: Average number of transactions per customer per month
 - **Amount Ranges**: Minimum and maximum transaction amounts
 - **Currency Options**: Available currencies for transactions
@@ -605,7 +555,7 @@ generated_data/
     - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
 - **Compliance Officer Development**: Practical scenarios for regulatory reporting, customer due diligence, and risk assessment
   - *Key Reports*:
-    - `CRMA_AGG_DT_CUSTOMER`
+    - `CRMA_AGG_DT_CUSTOMER_360`
     - `REPP_AGG_DT_CUSTOMER_SUMMARY`
     - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
 - **Executive Risk Awareness**: Board-level demonstrations of operational risk, compliance failures, and regulatory consequences
@@ -615,9 +565,9 @@ generated_data/
     - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
 - **Churn Prediction & Retention**: Identify at-risk customers for retention campaigns and churn prevention strategies
   - *Key Reports*:
-    - `CRMA_AGG_DT_CUSTOMER_LIFECYCLE`
+    - `CRMA_AGG_DT_CUSTOMER_360_LIFECYCLE`
     - `REPP_AGG_DT_LIFECYCLE_ANOMALIES`
-    - `CRMA_AGG_DT_CUSTOMER`
+    - `CRMA_AGG_DT_CUSTOMER_360`
 - **Audit & Control Testing**: Internal audit teams can validate control effectiveness and identify process gaps
   - *Key Reports*:
     - `CRMA_AGG_DT_ADDRESSES_HISTORY`
@@ -634,7 +584,7 @@ generated_data/
 - **Risk Model Development**: Build and calibrate customer risk scoring models with controlled datasets
   - *Key Reports*:
     - `REPP_AGG_DT_CUSTOMER_SUMMARY`
-    - `CRMA_AGG_DT_CUSTOMER`
+    - `CRMA_AGG_DT_CUSTOMER_360`
     - `PAYA_AGG_DT_ACCOUNT_BALANCES`
 - **Investment Performance Analytics**: Portfolio management and performance attribution with risk-adjusted metrics
   - *Key Reports*:
@@ -744,17 +694,19 @@ generated_data/
 #### **Data Generation Issues**
 ```bash
 # Error: "ModuleNotFoundError: No module named 'faker'"
-# Solution: Use the full path to virtual environment Python
-./venv/bin/python main.py --customers 100 --period 3 --generate-swift --generate-pep
+# Solution: Ensure virtual environment is set up and dependencies installed
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
 # Error: "Customer file not found"
 # Solution: Ensure you run data generation before deployment
-./venv/bin/python main.py --customers 100 --period 3 --generate-swift --generate-pep
+./data_generator.sh 100 --clean
 
 # Error: "Invalid arguments: Number of customers must be positive"
-# Solution: Use valid parameters
-./venv/bin/python main.py --customers 1000 --period 3  # ✅ Valid
-./venv/bin/python main.py --customers -5 --period 3    # ❌ Invalid
+# Solution: Use valid customer count
+./data_generator.sh 100  # Valid
+./data_generator.sh -5   # Invalid (negative numbers not allowed)
 ```
 
 #### **Snowflake Connection Issues**
@@ -781,13 +733,15 @@ snow sql -c <my-sf-connection> -q "CREATE TAG SENSITIVITY_LEVEL;"
 
 #### **Performance Issues**
 ```bash
-# For large datasets (1000+ customers), consider:
-# 1. Increase Snowflake warehouse size
-# 2. Use parallel processing
-python main.py --customers 1000 --period 3 --swift-workers 8
+# For large datasets (1000+ customers):
+# 1. Increase Snowflake warehouse size in your connection settings
+# 2. The data_generator.sh script is optimized for parallel processing
 
-# 3. Generate in smaller batches
-python main.py --customers 500 --period 3  # Generate half, then merge
+# Generate large dataset
+./data_generator.sh 1000 --clean
+
+# For very large datasets, monitor progress and adjust parameters in data_generator.sh if needed
+# See DATA_GENERATOR_USAGE.md for advanced main.py usage with custom parallel workers
 ```
 
 ### **Data Quality Validation**

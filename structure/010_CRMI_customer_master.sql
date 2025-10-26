@@ -188,11 +188,17 @@ CREATE OR REPLACE FILE FORMAT CRMI_FF_CUSTOMER_STATUS_CSV
 -- and compliance. Tables use data sensitivity tags for PII protection.
 
 -- ------------------------------------------------------------
--- CRMI_CUSTOMER - Customer Master Data (Normalized)
+-- CRMI_CUSTOMER - Customer Master Data (SCD Type 2)
 -- ------------------------------------------------------------
--- Core customer information normalized and separated from address data.
--- Supports 12 EMEA countries with localized data generation and anomaly
--- detection flags for compliance and risk management scenarios.
+-- Comprehensive customer information with SCD Type 2 tracking for attribute changes.
+-- Each update to mutable attributes (employer, account_tier, etc.) creates a new record
+-- with INSERT_TIMESTAMP_UTC. Immutable attributes (name, DOB) remain constant across versions.
+--
+-- Supports 12 EMEA countries with localized data generation and anomaly detection.
+-- Address data stored separately in CRMI_ADDRESSES with its own SCD Type 2 tracking.
+--
+-- Use CRMA_AGG_DT_CUSTOMER_CURRENT (in CRM_AGG_001 schema) for current state view.
+
 
 CREATE OR REPLACE TABLE CRMI_CUSTOMER (
     CUSTOMER_ID VARCHAR(30) NOT NULL WITH TAG (SENSITIVITY_LEVEL='top_secret') COMMENT 'Unique customer identifier (CUST_XXXXX format)',
@@ -202,10 +208,21 @@ CREATE OR REPLACE TABLE CRMI_CUSTOMER (
     ONBOARDING_DATE DATE NOT NULL COMMENT 'Customer onboarding date (YYYY-MM-DD)',
     REPORTING_CURRENCY VARCHAR(3) NOT NULL COMMENT 'Customer reporting currency based on country (EUR, GBP, USD, CHF, NOK, SEK, DKK, PLN)',
     HAS_ANOMALY BOOLEAN NOT NULL DEFAULT FALSE WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Flag indicating customer has anomalous transaction patterns for compliance testing',
+    EMPLOYER VARCHAR(200) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Employer name (nullable for unemployed/retired)',
+    POSITION VARCHAR(100) COMMENT 'Job position/title',
+    EMPLOYMENT_TYPE VARCHAR(30) COMMENT 'Employment type (FULL_TIME, PART_TIME, CONTRACT, SELF_EMPLOYED, RETIRED, UNEMPLOYED)',
+    INCOME_RANGE VARCHAR(30) COMMENT 'Income range bracket (e.g., 50K-75K, 100K-150K)',
+    ACCOUNT_TIER VARCHAR(30) COMMENT 'Account tier (STANDARD, SILVER, GOLD, PLATINUM, PREMIUM)',
+    EMAIL VARCHAR(255) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer email address',
+    PHONE VARCHAR(50) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Customer phone number',
+    PREFERRED_CONTACT_METHOD VARCHAR(20) COMMENT 'Preferred contact method (EMAIL, SMS, POST, MOBILE_APP)',
+    RISK_CLASSIFICATION VARCHAR(20) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Risk classification (LOW, MEDIUM, HIGH)',
+    CREDIT_SCORE_BAND VARCHAR(20) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Credit score band (POOR, FAIR, GOOD, VERY_GOOD, EXCELLENT)',
+    INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL COMMENT 'UTC timestamp when this customer record version was inserted (for SCD Type 2)',
 
-    CONSTRAINT PK_CRMI_CUSTOMER PRIMARY KEY (CUSTOMER_ID)
+    CONSTRAINT PK_CRMI_CUSTOMER PRIMARY KEY (CUSTOMER_ID, INSERT_TIMESTAMP_UTC)
 )
-COMMENT = 'Customer master data table with normalized structure. Address data stored separately in CRMI_ADDRESSES for SCD Type 2 tracking. Supports EMEA retail banking with localized customer information.';
+COMMENT = 'Customer master data table with SCD Type 2 support for tracking attribute changes over time. Extended attributes include employment, account tier, contact preferences, and risk profile. Multiple records per customer allowed, uniquely identified by (CUSTOMER_ID, INSERT_TIMESTAMP_UTC). Address data stored separately in CRMI_ADDRESSES with its own SCD Type 2 tracking.';
 
 -- ------------------------------------------------------------
 -- CRMI_ADDRESSES - Customer Address Base Table (SCD Type 2)
@@ -223,9 +240,9 @@ CREATE OR REPLACE TABLE CRMI_ADDRESSES (
     COUNTRY VARCHAR(50) NOT NULL COMMENT 'Customer country (12 EMEA countries supported)',
     INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL COMMENT 'UTC timestamp when this address record was inserted (for SCD Type 2)',
     
-    CONSTRAINT FK_CRMI_ADDRESSES_CUSTOMER FOREIGN KEY (CUSTOMER_ID) REFERENCES CRMI_CUSTOMER (CUSTOMER_ID)
+    CONSTRAINT PK_CRMI_ADDRESSES PRIMARY KEY (CUSTOMER_ID, INSERT_TIMESTAMP_UTC)
 )
-COMMENT = 'Customer address base table with append-only structure. Each address change creates a new record with INSERT_TIMESTAMP_UTC. Dynamic tables in CRM_AGG_001 provide current and historical views.';
+COMMENT = 'Customer address base table with append-only structure (SCD Type 2). Multiple records per customer are allowed, uniquely identified by (CUSTOMER_ID, INSERT_TIMESTAMP_UTC). Dynamic tables in CRM_AGG_001 provide current and historical views.';
 
 -- ------------------------------------------------------------
 -- CRMI_EXPOSED_PERSON - Politically Exposed Persons (Compliance)
@@ -294,10 +311,9 @@ CREATE OR REPLACE TABLE CRMI_CUSTOMER_EVENT (
     NOTES VARCHAR(1000) WITH TAG (SENSITIVITY_LEVEL='restricted') COMMENT 'Free-text notes about the event for compliance or customer service',
     INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'System timestamp when record was inserted',
     
-    CONSTRAINT PK_CRMI_CUSTOMER_EVENT PRIMARY KEY (EVENT_ID),
-    CONSTRAINT FK_CRMI_EVENT_CUSTOMER FOREIGN KEY (CUSTOMER_ID) REFERENCES CRMI_CUSTOMER (CUSTOMER_ID)
+    CONSTRAINT PK_CRMI_CUSTOMER_EVENT PRIMARY KEY (EVENT_ID)
 )
-COMMENT = 'Customer lifecycle event log tracking all significant customer status changes, account modifications, and behavioral milestones. Used for lifecycle analytics, churn prediction, and AML correlation. PREVIOUS_VALUE and NEW_VALUE provide quick summaries; full details in EVENT_DETAILS JSON.';
+COMMENT = 'Customer lifecycle event log tracking all significant customer status changes, account modifications, and behavioral milestones. Used for lifecycle analytics, churn prediction, and AML correlation. PREVIOUS_VALUE and NEW_VALUE provide quick summaries; full details in EVENT_DETAILS JSON. FK constraint removed due to SCD Type 2 composite PK in CRMI_CUSTOMER.';
 
 -- ------------------------------------------------------------
 -- CRMI_CUSTOMER_STATUS - Customer Status History (SCD Type 2)
@@ -318,10 +334,9 @@ CREATE OR REPLACE TABLE CRMI_CUSTOMER_STATUS (
     INSERT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'System timestamp when record was inserted',
     
     CONSTRAINT PK_CRMI_CUSTOMER_STATUS PRIMARY KEY (STATUS_ID),
-    CONSTRAINT FK_CRMI_STATUS_CUSTOMER FOREIGN KEY (CUSTOMER_ID) REFERENCES CRMI_CUSTOMER (CUSTOMER_ID),
     CONSTRAINT FK_CRMI_STATUS_EVENT FOREIGN KEY (LINKED_EVENT_ID) REFERENCES CRMI_CUSTOMER_EVENT (EVENT_ID)
 )
-COMMENT = 'Customer status history with SCD Type 2 tracking. Maintains current and historical customer status for lifecycle analysis, churn prediction, and regulatory reporting. Linked to CRMI_CUSTOMER_EVENT for complete audit trail.';
+COMMENT = 'Customer status history with SCD Type 2 tracking. Maintains current and historical customer status for lifecycle analysis, churn prediction, and regulatory reporting. Linked to CRMI_CUSTOMER_EVENT for complete audit trail. FK to CRMI_CUSTOMER removed due to SCD Type 2 composite PK.';
 
 -- ============================================================
 -- SECTION 4: STREAMS
@@ -366,6 +381,9 @@ CREATE OR REPLACE STREAM CRMI_STREAM_CUSTOMER_STATUS_FILES
 -- Customer master data loading task
 -- Serverless task: Automated loading of customer master data from CSV files.
 -- Triggered by CRMI_STREAM_CUSTOMER_FILES when new files arrive.
+-- Supports both file formats:
+--   - customers.csv (17 cols): Initial load, uses CURRENT_TIMESTAMP()
+--   - customer_updates/*.csv (18 cols): Updates with insert_timestamp_utc
 -- ------------------------------------------------------------
 CREATE OR REPLACE TASK CRMI_TASK_LOAD_CUSTOMERS
     USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
@@ -379,9 +397,44 @@ AS
         DATE_OF_BIRTH, 
         ONBOARDING_DATE, 
         REPORTING_CURRENCY, 
-        HAS_ANOMALY
+        HAS_ANOMALY,
+        EMPLOYER,
+        POSITION,
+        EMPLOYMENT_TYPE,
+        INCOME_RANGE,
+        ACCOUNT_TIER,
+        EMAIL,
+        PHONE,
+        PREFERRED_CONTACT_METHOD,
+        RISK_CLASSIFICATION,
+        CREDIT_SCORE_BAND,
+        INSERT_TIMESTAMP_UTC
     )
-    FROM @CRMI_CUSTOMERS
+    FROM (
+        SELECT 
+            $1::VARCHAR(30),
+            $2::VARCHAR(100),
+            $3::VARCHAR(100),
+            $4::DATE,
+            $5::DATE,
+            $6::VARCHAR(3),
+            $7::BOOLEAN,
+            NULLIF($8, '')::VARCHAR(200),  -- Handle empty employer
+            NULLIF($9, '')::VARCHAR(100),   -- Handle empty position
+            NULLIF($10, '')::VARCHAR(30),   -- Handle empty employment_type
+            NULLIF($11, '')::VARCHAR(30),   -- Handle empty income_range
+            NULLIF($12, '')::VARCHAR(30),   -- Handle empty account_tier
+            NULLIF($13, '')::VARCHAR(255),  -- Handle empty email
+            NULLIF($14, '')::VARCHAR(50),   -- Handle empty phone
+            NULLIF($15, '')::VARCHAR(20),   -- Handle empty preferred_contact_method
+            NULLIF($16, '')::VARCHAR(20),   -- Handle empty risk_classification
+            NULLIF($17, '')::VARCHAR(20),   -- Handle empty credit_score_band
+            COALESCE(
+                TRY_CAST($18 AS TIMESTAMP_NTZ),  -- Use timestamp from customer_updates/*.csv (18 cols)
+                CURRENT_TIMESTAMP()               -- Fall back to current time for customers.csv (17 cols)
+            ) AS INSERT_TIMESTAMP_UTC
+        FROM @CRMI_CUSTOMERS
+    )
     PATTERN = '.*customers.*\.csv'
     FILE_FORMAT = CRMI_FF_CUSTOMER_CSV
     ON_ERROR = CONTINUE;
@@ -561,87 +614,4 @@ ALTER TASK CRMI_TASK_LOAD_CUSTOMER_STATUS RESUME;
 
 -- ============================================================
 -- SCHEMA COMPLETION STATUS
--- ============================================================
--- ✅ CRM_RAW_001 Schema Deployment Complete
---
--- OBJECTS CREATED:
--- • 4 Stages: CRMI_CUSTOMERS, CRMI_ADDRESSES, CRMI_EXPOSED_PERSON, CRMI_CUSTOMER_EVENTS
--- • 5 File Formats: CRMI_FF_CUSTOMER_CSV, CRMI_FF_ADDRESS_CSV, CRMI_FF_EXPOSED_PERSON_CSV, 
---                   CRMI_FF_CUSTOMER_EVENT_CSV, CRMI_FF_CUSTOMER_STATUS_CSV
--- • 5 Tables: CRMI_CUSTOMER, CRMI_ADDRESSES, CRMI_EXPOSED_PERSON, 
---             CRMI_CUSTOMER_EVENT, CRMI_CUSTOMER_STATUS
--- • 5 Streams: CRMI_STREAM_CUSTOMER_FILES, CRMI_STREAM_ADDRESS_FILES, 
---              CRMI_STREAM_EXPOSED_PERSON_FILES, CRMI_STREAM_CUSTOMER_EVENT_FILES, 
---              CRMI_STREAM_CUSTOMER_STATUS_FILES
--- • 5 Tasks: CRMI_TASK_LOAD_CUSTOMERS, CRMI_TASK_LOAD_ADDRESSES, 
---            CRMI_TASK_LOAD_EXPOSED_PERSON, CRMI_TASK_LOAD_CUSTOMER_EVENTS, 
---            CRMI_TASK_LOAD_CUSTOMER_STATUS (ALL SERVERLESS)
---
--- NEXT STEPS:
--- 1. ✅ CRM_RAW_001 schema deployed successfully
--- 2. Upload CSV files to respective stages:
---    PUT file://customers.csv @CRMI_CUSTOMERS;
---    PUT file://customer_addresses*.csv @CRMI_ADDRESSES;
---    PUT file://pep_data.csv @CRMI_EXPOSED_PERSON;
---    PUT file://customer_events.csv @CRMI_CUSTOMER_EVENTS;
---    PUT file://customer_status.csv @CRMI_CUSTOMER_EVENTS;
--- 3. Monitor task execution: SHOW TASKS IN SCHEMA CRM_RAW_001;
--- 4. Verify data loading: 
---    SELECT COUNT(*) FROM CRMI_CUSTOMER;
---    SELECT COUNT(*) FROM CRMI_ADDRESSES;
---    SELECT COUNT(*) FROM CRMI_EXPOSED_PERSON;
---    SELECT COUNT(*) FROM CRMI_CUSTOMER_EVENT;
---    SELECT COUNT(*) FROM CRMI_CUSTOMER_STATUS;
--- 5. Check for processing errors in task history
--- 6. Deploy CRM_AGG_001 schema (310_CRMA_customer_360.sql, 312_CRMA_LIFECYCLE.sql)
---
--- USAGE EXAMPLES:
---
--- Customer distribution by country and currency:
-SELECT a.COUNTRY, c.REPORTING_CURRENCY, COUNT(*) as CUSTOMER_COUNT
-FROM CRMI_CUSTOMER c
-JOIN CRMI_ADDRESSES a ON c.CUSTOMER_ID = a.CUSTOMER_ID
-GROUP BY a.COUNTRY, c.REPORTING_CURRENCY
-ORDER BY a.COUNTRY, c.REPORTING_CURRENCY;
-
--- Customer reporting currency analysis:
-SELECT REPORTING_CURRENCY, 
-       COUNT(*) as CUSTOMER_COUNT,
-       ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as PERCENTAGE
-FROM CRMI_CUSTOMER
-GROUP BY REPORTING_CURRENCY
-ORDER BY CUSTOMER_COUNT DESC;
-
--- PEP risk analysis:
-SELECT EXPOSED_PERSON_CATEGORY, 
-       RISK_LEVEL, 
-       COUNT(*) as PEP_COUNT
-FROM CRMI_EXPOSED_PERSON 
-GROUP BY EXPOSED_PERSON_CATEGORY, RISK_LEVEL
-ORDER BY EXPOSED_PERSON_CATEGORY, RISK_LEVEL;
-
--- Lifecycle event distribution:
-SELECT EVENT_TYPE, 
-       COUNT(*) as EVENT_COUNT,
-       COUNT(DISTINCT CUSTOMER_ID) as CUSTOMER_COUNT
-FROM CRMI_CUSTOMER_EVENT
-GROUP BY EVENT_TYPE
-ORDER BY EVENT_COUNT DESC;
-
--- Customer status distribution:
-SELECT STATUS, 
-       COUNT(*) as CUSTOMER_COUNT
-FROM CRMI_CUSTOMER_STATUS
-WHERE IS_CURRENT = TRUE
-GROUP BY STATUS
-ORDER BY CUSTOMER_COUNT DESC;
-
--- Events requiring compliance review:
-SELECT EVENT_TYPE, 
-       REVIEW_STATUS,
-       COUNT(*) as EVENT_COUNT
-FROM CRMI_CUSTOMER_EVENT
-WHERE REQUIRES_REVIEW = TRUE
-GROUP BY EVENT_TYPE, REVIEW_STATUS
-ORDER BY EVENT_TYPE, REVIEW_STATUS;
 -- ============================================================

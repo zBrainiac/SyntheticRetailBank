@@ -3,3 +3,5 @@
 /venv/
 /deploy-with-stream-fix.sh
 /fix-streams-after-upload.sql
+/docs/showcase_customer_data_management copy.md
+/CUSTOMER_LIFECYCLE_INTEGRATION.md

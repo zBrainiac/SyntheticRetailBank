@@ -133,11 +133,12 @@ structure/
 - **Tasks**: `CRMI_TASK_LOAD_CUSTOMERS`, `CRMI_TASK_LOAD_ADDRESSES`, `CRMI_TASK_LOAD_EXPOSED_PERSON`, `CRMI_TASK_LOAD_CUSTOMER_EVENTS`, `CRMI_TASK_LOAD_CUSTOMER_STATUS`
 
 **Key Features:**
-- **Customer Master Data**: Core customer information (12 EMEA countries)
+- **Customer Master Data**: Core customer information with extended attributes (12 EMEA countries)
 - **REPORTING_CURRENCY**: Country-based currency assignment (EUR, GBP, NOK, SEK, DKK, PLN)
-- **SCD Type 2 Addresses**: Append-only base table with `INSERT_TIMESTAMP_UTC`
+- **SCD Type 2 Customer Attributes**: Append-only base table with `INSERT_TIMESTAMP_UTC` and composite PK tracking changes in employment, account tier, contact info, and risk profile
+- **SCD Type 2 Addresses**: Append-only base table with `INSERT_TIMESTAMP_UTC` and composite PK for address history tracking
 - **Exposed Person Compliance**: Politically Exposed Persons for regulatory compliance
-- **Customer Lifecycle Events**: Comprehensive event tracking (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)
+- **Customer Lifecycle Events**: Comprehensive event tracking (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN, DORMANT_DETECTED)
 - **Customer Status History**: SCD Type 2 status tracking for lifecycle analytics
 - **Automated Loading**: Stream-triggered serverless tasks (1-hour schedule for master data, 5-minute for lifecycle events)
 
@@ -302,44 +303,31 @@ structure/
 
 Execute after all raw layer schemas are deployed:
 
-### 8. Customer Address Aggregation (SCD Type 2)
+### 8. Customer 360° Aggregation (SCD Type 2)
 ```sql
--- Execute eighth: Customer address dimensional views
+-- Execute eighth: Customer 360° with SCD Type 2 for attributes and addresses
 @310_CRMA_customer_360.sql
 ```
 
 **Objects Created:**
 - **Schema**: `CRM_AGG_001`
-- **Dynamic Tables**: 
-  - `CRMA_AGG_DT_ADDRESSES_CURRENT` - Latest address per customer
-  - `CRMA_AGG_DT_ADDRESSES_HISTORY` - Full SCD Type 2 with VALID_FROM/VALID_TO
-  - `CRMA_AGG_DT_CUSTOMER` - Customer 360° view with Exposed Person fuzzy matching and current status
+- **Dynamic Tables** (6 tables): 
+  - `CRMA_AGG_DT_ADDRESSES_CURRENT` - Latest address per customer (operational view)
+  - `CRMA_AGG_DT_ADDRESSES_HISTORY` - Full address SCD Type 2 with VALID_FROM/VALID_TO (analytical view)
+  - `CRMA_AGG_DT_CUSTOMER_CURRENT` - Latest customer attributes per customer (operational view)
+  - `CRMA_AGG_DT_CUSTOMER_HISTORY` - Full customer attribute SCD Type 2 with VALID_FROM/VALID_TO (analytical view)
+  - `CRMA_AGG_DT_CUSTOMER_LIFECYCLE` - Lifecycle metrics and churn prediction
+  - `CRMA_AGG_DT_CUSTOMER_360` - Comprehensive 360° view combining all customer dimensions
 
 **Key Features:**
-- **SCD Type 2 Implementation**: Complete address history tracking
-- **Customer 360°**: Comprehensive customer view with master data, addresses, accounts, current status
-- **Exposed Person Matching**: Advanced `EDITDISTANCE` fuzzy matching for compliance
-- **Customer Status Integration**: Current status and status effective date from lifecycle tracking
-- **Real-Time Refresh**: 1-hour TARGET_LAG for operational queries
+- **Dual SCD Type 2 Implementation**: Complete history tracking for both customer attributes AND addresses
+- **Customer Attributes History**: Tracks changes in employment, account tier, contact info, risk classification
+- **Address History**: Tracks all address changes with full audit trail
+- **Customer 360° View**: Comprehensive customer view integrating master data, current attributes, current address, accounts, lifecycle, and Exposed Person matching
+- **Exposed Person Matching**: Advanced `EDITDISTANCE` fuzzy matching for compliance screening
+- **Lifecycle Integration**: Current status, churn prediction, and lifecycle stage for operational decision-making
+- **Real-Time Refresh**: 1-hour TARGET_LAG for near-real-time operational queries
 
-### 8a. Customer Lifecycle Analytics
-```sql
--- Execute after CRM aggregation: Customer lifecycle and churn prediction
-@312_CRMA_LIFECYCLE.sql
-```
-
-**Objects Created:**
-- **Schema**: `CRM_AGG_001`
-- **Dynamic Tables**: 
-  - `CRMA_AGG_DT_CUSTOMER_LIFECYCLE` - Comprehensive lifecycle metrics and churn prediction
-
-**Key Features:**
-- **Lifecycle Metrics**: Event counts, status tracking, days since last event
-- **Churn Prediction**: Calculated churn probability based on transaction patterns and dormancy
-- **Lifecycle Stages**: NEW, ACTIVE, MATURE, DECLINING, DORMANT, CHURNED
-- **Risk Indicators**: IS_DORMANT, IS_AT_RISK flags for proactive customer management
-- **Transaction Integration**: Combines lifecycle events with transaction activity for accurate risk assessment
-- **Real-Time Refresh**: 1-hour TARGET_LAG for near-real-time churn prediction
 
 ### 9. Account Aggregation Layer
 ```sql
@@ -643,7 +631,7 @@ Execute after all raw layer schemas are deployed:
 ### AGGREGATION LAYER (Business Logic)
 | Schema         | Purpose                  | Key Objects                                            | Refresh Strategy      |
 |----------------|--------------------------|--------------------------------------------------------|-----------------------|
-| `CRM_AGG_001`  | Customer Analytics & Lifecycle | Address SCD Type 2, Customer 360°, Account aggregation, Lifecycle metrics, Churn prediction | 1-hour dynamic tables |
+| `CRM_AGG_001`  | Customer Analytics & Lifecycle | Address SCD Type 2 (Current/History), Customer Attribute SCD Type 2 (Current/History), Customer 360°, Account aggregation, Lifecycle metrics, Churn prediction | 1-hour dynamic tables |
 | `REF_AGG_001`  | Reference Analytics      | FX rates with analytics and volatility metrics         | 1-hour dynamic tables |
 | `PAY_AGG_001`  | Payment Analytics        | Anomaly detection, Account balances, SWIFT processing  | 1-hour dynamic tables |
 | `EQT_AGG_001`  | Equity Trading Analytics | Portfolio positions, Trade summary, Customer activity  | 1-hour dynamic tables |
@@ -659,11 +647,18 @@ Execute after all raw layer schemas are deployed:
 - **Dynamic Base Currency**: Automatic detection from transaction data
 - **Account Balance Conversion**: Real-time FX conversion for account currency display
 
-### SCD Type 2 Address Management
-- **Base Table**: `CRMI_ADDRESSES` with append-only structure
-- **Current View**: `CRMA_AGG_DT_ADDRESSES_CURRENT` for operational queries
-- **History View**: `CRMA_AGG_DT_ADDRESSES_HISTORY` with VALID_FROM/VALID_TO
-- **Automated Processing**: Dynamic tables handle SCD Type 2 logic
+### SCD Type 2 Dimensional Management
+**Customer Attributes:**
+- **Base Table**: `CRMI_CUSTOMER` with append-only structure and composite PK (CUSTOMER_ID, INSERT_TIMESTAMP_UTC)
+- **Current View**: `CRMA_AGG_DT_CUSTOMER_CURRENT` for operational queries (latest attributes per customer)
+- **History View**: `CRMA_AGG_DT_CUSTOMER_HISTORY` with VALID_FROM/VALID_TO for analytical queries
+- **Tracked Attributes**: Employment info, account tier, contact preferences, risk classification, credit score
+
+**Customer Addresses:**
+- **Base Table**: `CRMI_ADDRESSES` with append-only structure and composite PK (CUSTOMER_ID, INSERT_TIMESTAMP_UTC)
+- **Current View**: `CRMA_AGG_DT_ADDRESSES_CURRENT` for operational queries (latest address per customer)
+- **History View**: `CRMA_AGG_DT_ADDRESSES_HISTORY` with VALID_FROM/VALID_TO for analytical queries
+- **Automated Processing**: Dynamic tables handle all SCD Type 2 logic and VALID_FROM/VALID_TO calculations
 
 ### Payment Anomaly Detection
 - **Behavioral Analysis**: Multi-dimensional customer behavior profiling
@@ -684,14 +679,20 @@ Execute after all raw layer schemas are deployed:
 - **Fuzzy Matching**: Advanced name matching for compliance screening
 
 ### Customer 360° View
-- **Comprehensive Data**: Master data + current address + current status + account summary + Exposed Person matching
-- **Fuzzy Exposed Person Matching**: `EDITDISTANCE` functions for similar name detection
-- **Risk Assessment**: Automated Exposed Person risk level calculation
-- **Compliance Flags**: High-risk customer identification
-- **Lifecycle Integration**: Current status and status effective date for operational decision-making
+- **Comprehensive Data**: `CRMA_AGG_DT_CUSTOMER_360` integrates all customer dimensions:
+  - Current customer attributes (employment, account tier, contact, risk profile)
+  - Current address information
+  - Current lifecycle status and churn prediction
+  - Account summary across all account types
+  - Exposed Person fuzzy matching and compliance flags
+- **Operational Views**: Separate current/history views for attributes and addresses support both operational and analytical use cases
+- **Fuzzy Exposed Person Matching**: `EDITDISTANCE` functions for similar name detection (compliance screening)
+- **Risk Assessment**: Automated Exposed Person risk level calculation with compliance flags
+- **Lifecycle Integration**: Current status, churn probability, lifecycle stage, and risk indicators
+- **Historical Tracking**: Full audit trail for all attribute and address changes with VALID_FROM/VALID_TO ranges
 
 ### Customer Lifecycle Management
-- **Event Tracking**: 7 event types (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)
+- **Event Tracking**: 9 event types (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN, DORMANT_DETECTED)
 - **Status History**: SCD Type 2 tracking with IS_CURRENT flags for regulatory reporting
 - **Churn Prediction**: Calculated churn probability based on transaction patterns and dormancy (>180 days)
 - **Lifecycle Stages**: NEW, ACTIVE, MATURE, DECLINING, DORMANT, CHURNED
