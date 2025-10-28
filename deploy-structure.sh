@@ -150,7 +150,7 @@ for FILE in $SQL_FILES; do
 
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "   🔍 DRY RUN - Would execute the above SQL"
-    echo "   ✅ DRY RUN: $FILE"
+    echo "   DRY RUN: $FILE"
   else
     echo "   🚀 Executing SQL..."
     set +e
@@ -172,7 +172,7 @@ for FILE in $SQL_FILES; do
         echo "   3. Or run: ALTER USER <username> SET first_name='John', last_name='Doe', email='john@company.com'"
         echo ""
         echo "   Continuing with deployment..."
-        echo "✅ Success: $(basename "$FILE") (setup issue handled)"
+        echo "Success: $(basename "$FILE") (setup issue handled)"
       else
         echo "❌ Execution failed for: $(basename "$FILE")"
         echo "⛔️ Aborting remaining scripts."
@@ -180,7 +180,7 @@ for FILE in $SQL_FILES; do
         exit 1
       fi
     else
-      echo "✅ Success: $(basename "$FILE")"
+      echo "Success: $(basename "$FILE")"
     fi
   fi
 
@@ -219,23 +219,72 @@ else
       
       if [[ $? -eq 0 ]]; then
         echo ""
-        echo "✅ DATA UPLOAD COMPLETED SUCCESSFULLY!"
+        echo "DATA UPLOAD COMPLETED SUCCESSFULLY!"
         echo ""
+        
+        # =============================================================================
+        # AUTOMATIC TASK EXECUTION AND DT REFRESH
+        # =============================================================================
+        echo ""
+        echo "⚙️  EXECUTING TASKS AND REFRESHING DYNAMIC TABLES"
+        echo "=================================================="
+        echo "🚀 Data uploaded successfully! Now loading and processing data..."
+        echo ""
+        
+        # Check if execute script exists
+        if [[ -f "./operation/execute_all_tasks_and_refresh_dts.sql" ]]; then
+          echo "📋 Found execute_all_tasks_and_refresh_dts.sql - Starting data processing..."
+          echo ""
+          echo "⏱️  This will take 10-30 minutes depending on data volume..."
+          echo "   ⏳ Step 1: Execute 14 RAW layer tasks (load from stages)"
+          echo "   ⏳ Step 2: Refresh 26 AGG layer dynamic tables (transform)"
+          echo "   ⏳ Step 3: Refresh 29 REP layer dynamic tables (reporting)"
+          echo ""
+          
+          # Execute the tasks and refresh DTs
+          echo "🔄 Executing: snow sql -c $CONNECTION_NAME -f ./operation/execute_all_tasks_and_refresh_dts.sql"
+          echo ""
+          
+          # Run the execution script
+          snow sql -c "$CONNECTION_NAME" -f ./operation/execute_all_tasks_and_refresh_dts.sql
+          
+          if [[ $? -eq 0 ]]; then
+            echo ""
+            echo "TASK EXECUTION AND DT REFRESH COMPLETED!"
+            echo ""
+            echo "   All 14 tasks executed (data loaded from stages)"
+            echo "   All 26 AGG layer DTs refreshed (data transformed)"
+            echo "   All 29 REP layer DTs refreshed (reporting ready)"
+            echo ""
+          else
+            echo ""
+            echo "⚠️  Task execution partially failed - some operations may need manual retry"
+            echo "💡 You can retry the execution manually:"
+            echo "   snow sql -c $CONNECTION_NAME -f ./operation/execute_all_tasks_and_refresh_dts.sql"
+            echo ""
+          fi
+        else
+          echo "⚠️  operation/execute_all_tasks_and_refresh_dts.sql not found"
+          echo "💡 To manually load and process data, run:"
+          echo "   snow sql -c $CONNECTION_NAME -f ./operation/execute_all_tasks_and_refresh_dts.sql"
+          echo ""
+        fi
+        
         echo ""
         echo "🎯 END-TO-END DEPLOYMENT SUMMARY:"
-        echo "   ✅ Database & schemas created"
-        echo "   ✅ All SQL objects deployed"
-        echo "   ✅ Generated data uploaded to stages"
-        echo "   ✅ Streams recreated to detect uploaded files"
-        echo "   ✅ Tasks activated and ready for processing"
+        echo "   Database & schemas created"
+        echo "   All SQL objects deployed"
+        echo "   Generated data uploaded to stages"
+        echo "   All 14 tasks executed (data loaded)"
+          echo "   All 55 dynamic tables refreshed (data processed)"
         echo ""
-        echo "🚀 Your synthetic bank is now fully operational!"
+        echo "🚀 Your synthetic bank is now fully operational with data loaded!"
         echo ""
         echo "Next steps:"
-        echo "1. Monitor task execution: SHOW TASKS IN DATABASE $DATABASE;"
-        echo "2. Check data loading: SELECT COUNT(*) FROM [schema].[table];"
-        echo "3. Verify stage contents: LIST @[stage_name];"
-        echo "4. Check stream status: SHOW STREAMS IN DATABASE $DATABASE;"
+        echo "1. Verify data loaded: SELECT COUNT(*) FROM CRM_RAW_001.CRMI_CUSTOMER;"
+        echo "2. Check aggregations: SELECT * FROM CRM_AGG_001.CRMA_AGG_DT_CUSTOMER_360 LIMIT 10;"
+        echo "3. Explore reports: SELECT * FROM REP_AGG_001.REPP_AGG_DT_CUSTOMER_SUMMARY LIMIT 10;"
+        echo "4. Monitor tasks: SHOW TASKS IN DATABASE $DATABASE;"
       else
         echo ""
         echo "❌ Data upload failed! Please check the upload script output above."

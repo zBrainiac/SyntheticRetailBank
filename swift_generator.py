@@ -17,6 +17,8 @@ import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+from base_generator import init_random_seed
+
 
 # Country to BIC mapping for EMEA regions
 COUNTRY_TO_BIC_MAP = {
@@ -172,16 +174,20 @@ class ThreadSafeCounter:
 class SWIFTGenerator:
     """SWIFT Message Generator for synthetic bank customers"""
     
-    def __init__(self, swift_generator_script: str = "swift_message_generator.py"):
+    def __init__(self, swift_generator_script: str = "swift_message_generator.py", seed: int = 42):
         """
         Initialize SWIFT generator
         
         Args:
             swift_generator_script: Path to the SWIFT message generator script
+            seed: Random seed for deterministic generation
         """
         self.swift_generator_script = swift_generator_script
         self.success_counter = ThreadSafeCounter()
         self.error_counter = ThreadSafeCounter()
+        
+        # Initialize random state with seed for reproducibility
+        self.fake = init_random_seed(seed)
         
         # Currency to country mapping for SWIFT generation
         self.currency_to_country = {
@@ -199,8 +205,6 @@ class SWIFTGenerator:
     
     def load_customers_from_csv(self, customer_file_path: str) -> List[Dict[str, Any]]:
         """Load customers from CSV file and convert to SWIFT-compatible format"""
-        from faker import Faker
-        fake = Faker()
         customers = []
         try:
             with open(customer_file_path, 'r', encoding='utf-8') as f:
@@ -229,9 +233,9 @@ class SWIFTGenerator:
                         'name': f"{row['first_name']} {row['family_name']}",
                         'bic': bic,
                         'iban': iban,
-                        'street': row.get('street_address', f"{fake.street_address()}"),
-                        'city': row.get('city', f"{fake.city()}"),
-                        'postcode': row.get('zipcode', f"{fake.postcode()}"),
+                        'street': row.get('street_address', f"{self.fake.street_address()}"),
+                        'city': row.get('city', f"{self.fake.city()}"),
+                        'postcode': row.get('zipcode', f"{self.fake.postcode()}"),
                         'country': country_code,
                         'has_anomaly': row['has_anomaly'].lower() == 'true'
                     }

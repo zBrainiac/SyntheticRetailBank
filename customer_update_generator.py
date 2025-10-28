@@ -21,17 +21,19 @@ import random
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any
-from faker import Faker
+
+from base_generator import init_random_seed
 
 class CustomerUpdateGenerator:
     """Generates customer update files for SCD Type 2 processing"""
     
-    def __init__(self, customer_file: str, output_dir: str):
+    def __init__(self, customer_file: str, output_dir: str, seed: int = 42):
         self.customer_file = customer_file
         self.output_dir = Path(output_dir)
         self.customers = {}  # Store current state of all customers
-        self.fake = Faker()
-        random.seed(42)  # For reproducibility
+        
+        # Initialize random state with seed for reproducibility
+        self.fake = init_random_seed(seed)
         
         # Reference data
         self.account_tiers = ['STANDARD', 'SILVER', 'GOLD', 'PLATINUM', 'PREMIUM']
@@ -49,6 +51,48 @@ class CustomerUpdateGenerator:
                 if row['customer_id']:  # Skip empty rows
                     self.customers[row['customer_id']] = row
         print(f"📋 Loaded {len(self.customers)} customers from {self.customer_file}")
+    
+    
+    def generate_customer_updates(self, num_update_files: int = 8) -> List[str]:
+        """
+        Generate multiple customer update files spread over time
+        
+        Args:
+            num_update_files: Number of update files to generate (default: 8)
+            
+        Returns:
+            List of paths to generated update files
+        """
+        if not self.customers:
+            self.load_customers()
+        
+        # Calculate date range
+        # Use 19 months period to match data_generator.sh default
+        from datetime import datetime, timedelta
+        start_date = datetime(2024, 1, 1)
+        end_date = datetime(2025, 7, 31)  # 19 months from start
+        
+        # Calculate days per file
+        total_days = (end_date - start_date).days
+        days_per_file = total_days // num_update_files if num_update_files > 0 else 30
+        
+        print(f"🔄 Generating {num_update_files} customer update files...")
+        print(f"   Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+        print(f"   Frequency: ~{days_per_file} days per file")
+        
+        # Call the existing generate_updates method
+        self.generate_updates(
+            start_date=start_date.strftime('%Y-%m-%d'),
+            end_date=end_date.strftime('%Y-%m-%d'),
+            updates_per_month=50,  # Average updates per month
+            output_frequency_days=days_per_file
+        )
+        
+        # Return list of generated files
+        customer_updates_dir = self.output_dir / 'customer_updates'
+        generated_files = sorted(customer_updates_dir.glob('customer_updates_*.csv'))
+        
+        return [str(f) for f in generated_files]
     
     def generate_updates(self, start_date: str, end_date: str, 
                         updates_per_month: int = 50,
@@ -162,16 +206,17 @@ class CustomerUpdateGenerator:
         return customer
     
     def _save_update_file(self, updates: List[Dict], file_date: datetime):
-        """Save updates to dated file"""
+        """Save updates to dated file in customer_updates/ subdirectory"""
         if not updates:
             return
         
-        # Create output directory
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        # Create customer_updates subdirectory
+        customer_updates_dir = self.output_dir / 'customer_updates'
+        customer_updates_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate filename with date
         filename = f"customer_updates_{file_date.strftime('%Y-%m-%d')}.csv"
-        filepath = self.output_dir / filename
+        filepath = customer_updates_dir / filename
         
         # Write CSV with ALL customer attributes (same as customers.csv)
         fieldnames = [

@@ -7,8 +7,33 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import csv
 import logging
+import random
 
 from config import GeneratorConfig
+
+
+def init_random_seed(seed: int):
+    """Standalone utility to initialize random state for generators that don't inherit BaseGenerator
+    
+    Args:
+        seed: Random seed for deterministic generation
+        
+    Returns:
+        Seeded Faker instance
+        
+    Usage:
+        fake = init_random_seed(42)
+    """
+    from faker import Faker
+    
+    # Seed Python's built-in random module
+    random.seed(seed)
+    
+    # Seed Faker's random generator
+    Faker.seed(seed)
+    
+    # Return seeded Faker instance
+    return Faker()
 
 
 class BaseGenerator(ABC):
@@ -18,6 +43,28 @@ class BaseGenerator(ABC):
         self.config = config
         self.output_dir = Path(config.output_directory)
         self.logger = logging.getLogger(self.__class__.__name__)
+        
+        # Initialize random state for deterministic generation
+        self._init_random_state()
+    
+    def _init_random_state(self) -> None:
+        """Initialize random state for reproducible data generation
+        
+        Seeds both Python's random module and Faker to ensure deterministic output.
+        This allows CI/CD pipelines and tests to reproduce exact data sets.
+        """
+        from faker import Faker
+        
+        # Seed Python's built-in random module
+        random.seed(self.config.random_seed)
+        
+        # Seed Faker's random generator
+        Faker.seed(self.config.random_seed)
+        
+        # Create Faker instance (will use the seeded state)
+        self.fake = Faker()
+        
+        self.logger.debug(f"Initialized random state with seed={self.config.random_seed}")
     
     @staticmethod
     def get_utc_timestamp() -> str:

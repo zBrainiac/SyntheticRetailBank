@@ -9,9 +9,11 @@ import random
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 from typing import List, Optional
-from faker import Faker
 import argparse
 from pathlib import Path
+from faker import Faker
+
+from base_generator import init_random_seed
 
 
 @dataclass
@@ -40,8 +42,9 @@ class PEPRecord:
 class PEPGenerator:
     """Generates synthetic PEP (Politically Exposed Persons) data"""
     
-    def __init__(self, customer_file: str = None):
-        self.fake = Faker()
+    def __init__(self, customer_file: str = None, seed: int = 42):
+        # Initialize random state with seed for reproducibility
+        self.fake = init_random_seed(seed)
         self.existing_customers = []
         
         # Load existing customers if file provided
@@ -433,7 +436,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate PEP data
-    generator = PEPGenerator(customer_file=args.customer_file)
+    generator = PEPGenerator(customer_file=args.customer_file, seed=42)
     pep_records = generator.generate_pep_data(args.num_records)
     
     # Save to CSV

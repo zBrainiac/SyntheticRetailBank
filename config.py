@@ -11,6 +11,9 @@ import os
 class GeneratorConfig:
     """Configuration class for the payment statement generator with comprehensive validation"""
     
+    # Random seed configuration
+    random_seed: int = 42  # Master seed for deterministic data generation
+    
     # Customer configuration
     num_customers: int = 10
     anomaly_percentage: float = 2.0  # Percentage of customers with anomalies

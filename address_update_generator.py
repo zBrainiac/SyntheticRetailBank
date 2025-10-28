@@ -14,6 +14,8 @@ from typing import List, Dict, Any
 from dataclasses import dataclass
 from faker import Faker
 
+from base_generator import init_random_seed
+
 @dataclass
 class AddressUpdate:
     """Address update record structure"""
@@ -28,10 +30,13 @@ class AddressUpdate:
 class AddressUpdateGenerator:
     """Generates address update files for SCD Type 2 processing"""
     
-    def __init__(self, customer_file: str, output_dir: str):
+    def __init__(self, customer_file: str, output_dir: str, seed: int = 42):
         self.customer_file = customer_file
         self.output_dir = Path(output_dir)
         self.customers = []
+        
+        # Initialize random state with seed for reproducibility (used for locale-specific Faker instances)
+        init_random_seed(seed)
         self.emea_locales = [
             'no_NO', 'nl_NL', 'sv_SE', 'de_DE', 'fr_FR', 
             'it_IT', 'en_GB', 'da_DK', 'fr_BE', 'de_AT', 'de_CH'
@@ -237,7 +242,7 @@ def main():
     
     args = parser.parse_args()
     
-    generator = AddressUpdateGenerator(args.customer_file, args.output_dir)
+    generator = AddressUpdateGenerator(args.customer_file, args.output_dir, seed=42)
     generated_files = generator.generate_address_updates(args.num_files, args.updates_per_file)
     
     print(f"\n🎉 Generated {len(generated_files)} address update files:")

@@ -105,6 +105,13 @@ Examples:
     )
     
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for deterministic data generation (default: 42). Use same seed for reproducible output."
+    )
+    
+    parser.add_argument(
         "--transactions-per-month", "-t",
         type=float,
         default=3.5,
@@ -364,6 +371,7 @@ def create_config(args) -> GeneratorConfig:
         start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
     
     return GeneratorConfig(
+        random_seed=args.seed,
         num_customers=args.customers,
         anomaly_percentage=args.anomaly_rate,
         generation_period_months=args.period,
@@ -435,7 +443,7 @@ def main():
                     swift_output_dir = str(Path(config.output_directory) / "swift_messages")
                 
                 # Initialize SWIFT generator
-                swift_generator = SWIFTGenerator(args.swift_generator_script)
+                swift_generator = SWIFTGenerator(args.swift_generator_script, seed=config.random_seed)
                 
                 # Generate SWIFT messages
                 customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
@@ -472,7 +480,7 @@ def main():
                 
                 # Initialize PEP generator with customer file
                 customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
-                pep_generator = PEPGenerator(customer_file=customer_file_path)
+                pep_generator = PEPGenerator(customer_file=customer_file_path, seed=config.random_seed)
                 
                 # Generate PEP data
                 pep_records = pep_generator.generate_pep_data(args.pep_records)
@@ -556,7 +564,7 @@ def main():
                 customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
                 output_dir = str(Path(config.output_directory) / "master_data")
                 
-                address_generator = AddressUpdateGenerator(customer_file_path, output_dir)
+                address_generator = AddressUpdateGenerator(customer_file_path, output_dir, seed=config.random_seed)
                 generated_files = address_generator.generate_address_updates(
                     num_update_files=args.address_update_files,
                     updates_per_file=args.updates_per_file
@@ -588,25 +596,18 @@ def main():
                 customer_file_path = str(Path(config.output_directory) / "master_data" / "customers.csv")
                 output_dir = str(Path(config.output_directory) / "master_data")
                 
-                customer_update_generator = CustomerUpdateGenerator(customer_file_path, output_dir)
+                customer_update_generator = CustomerUpdateGenerator(customer_file_path, output_dir, seed=config.random_seed)
                 
-                snapshot_file = None
                 generated_files = []
                 
-                # Generate initial snapshot if requested
-                if args.generate_customer_snapshot:
-                    snapshot_file = customer_update_generator.generate_initial_customer_snapshot()
-                    print(f"📸 Initial customer snapshot created")
-                
                 # Generate update files if requested
-                if args.generate_customer_updates:
+                if args.generate_customer_updates or args.generate_customer_snapshot:
                     generated_files = customer_update_generator.generate_customer_updates(
                         num_update_files=args.customer_update_files
                     )
                     print(f"✅ Generated {len(generated_files)} customer update files")
                 
                 customer_update_results = {
-                    'snapshot_file': snapshot_file,
                     'update_files_generated': len(generated_files),
                     'update_file_paths': generated_files
                 }
@@ -840,7 +841,8 @@ def main():
                     customer_file=customer_file_path,
                     address_updates_dir=address_updates_dir,
                     output_dir=output_dir,
-                    customer_updates_dir=customer_updates_dir
+                    customer_updates_dir=customer_updates_dir,
+                    seed=config.random_seed
                 )
                 
                 # Generate all lifecycle events

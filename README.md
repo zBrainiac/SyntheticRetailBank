@@ -12,6 +12,41 @@ A showcase demonstrating risk management and governance challenges faced by mode
 | Financial Crime Prevention            | **Anomaly Detection & Fraud Control**: A practical layer of defense against money laundering and fraud, using behavioral baselines to detect high-risk patterns like structuring, large-value trades, and suspicious cross-border activity. The core purpose is to protect the bank's assets and reputation.                                           |
 | Key Capabilities                      | **Data Utility for GRC (Governance, Risk, Compliance)**: The generated data is engineered for specific validation tasks, including testing vendor RegTech systems, calibrating internal risk scoring models, and providing an auditable, end-to-end data lineage for regulatory examiners.                                                             |
 
+---
+
+## 📚 Business Guides Library
+
+**Purpose**: Transform technical capabilities into quantified business value. Each guide explains WHY capabilities matter and WHAT value they deliver to specific business roles through relatable before/after scenarios, real-world use cases, and measurable ROI.
+
+### Complete Guide Portfolio (€35.02M Total Annual Value)
+
+| Business Guide | Target Audience | Key Topics Covered |
+|----------------|----------------|-------------------|
+| **[CRM Business Guide](docs/crm_business_guide.md)** | CCO, Head of AML, Head of Customer Experience, CDO | Customer 360° views, PEP screening, lifecycle analytics, churn prediction, SCD Type 2 audit trails |
+| **[Payment & Treasury Guide](docs/payment_business_guide.md)** | Head of Treasury, Payment Operations, Fraud Prevention, AML Teams | Behavioral fraud detection (92% false positive reduction), SWIFT ISO20022 operations, liquidity management, settlement risk, currency exposure |
+| **[Wealth Management Guide](docs/wealth_management_business_guide.md)** | Wealth Advisors, Relationship Managers, Private Banking Teams | Time Weighted Return (TWR), asset allocation optimization, risk analytics & suitability, revenue optimization, client retention strategies |
+| **[Data Governance Guide](docs/data_governance_business_guide.md)** | CDO, Data Governance Teams, Compliance, Internal Audit | Data quality monitoring (99.2% accuracy), lineage & audit trails, GDPR/privacy management, BCBS 239 compliance (14 principles), master data management |
+| **[Lending Operations Guide](docs/lending_operations_business_guide.md)** | Head of Lending, Credit Officers, Loan Operations, Collections Teams | Loan origination & Document AI, 85% auto-decisioning, credit risk monitoring, collections optimization, Basel III/IV capital management |
+| **[Risk & Reporting Guide](docs/risk_reporting_business_guide.md)** | CRO, CFO, Trading Desks, Regulatory Reporting Teams | Customer analytics, equity trading, Basel III/IV credit risk (IRB), FRTB market risk, BCBS 239 compliance, portfolio performance |
+
+### How to Use These Guides
+
+**For Business Leaders**: Each guide starts with a relatable "before/after" scenario demonstrating the business problem and solution. Jump to the Quick Reference Matrix for an executive summary of reports and value.
+
+**For Implementation Teams**: Guides include detailed use cases with quantified ROI calculations, helping prioritize features and justify investment decisions.
+
+**For Showcaseing**: Use real-world scenarios and specific metrics to demonstrate value to prospects and customers in their language.
+
+### Guide Features
+
+Each business guide includes:
+- **Relatable Business Scenarios** - Real-world problems and solutions told as stories (not technical jargon)
+- **Quantified ROI** - Specific annual value calculations with transparent assumptions
+- **Quick Reference Matrix** - Executive summary table showing all reports and their business value
+- **Multiple Use Cases** - Diverse examples demonstrating breadth and depth of capabilities
+- **Implementation Roadmap** - Phased approach with milestones and expected value delivery
+
+---
 
 ## Key Capabilities
 
@@ -248,45 +283,6 @@ If you prefer manual control:
 ./deploy-structure.sh --DATABASE=AAA_DEV_SYNTHETIC_BANK --CONNECTION_NAME=<my-sf-connection> --FILE=031_ICGI_swift_messages.sql
 ```
 
-## Usage
-
-### Basic Usage
-
-Generate default dataset (20 customers, 19 months, all generators):
-
-```bash
-./data_generator.sh
-```
-
-### Advanced Usage
-
-#### Generate Everything (Complete Dataset)
-
-**Recommended: Use the one-command data generator script:**
-
-```bash
-# Generate default dataset (20 customers, 19 months)
-./data_generator.sh
-
-# Generate with custom customer count
-./data_generator.sh 100
-
-# Generate with cleanup (removes previous data first)
-./data_generator.sh 100 --clean
-```
-
-**What gets generated:**
-- Customer master data with extended attributes (employment, account tier, risk profile)
-- Payment transactions & accounts
-- Equity, fixed income, and commodity trades
-- SWIFT ISO20022 messages & mortgage emails
-- PEP data & sanctions screening
-- Customer lifecycle events & status history
-- Address & customer attribute updates (SCD Type 2)
-- FX rates & anomaly patterns
-
-📖 **For complete list of command-line options and advanced examples**, see: [`DATA_GENERATOR_USAGE.md`](DATA_GENERATOR_USAGE.md)
-
 ## Output Files
 
 ### Customer Data File
@@ -345,7 +341,7 @@ Contains EMEA customer information with localized data and extended attributes (
 
 **Lifecycle Event Files**: `customer_events/customer_events_YYYY-MM-DD.csv`
 - Date-stamped files containing customer lifecycle events
-- Event types: ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN, DORMANT_DETECTED
+- Event types (8 total): ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN
 - Data-driven events (generated from address/customer updates) and random events (closures, reactivations)
 - Used for churn prediction, lifecycle analytics, and AML correlation analysis
 
@@ -545,136 +541,6 @@ generated_data/
 - **Pattern Mixing**: Multiple anomaly types can occur for the same customer
 - **Realistic Timing**: Even anomalous transactions follow some business patterns
 
-## Business Applications
-
-### **Risk Management Training & Education**
-- **AML Analyst Training**: Hands-on experience identifying suspicious transaction patterns and money laundering typologies
-  - *Key Reports*:
-    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
-- **Compliance Officer Development**: Practical scenarios for regulatory reporting, customer due diligence, and risk assessment
-  - *Key Reports*:
-    - `CRMA_AGG_DT_CUSTOMER_360`
-    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
-    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
-- **Executive Risk Awareness**: Board-level demonstrations of operational risk, compliance failures, and regulatory consequences
-  - *Key Reports*:
-    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
-    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
-    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
-- **Churn Prediction & Retention**: Identify at-risk customers for retention campaigns and churn prevention strategies
-  - *Key Reports*:
-    - `CRMA_AGG_DT_CUSTOMER_360_LIFECYCLE`
-    - `REPP_AGG_DT_LIFECYCLE_ANOMALIES`
-    - `CRMA_AGG_DT_CUSTOMER_360`
-- **Audit & Control Testing**: Internal audit teams can validate control effectiveness and identify process gaps
-  - *Key Reports*:
-    - `CRMA_AGG_DT_ADDRESSES_HISTORY`
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
-
-### **Technology & System Validation**
-- **Transaction Monitoring System Testing**: Validate AML systems with known suspicious patterns and false positive scenarios
-  - *Key Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
-    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
-    - `REPP_AGG_DT_LIFECYCLE_ANOMALIES`
-- **Risk Model Development**: Build and calibrate customer risk scoring models with controlled datasets
-  - *Key Reports*:
-    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
-    - `CRMA_AGG_DT_CUSTOMER_360`
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-- **Investment Performance Analytics**: Portfolio management and performance attribution with risk-adjusted metrics
-  - *Key Reports*:
-    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
-    - `REPP_AGG_DT_EQUITY_SUMMARY`
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-- **Credit Risk Model Validation**: IRB model development, backtesting, and regulatory validation
-  - *Key Reports*:
-    - `REPP_AGG_DT_IRB_CUSTOMER_RATINGS`
-    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
-    - `REPP_AGG_DT_IRB_RISK_TRENDS`
-    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
-- **Capital Adequacy Assessment**: Basel III/IV capital requirement calculation and stress testing
-  - *Key Reports*:
-    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
-    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
-    - `REPP_AGG_DT_IRB_RISK_TRENDS`
-    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
-- **Regulatory Technology (RegTech) Evaluation**: Test vendor solutions against realistic banking scenarios
-  - *Key Reports*:
-    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
-    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
-    - `REFA_AGG_DT_FX_RATES_ENHANCED`
-- **Data Analytics & AI Training**: Develop machine learning models for fraud detection and behavioral analysis
-  - *Key Reports*:
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_AGG_DT_EQUITY_SUMMARY`
-    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
-- **Portfolio Performance Measurement**: Investment performance tracking and client reporting with industry-standard metrics
-  - *Key Reports*:
-    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
-    - `REPP_AGG_DT_EQUITY_POSITIONS`
-    - `REPP_AGG_DT_EQUITY_CURRENCY_EXPOSURE`
-
-### **Governance & Compliance Assurance**
-- **Regulatory Examination Preparation**: Demonstrate compliance capabilities to regulators with comprehensive audit trails
-  - *Key Reports*:
-    - `CRMA_AGG_DT_ADDRESSES_HISTORY`
-    - `REPP_AGG_DT_DAILY_TRANSACTION_SUMMARY`
-    - `CRMI_EXPOSED_PERSON`
-- **Policy & Procedure Validation**: Test internal policies against realistic customer and transaction scenarios
-  - *Key Reports*:
-    - `REPP_AGG_DT_HIGH_RISK_PATTERNS`
-    - `PAYA_AGG_DT_TRANSACTION_ANOMALIES`
-    - `REPP_AGG_DT_CUSTOMER_SUMMARY`
-- **Risk Appetite Calibration**: Validate risk thresholds and escalation procedures with controlled stress scenarios
-  - *Key Reports*:
-    - `REPP_AGG_DT_ANOMALY_ANALYSIS`
-    - `REPP_AGG_DT_SETTLEMENT_ANALYSIS`
-    - `REPP_AGG_DT_CURRENCY_EXPOSURE_CURRENT`
-    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
-- **Capital Adequacy Compliance**: Demonstrate Basel III/IV compliance and regulatory capital adequacy
-  - *Key Reports*:
-    - `REPP_AGG_DT_IRB_RWA_SUMMARY`
-    - `REPP_AGG_DT_IRB_PORTFOLIO_METRICS`
-    - `REPP_AGG_DT_IRB_RISK_TRENDS`
-    - `REPP_AGG_DT_CUSTOMER_RATING_HISTORY`
-- **Business Continuity Planning**: Test operational resilience and recovery procedures with realistic data volumes
-  - *Key Reports*:
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_AGG_DT_EQUITY_SUMMARY`
-    - `REFA_AGG_DT_FX_RATES_ENHANCED`
-- **Investment Advisory & Wealth Management**: Client performance reporting and portfolio management analytics
-  - *Key Reports*:
-    - `PAYA_AGG_DT_TIME_WEIGHTED_RETURN`
-    - `PAYA_AGG_DT_ACCOUNT_BALANCES`
-    - `REPP_AGG_DT_EQUITY_SUMMARY`
-
-### **BCBS 239 Risk Data Aggregation & Reporting Demonstration**
-- **Executive Risk Management**: Comprehensive risk dashboards for senior management and board reporting
-  - *Key Reports*:
-    - `REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD`
-    - `REPP_AGG_DT_BCBS239_RISK_AGGREGATION`
-    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
-- **Risk Concentration Analysis**: Real-time monitoring of risk concentrations and portfolio diversification
-  - *Key Reports*:
-    - `REPP_AGG_DT_BCBS239_RISK_CONCENTRATION`
-    - `REPP_AGG_DT_BCBS239_RISK_LIMITS`
-    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
-- **Regulatory Compliance Reporting**: BCBS 239 compliant risk data aggregation and reporting capabilities
-  - *Key Reports*:
-    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
-    - `REPP_AGG_DT_BCBS239_EXECUTIVE_DASHBOARD`
-    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
-- **Data Quality & Governance**: Comprehensive data quality monitoring and governance metrics
-  - *Key Reports*:
-    - `REPP_AGG_DT_BCBS239_DATA_QUALITY`
-    - `REPP_AGG_DT_BCBS239_RISK_AGGREGATION`
-    - `REPP_AGG_DT_BCBS239_REGULATORY_REPORTING`
-
 ## Technical Details
 
 ### Dependencies
@@ -758,21 +624,3 @@ SELECT
     ROUND(COUNT(CASE WHEN has_anomaly = true THEN 1 END) * 100.0 / COUNT(*), 2) as anomaly_percentage
 FROM CRMI_CUSTOMER;
 ```
-
-## Contributing
-
-This tool is designed to be extensible. Key areas for enhancement:
-
-1. **Additional Anomaly Types**: Implement new suspicious patterns
-2. **Geographic Patterns**: Add location-based transaction patterns
-3. **Industry Sectors**: Customize patterns by business type
-4. **Regulatory Compliance**: Add specific regulatory scenario templates
-
-## License
-
-This project is provided as-is for educational and testing purposes. Ensure compliance with all applicable regulations when using generated data.
-
-## Support
-
-For questions or issues, please review the code documentation and configuration options. The tool includes comprehensive error handling and validation to guide proper usage.
-

@@ -25,7 +25,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
-from faker import Faker
+
+from base_generator import init_random_seed
 
 @dataclass
 class LifecycleEvent:
@@ -60,7 +61,7 @@ class CustomerStatus:
 class CustomerLifecycleGenerator:
     """Generates customer lifecycle events and status history"""
     
-    def __init__(self, customer_file: str, address_updates_dir: str, output_dir: str, customer_updates_dir: str = None):
+    def __init__(self, customer_file: str, address_updates_dir: str, output_dir: str, customer_updates_dir: str = None, seed: int = 42):
         self.customer_file = customer_file
         self.address_updates_dir = Path(address_updates_dir)
         self.customer_updates_dir = Path(customer_updates_dir) if customer_updates_dir else None
@@ -68,8 +69,9 @@ class CustomerLifecycleGenerator:
         self.customers = []
         self.address_changes = []  # Will be loaded from address update files
         self.customer_updates = []  # Will be loaded from customer update files
-        self.fake = Faker()
-        random.seed(42)  # For reproducibility
+        
+        # Initialize random state with seed for reproducibility
+        self.fake = init_random_seed(seed)
         
         # Event type probabilities (for randomly generated events)
         # NOTE: EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE are now primarily data-driven
@@ -162,9 +164,12 @@ class CustomerLifecycleGenerator:
     
     def load_customer_updates(self):
         """
-        Load customer updates from customer update files
+        Load customer updates from customer update files (full customer records)
         CRITICAL: These will be used to generate ACCOUNT_UPGRADE/DOWNGRADE and EMPLOYMENT_CHANGE events
         with exact timestamp matching
+        
+        New format: Full customer records with all 17 attributes + insert_timestamp_utc
+        We detect changes by comparing with previous state
         """
         if not self.customer_updates_dir or not self.customer_updates_dir.exists():
             print(f"⚠️  Customer updates directory not found or not specified: {self.customer_updates_dir}")
@@ -177,23 +182,73 @@ class CustomerLifecycleGenerator:
             print(f"⚠️  No customer update files found in {self.customer_updates_dir}")
             return
         
+        # Track previous state of each customer to detect changes
+        customer_states = {}
+        
+        # Load initial state from customers.csv
+        for customer in self.customers:
+            customer_states[customer['customer_id']] = {
+                'account_tier': customer.get('account_tier', ''),
+                'employment_type': customer.get('employment_type', ''),
+                'employer': customer.get('employer', ''),
+                'position': customer.get('position', '')
+            }
+        
+        # Process update files in chronological order
         for update_file in update_files:
             with open(update_file, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    self.customer_updates.append({
-                        'customer_id': row['customer_id'],
-                        'update_type': row['update_type'],
-                        'timestamp': row['update_timestamp_utc'],
-                        'field_name': row['field_name'],
-                        'old_value': row['old_value'],
-                        'new_value': row['new_value'],
-                        'update_reason': row['update_reason'],
-                        'updated_by': row['updated_by'],
-                        'update_details': row['update_details']
-                    })
+                    customer_id = row['customer_id']
+                    timestamp = row['insert_timestamp_utc']
+                    
+                    if customer_id not in customer_states:
+                        continue  # Skip unknown customers
+                    
+                    prev_state = customer_states[customer_id]
+                    
+                    # Detect account tier changes (UPGRADE/DOWNGRADE)
+                    if row['account_tier'] != prev_state['account_tier']:
+                        old_tier = prev_state['account_tier']
+                        new_tier = row['account_tier']
+                        
+                        # Determine if upgrade or downgrade
+                        tier_rank = {'STANDARD': 1, 'SILVER': 2, 'GOLD': 3, 'PLATINUM': 4, 'PREMIUM': 5}
+                        old_rank = tier_rank.get(old_tier, 0)
+                        new_rank = tier_rank.get(new_tier, 0)
+                        
+                        event_type = 'ACCOUNT_UPGRADE' if new_rank > old_rank else 'ACCOUNT_DOWNGRADE'
+                        
+                        self.customer_updates.append({
+                            'customer_id': customer_id,
+                            'event_type': event_type,
+                            'timestamp': timestamp,
+                            'old_value': old_tier,
+                            'new_value': new_tier
+                        })
+                    
+                    # Detect employment changes
+                    if (row['employment_type'] != prev_state['employment_type'] or
+                        row['employer'] != prev_state['employer'] or
+                        row['position'] != prev_state['position']):
+                        
+                        self.customer_updates.append({
+                            'customer_id': customer_id,
+                            'event_type': 'EMPLOYMENT_CHANGE',
+                            'timestamp': timestamp,
+                            'old_value': f"{prev_state['employer']} ({prev_state['position']})",
+                            'new_value': f"{row['employer']} ({row['position']})"
+                        })
+                    
+                    # Update state for next comparison
+                    customer_states[customer_id] = {
+                        'account_tier': row['account_tier'],
+                        'employment_type': row['employment_type'],
+                        'employer': row['employer'],
+                        'position': row['position']
+                    }
         
-        print(f"📋 Loaded {len(self.customer_updates)} customer updates from {len(update_files)} files")
+        print(f"📋 Loaded {len(self.customer_updates)} customer update events from {len(update_files)} files")
     
     def generate_event_id(self, counter: int) -> str:
         """Generate unique event ID"""
@@ -328,6 +383,8 @@ class CustomerLifecycleGenerator:
         Generate lifecycle events from customer update data
         CRITICAL: Uses exact timestamps from customer_update_generator.py
         Generates: ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, EMPLOYMENT_CHANGE (data-driven)
+        
+        New format: Simplified event-based format with event_type already determined
         """
         events = []
         event_counter = event_counter_start
@@ -337,8 +394,6 @@ class CustomerLifecycleGenerator:
             return events
         
         for update in self.customer_updates:
-            event = None
-            
             # Parse timestamp (handle ISO 8601 format with T and Z)
             timestamp_str = update['timestamp'].replace('T', ' ').replace('Z', '')
             # Remove microseconds if present
@@ -346,26 +401,16 @@ class CustomerLifecycleGenerator:
                 timestamp_str = timestamp_str.split('.')[0]
             event_dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
             
-            # Generate events based on update type and field
-            if update['update_type'] == 'ACCOUNT_TIER' and update['field_name'] == 'account_tier':
-                # Parse update details to determine upgrade vs downgrade
-                update_details_str = update['update_details'].replace("'", '"')
-                try:
-                    update_details = json.loads(update_details_str)
-                    tier_change = update_details.get('tier_change_type', 'UPGRADE')
-                except:
-                    # Fallback: determine from old/new values
-                    tier_order = ['STANDARD', 'SILVER', 'GOLD', 'PLATINUM', 'PREMIUM']
-                    old_idx = tier_order.index(update['old_value']) if update['old_value'] in tier_order else 0
-                    new_idx = tier_order.index(update['new_value']) if update['new_value'] in tier_order else 0
-                    tier_change = 'UPGRADE' if new_idx > old_idx else 'DOWNGRADE'
-                    update_details = {
-                        'old_tier': update['old_value'],
-                        'new_tier': update['new_value'],
-                        'tier_change_type': tier_change
-                    }
-                
-                event_type = 'ACCOUNT_UPGRADE' if tier_change == 'UPGRADE' else 'ACCOUNT_DOWNGRADE'
+            event_type = update['event_type']
+            
+            # Build event details based on type
+            if event_type in ['ACCOUNT_UPGRADE', 'ACCOUNT_DOWNGRADE']:
+                tier_change = 'UPGRADE' if event_type == 'ACCOUNT_UPGRADE' else 'DOWNGRADE'
+                event_details = {
+                    'old_tier': update['old_value'],
+                    'new_tier': update['new_value'],
+                    'tier_change_type': tier_change
+                }
                 
                 event = LifecycleEvent(
                     event_id=self.generate_event_id(event_counter),
@@ -374,28 +419,22 @@ class CustomerLifecycleGenerator:
                     event_date=event_dt.strftime('%Y-%m-%d'),
                     event_timestamp_utc=update['timestamp'],  # EXACT timestamp from update file
                     channel=random.choices(self.channels, weights=self.channel_weights)[0],
-                    event_details=json.dumps(update_details),
+                    event_details=json.dumps(event_details),
                     previous_value=update['old_value'],
                     new_value=update['new_value'],
-                    triggered_by=update['updated_by'],
+                    triggered_by='SYSTEM',
                     requires_review=False,
                     review_status='NOT_REQUIRED',
                     review_date='',
                     notes=f"Account tier {tier_change.lower()} from {update['old_value']} to {update['new_value']}"
                 )
             
-            elif update['update_type'] == 'EMPLOYMENT_CHANGE' and update['field_name'] in ['employer', 'position', 'employment_type']:
-                # Parse update details
-                update_details_str = update['update_details'].replace("'", '"')
-                try:
-                    update_details = json.loads(update_details_str)
-                except:
-                    update_details = {
-                        'field': update['field_name'],
-                        'old_value': update['old_value'],
-                        'new_value': update['new_value'],
-                        'reason': update['update_reason']
-                    }
+            elif event_type == 'EMPLOYMENT_CHANGE':
+                event_details = {
+                    'previous_employment': update['old_value'],
+                    'new_employment': update['new_value'],
+                    'change_type': 'EMPLOYMENT_CHANGE'
+                }
                 
                 event = LifecycleEvent(
                     event_id=self.generate_event_id(event_counter),
@@ -404,19 +443,21 @@ class CustomerLifecycleGenerator:
                     event_date=event_dt.strftime('%Y-%m-%d'),
                     event_timestamp_utc=update['timestamp'],  # EXACT timestamp from update file
                     channel=random.choices(self.channels, weights=self.channel_weights)[0],
-                    event_details=json.dumps(update_details),
-                    previous_value=update['old_value'][:200],
-                    new_value=update['new_value'][:200],
-                    triggered_by=update['updated_by'],
+                    event_details=json.dumps(event_details),
+                    previous_value=update['old_value'][:200] if update['old_value'] else '',
+                    new_value=update['new_value'][:200] if update['new_value'] else '',
+                    triggered_by='SYSTEM',
                     requires_review=False,
                     review_status='NOT_REQUIRED',
                     review_date='',
-                    notes=f"Employment {update['field_name']} changed"
+                    notes=f"Employment details changed"
                 )
+            else:
+                # Unknown event type, skip
+                continue
             
-            if event:
-                events.append(event)
-                event_counter += 1
+            events.append(event)
+            event_counter += 1
         
         print(f"✅ Generated {len(events)} lifecycle events from customer updates (data-driven)")
         return events

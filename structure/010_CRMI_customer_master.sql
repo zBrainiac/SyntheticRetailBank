@@ -39,7 +39,7 @@
 -- │  ├─ CRMI_CUSTOMER         - Customer master data (normalized)
 -- │  ├─ CRMI_ADDRESSES        - Address base table (append-only)
 -- │  ├─ CRMI_EXPOSED_PERSON   - PEP compliance data
--- │  ├─ CRMI_CUSTOMER_EVENT   - Lifecycle event log (7 event types)
+-- │  ├─ CRMI_CUSTOMER_EVENT   - Lifecycle event log (8 event types)
 -- │  └─ CRMI_CUSTOMER_STATUS  - Status history (SCD Type 2)
 -- │
 -- ┌─ STREAMS (5):
@@ -280,14 +280,15 @@ COMMENT = 'Politically Exposed Persons (PEP) master data for compliance and risk
 -- ------------------------------------------------------------
 -- Comprehensive lifecycle event tracking for churn prediction and behavioral analytics.
 -- Captures all significant customer status changes, account modifications, and milestones.
--- Supports 7 event types: ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE,
--- ACCOUNT_CLOSE, REACTIVATION, CHURN.
+-- Supports 8 event types: ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE,
+-- ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN.
 --
 -- PREVIOUS_VALUE and NEW_VALUE fields:
 -- These fields provide a quick summary of what changed during the event:
 --   • ADDRESS_CHANGE: "Old Street, Old City" → "New Street, New City"
 --   • EMPLOYMENT_CHANGE: "Old Company" → "New Company"
 --   • ACCOUNT_UPGRADE: "STANDARD" → "PREMIUM"
+--   • ACCOUNT_DOWNGRADE: "GOLD" → "STANDARD"
 --   • STATUS_CHANGE: "ACTIVE" → "CLOSED"
 --   • ONBOARDING: "PROSPECT" → "ACTIVE"
 --
@@ -297,7 +298,7 @@ COMMENT = 'Politically Exposed Persons (PEP) master data for compliance and risk
 CREATE OR REPLACE TABLE CRMI_CUSTOMER_EVENT (
     EVENT_ID VARCHAR(50) NOT NULL COMMENT 'Unique event identifier (EVT_XXXXX format)',
     CUSTOMER_ID VARCHAR(30) NOT NULL COMMENT 'Reference to customer (foreign key to CRMI_CUSTOMER)',
-    EVENT_TYPE VARCHAR(30) NOT NULL COMMENT 'Type of event (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)',
+    EVENT_TYPE VARCHAR(30) NOT NULL COMMENT 'Type of event (ONBOARDING, ADDRESS_CHANGE, EMPLOYMENT_CHANGE, ACCOUNT_UPGRADE, ACCOUNT_DOWNGRADE, ACCOUNT_CLOSE, REACTIVATION, CHURN)',
     EVENT_DATE DATE NOT NULL COMMENT 'Date when the event occurred (YYYY-MM-DD)',
     EVENT_TIMESTAMP_UTC TIMESTAMP_NTZ NOT NULL COMMENT 'UTC timestamp of the event for precise ordering',
     CHANNEL VARCHAR(50) COMMENT 'Channel through which the event occurred (ONLINE, BRANCH, MOBILE, PHONE, SYSTEM)',

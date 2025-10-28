@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Dict, Optional
 from pathlib import Path
 
-from faker import Faker
+from base_generator import init_random_seed
 
 
 @dataclass
@@ -54,8 +54,9 @@ class EquityTrade:
 class EquityTradeGenerator:
     """Generates synthetic equity trade data for banking simulation"""
     
-    def __init__(self, trading_customers: List, investment_accounts: List, fx_rates: Dict[str, float]):
-        self.fake = Faker()
+    def __init__(self, trading_customers: List, investment_accounts: List, fx_rates: Dict[str, float], seed: int = 42):
+        # Initialize random state with seed for reproducibility
+        self.fake = init_random_seed(seed)
         self.trading_customers = trading_customers
         self.investment_accounts = investment_accounts
         self.fx_rates = fx_rates

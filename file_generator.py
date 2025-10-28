@@ -150,7 +150,7 @@ class FileGenerator:
         # Ensure CHF has rate 1.0
         fx_rates_dict["CHF"] = 1.0
         
-        equity_generator = EquityTradeGenerator(trading_customers, investment_accounts, fx_rates_dict)
+        equity_generator = EquityTradeGenerator(trading_customers, investment_accounts, fx_rates_dict, seed=self.config.random_seed)
         equity_summary = equity_generator.generate_period_data(
             self.config.start_date, 
             self.config.end_date, 
